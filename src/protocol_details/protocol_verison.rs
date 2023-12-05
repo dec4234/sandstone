@@ -2,18 +2,18 @@ use crate::enumize;
 
 // https://wiki.vg/Protocol_History
 enumize!(ProtocolVerison, i16 => {
-    One_Eight, 57,
-    One_Nine, 107,
-    One_Ten, 210,
-    One_Eleven, 315,
-    One_Twelve_Two, 340,
-    One_Thirteen_Two, 404,
-    One_Fourteen_Four, 498,
-    One_Fifteen_Two, 578,
-    One_Sixteen_Three, 753,
-    One_Seventeen_One, 756,
-    One_Eighteen_Two, 758,
-    One_Nineteen_Four, 762,
-    One_Twenty_Two, 764,
-    One_TwentyOne, -1
+    v1_8, 57,
+    v1_9, 107,
+    v1_10, 210,
+    v1_11, 315,
+    v1_12_2, 340,
+    v1_13_2, 404,
+    v1_14_4, 498,
+    v1_15_2, 578,
+    v1_16_3, 753,
+    v1_17_1, 756,
+    v1_18_2, 758,
+    v1_19_2, 762,
+    v1_20_2, 764,
+    v1_21, -1
 });
