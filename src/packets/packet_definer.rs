@@ -4,7 +4,21 @@ pub enum PacketDirection {
     BILATERAL
 }
 
+pub enum PacketState {
+    STATUS
+}
+
 pub trait Packet {
+    fn serialize_mc(&self) -> &[u8] {
+        unimplemented!()
+    }
+
+    fn deserialize_mc(input: &[u8]) -> Box<Self> {
+        unimplemented!()
+    }
+}
+
+pub trait PacketVersionDefinition {
 
 }
 
@@ -14,35 +28,41 @@ pub trait PacketDirectionTrait {
 
 #[macro_use]
 pub mod macros {
-    use serde::{Deserialize, Serialize};
-    use crate::packets::packet_definer::Packet;
     #[macro_export]
     macro_rules! protocol {
-        ($nice_name: ident, $version_name: ident, $version_number: literal => {
-            $($name: ident, $packetID: literal => {
+        ($nice_name: ident, $version_number: literal => {
+            $($name: ident, $name_body: ident, $packetID: literal, $state: ident => {
                 $($field: ident: $t: ty),*
             }),*
         }) => {
             $(
                 #[derive(Debug, Copy, Clone, Deserialize, Serialize)]
-                pub struct $name {
-                    $($field: ty),*,
+                pub struct $name_body {
+                    $($field: ty),*
                 }
 
-                impl $name {
+                impl $name_body {
                     pub fn packet_id() -> u8 {
                         return $packetID;
                     }
+
+                    pub fn state() -> PacketState {
+                        return PacketState::$state;
+                    }
+                }
+
+                impl Packet for $name_body {
+
                 }
             ),*
 
             $crate::as_item!(
                 pub enum $nice_name {
-                    $($name_ver($name)),*
+                    $($name($name_body)),*
                 }
             );
 
-            impl Packet for $nice_name {
+            impl PacketVersionDefinition for $nice_name {
 
             }
         };
