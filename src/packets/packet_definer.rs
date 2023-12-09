@@ -38,7 +38,7 @@ pub mod macros {
             $(
                 #[derive(Debug, Copy, Clone, Deserialize, Serialize)]
                 pub struct $name_body {
-                    $($field: ty),*
+                    $($field: $t),*
                 }
 
                 impl $name_body {

@@ -8,5 +8,6 @@ protocol!(v1_20, 764 => {
     // Status-bound
     StatusRequest, StatusRequestBody, 0x00, STATUS => {
         // none
+        test: u64
     }
 });
