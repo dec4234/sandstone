@@ -1,6 +1,9 @@
-use crate::as_item;
+pub trait NbtTagSerialization {
+    fn serialize(&self) -> String;
+    fn deserialize(input: String) -> Option<Self> where Self: Sized;
+}
 
-pub trait NbtType {
+pub trait NbtTypeBody {
 
 }
 
@@ -13,14 +16,21 @@ macro_rules! nbt_type {
         }) => {
             $(
                 $crate::as_item!(
-                    #[derive(Debug, Copy, Clone, Deserialize, Serialize)]
+                    #[derive(Debug, Clone, Deserialize, Serialize)]
                     pub struct $name_body {
                         $($field: $t),*
                     }
                 );
+
+                impl $name_body {
+                    pub fn packet_id() -> u16 {
+                        return $packetID;
+                    }
+                }
             )*
 
             $crate::as_item!(
+                #[derive(Debug, Clone, Deserialize, Serialize)]
                 pub enum $header {
                     $($name($name_body)),*
                 }
