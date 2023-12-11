@@ -1,5 +1,9 @@
-use std::fmt::Error;
+use std::fmt;
+use std::fmt::{Display, Error, Formatter, Write};
+use std::str::FromStr;
+use std::string::FromUtf8Error;
 use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize, Serializer};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 // https://wiki.vg/Protocol#VarInt_and_VarLong
@@ -48,7 +52,7 @@ impl VarInt {
     }
 
     // TODO: optimize
-    pub fn to_bytes(&self) -> Box<[u8]> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut vec: Vec<u8> = vec![];
         let mut inner = self.0;
 
@@ -70,17 +74,50 @@ impl VarInt {
             };
         }
 
-        return vec.into_boxed_slice();
+        return vec;
     }
 
-    pub fn bytes(i: i32) -> Box<[u8]> {
+    pub fn bytes(i: i32) -> Vec<u8> {
         let var = VarInt(i);
 
         return var.to_bytes();
     }
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes)]
+impl Display for VarInt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let s = String::from_utf8(self.to_bytes()).map_err(|_| Error)?;
+
+        f.write_str(&s)
+    }
+}
+
+impl FromStr for VarInt {
+    type Err = Error;
+
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
+        let bytes = s.as_bytes();
+
+        if bytes.len() <= 0 || bytes.len() > 5 {
+            return Err(Error);
+        }
+
+        let varInt = VarInt::from_slice(bytes);
+
+        match varInt {
+            Ok(varI) => {Ok(varI)}
+            Err(e) => {Err(Error)}
+        }
+    }
+}
+
+impl Serialize for VarInt {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> where S: Serializer {
+        todo!()
+    }
+}
+
+#[derive(Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes, Serialize, Deserialize)]
 #[repr(C)]
 pub struct VarLong(i64);
 
@@ -151,6 +188,25 @@ impl VarLong {
     }
 }
 
+#[derive(Debug)]
+pub enum NumberWrongSizeError {
+    VarIntError,
+    VarLongError
+}
+
+impl Display for NumberWrongSizeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NumberWrongSizeError::VarIntError => {f.write_str("VarInt should be between 1 and 5 bytes")}
+            NumberWrongSizeError::VarLongError => {f.write_str("VarLong should be between 1 and 10 bytes")}
+        }
+    }
+}
+
+impl std::error::Error for NumberWrongSizeError {
+
+}
+
 #[cfg(test)]
 mod tests {
     use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
@@ -165,9 +221,9 @@ mod tests {
 
     #[test]
     fn basic_varint_writing() {
-        assert!(VarInt::from_slice(&[221, 199, 1]).unwrap().to_bytes() == Box::new([221, 199, 1]));
-        assert!(VarInt::from_slice(&[255, 255, 127]).unwrap().to_bytes() == Box::new([255, 255, 127]));
-        assert!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap().to_bytes() == Box::new([255, 255, 255, 255, 15]));
+        assert!(VarInt::from_slice(&[221, 199, 1]).unwrap().to_bytes() == vec![221, 199, 1]);
+        assert!(VarInt::from_slice(&[255, 255, 127]).unwrap().to_bytes() == vec![255, 255, 127]);
+        assert!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap().to_bytes() == vec![255, 255, 255, 255, 15]);
     }
 
     #[test]

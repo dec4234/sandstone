@@ -1,1 +1,1 @@
-mod var_types;
+pub mod var_types;

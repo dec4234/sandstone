@@ -9,13 +9,9 @@ pub enum PacketState {
 }
 
 pub trait Packet {
-    fn serialize_mc(&self) -> &[u8] {
-        unimplemented!()
-    }
+    fn packet_id() -> u8;
 
-    fn deserialize_mc(input: &[u8]) -> Box<Self> {
-        unimplemented!()
-    }
+    fn state() -> PacketState;
 }
 
 pub trait PacketVersionDefinition {
@@ -41,18 +37,14 @@ pub mod macros {
                     $($field: $t),*
                 }
 
-                impl $name_body {
-                    pub fn packet_id() -> u8 {
+                impl Packet for $name_body {
+                    fn packet_id() -> u8 {
                         return $packetID;
                     }
 
-                    pub fn state() -> PacketState {
+                    fn state() -> PacketState {
                         return PacketState::$state;
                     }
-                }
-
-                impl Packet for $name_body {
-
                 }
             ),*
 
