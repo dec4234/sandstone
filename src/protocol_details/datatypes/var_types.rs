@@ -3,7 +3,8 @@ use std::fmt::{Display, Error, Formatter, Write};
 use std::str::FromStr;
 use std::string::FromUtf8Error;
 use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::{SeqAccess, Visitor};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 // https://wiki.vg/Protocol#VarInt_and_VarLong
@@ -14,7 +15,7 @@ const CONTINUE_LONG: i64 = 0x80;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes)]
 #[repr(C)]
-pub struct VarInt(i32);
+pub struct VarInt(pub i32);
 
 impl VarInt {
 
@@ -113,6 +114,12 @@ impl FromStr for VarInt {
 
 impl Serialize for VarInt {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_str(self.to_string().as_str())
+    }
+}
+
+impl <'de> Deserialize<'de> for VarInt { // https://serde.rs/impl-deserialize.html
+    fn deserialize<D>(des: D) -> Result<Self, <D as Deserializer<'de>>::Error> where D: Deserializer<'de> {
         todo!()
     }
 }
@@ -206,6 +213,25 @@ impl Display for NumberWrongSizeError {
 impl std::error::Error for NumberWrongSizeError {
 
 }
+
+pub struct VarIntVisitor;
+
+impl <'de> Visitor<'de> for VarIntVisitor {
+    type Value = VarInt;
+
+    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+        formatter.write_str("Could not deserialize VarInt")
+    }
+
+    fn visit_seq<A>(self, seq: A) -> std::result::Result<Self::Value, A::Error> where A: SeqAccess<'de> {
+        todo!()
+    }
+
+    fn visit_bytes<E>(self, v: &[u8]) -> std::result::Result<Self::Value, E> where E: serde::de::Error {
+        todo!()
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

@@ -15,3 +15,4 @@ serde = {version = "1.0.193", features = ["derive"]}
 uuid = "1.6.1"
 zerocopy = {version = "0.7.29", features = ["derive"]}
 hematite-nbt = "0.5.2"
+bincode = "2.0.0-rc.3"

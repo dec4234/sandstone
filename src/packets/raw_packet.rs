@@ -1,6 +1,8 @@
-use serde::{Serialize, Serializer};
+use std::fmt::{Debug, Display, Error, Formatter};
+use serde::{ser, Serialize, Serializer};
 use crate::packets::packet_definer::Packet;
 use crate::protocol_details::datatypes::var_types::{VarInt};
+use anyhow::Result;
 
 /*pub struct RawPacket {
     Length: VarInt,
