@@ -120,7 +120,7 @@ impl Serialize for VarInt {
 
 impl <'de> Deserialize<'de> for VarInt { // https://serde.rs/impl-deserialize.html
     fn deserialize<D>(des: D) -> Result<Self, <D as Deserializer<'de>>::Error> where D: Deserializer<'de> {
-        todo!()
+        des.deserialize_bytes(VarIntVisitor)
     }
 }
 
@@ -214,6 +214,8 @@ impl std::error::Error for NumberWrongSizeError {
 
 }
 
+const CONTINUE_BYTE: u8 = 0x80; // 10000000
+
 pub struct VarIntVisitor;
 
 impl <'de> Visitor<'de> for VarIntVisitor {
@@ -223,12 +225,16 @@ impl <'de> Visitor<'de> for VarIntVisitor {
         formatter.write_str("Could not deserialize VarInt")
     }
 
-    fn visit_seq<A>(self, seq: A) -> std::result::Result<Self::Value, A::Error> where A: SeqAccess<'de> {
-        todo!()
-    }
-
     fn visit_bytes<E>(self, v: &[u8]) -> std::result::Result<Self::Value, E> where E: serde::de::Error {
-        todo!()
+        let out = Vec::new();
+
+        for i in v {
+
+        }
+
+        //let var = VarInt::new_from_bytes(vec)
+
+        Err(serde::de::Error::custom("test"))
     }
 }
 
