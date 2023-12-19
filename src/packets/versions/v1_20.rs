@@ -219,17 +219,20 @@ async fn send_status(stream: &mut TcpStream) {
     });
 
     let j = "{\"version\": {\"name\": \"1.19.4\",\"protocol\": 762},\"players\": {\"max\": 100,\"online\": 5,\"sample\": [{\"name\": \"thinkofdeath\",\"id\": \"4566e69f-c907-48ee-8d71-d7ba5aa00d20\"}]},\"description\": {\"text\": \"Hello world\"},\"enforcesSecureChat\": true,\"previewsChat\": true}".to_string();
-    let jbytes = j.into_bytes();
 
     let mut out: Vec<u8> = vec![];
 
-    //let jbytes = json.to_string().into_bytes();
+    let jbytes = j.into_bytes();
 
-    for b in VarInt((jbytes.len() + 1) as i32).to_bytes() {
+    for b in VarInt((jbytes.len() + 3) as i32).to_bytes() {
         out.push(b);
     }
 
     out.push(0);
+
+    for b in VarInt(jbytes.len() as i32).to_bytes() {
+        out.push(b);
+    }
 
     for b in jbytes {
         out.push(b);
