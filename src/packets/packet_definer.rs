@@ -32,7 +32,7 @@ pub mod macros {
             }),*
         }) => {
             $(
-                #[derive(Debug, Copy, Clone, Deserialize, Serialize)]
+                #[derive(Debug, Clone, Deserialize, Serialize)]
                 pub struct $name_body {
                     $($field: $t),*
                 }
@@ -46,9 +46,10 @@ pub mod macros {
                         return PacketState::$state;
                     }
                 }
-            ),*
+            )*
 
             $crate::as_item!(
+                #[derive(Debug, Clone, Deserialize, Serialize)]
                 pub enum $nice_name {
                     $($name($name_body)),*
                 }
