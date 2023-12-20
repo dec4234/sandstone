@@ -5,7 +5,10 @@ pub enum PacketDirection {
 }
 
 pub enum PacketState {
-    STATUS
+    STATUS,
+    HANDSHAKING,
+    LOGIN,
+    PLAY
 }
 
 pub trait Packet {
@@ -34,7 +37,7 @@ pub mod macros {
             $(
                 #[derive(Debug, Clone, Deserialize, Serialize)]
                 pub struct $name_body {
-                    $($field: $t),*
+                    $(pub(crate) $field: $t),*
                 }
 
                 impl Packet for $name_body {

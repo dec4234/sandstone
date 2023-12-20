@@ -1,36 +1,50 @@
 use std::fmt::{Debug, Display, Error, Formatter};
-use serde::{ser, Serialize, Serializer};
+use serde::{Deserializer, ser, Serialize, Serializer};
 use anyhow::Result;
+use serde::de::Visitor;
+use crate::packets::versions::v1_20;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
-pub struct McSerializationError;
+pub fn to_string<T: Serialize>(value: &T) -> Result<String> {
+    let mut serializer = McSerializer {
+        output: vec![]
+    };
 
-/*impl StdError for McSerializationError {}*/
-
-impl Debug for McSerializationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
-
-impl Display for McSerializationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
+    value.serialize(&mut serializer)?;
+    Ok(String::from_utf8(serializer.output)?)
 }
 
 // https://serde.rs/impl-serializer.html
 pub struct McSerializer {
-    pub output: String,
+    pub output: Vec<u8>,
 }
 
-pub fn to_string<T: Serialize>(value: &T) -> Result<String> {
-    let mut serializer = McSerializer {
-        output: String::new()
-    };
+impl McSerializer {
+    pub fn new() -> Self {
+        McSerializer {
+            output: vec![]
+        }
+    }
 
-    value.serialize(&mut serializer)?;
-    Ok(serializer.output)
+    pub fn as_bytes(&self) -> &[u8] {
+        self.output.as_slice()
+    }
+
+    fn add_bytes(&mut self, vec: Vec<u8>) {
+        for b in vec {
+            self.output.push(b)
+        }
+    }
+
+    fn add_byte_slice(&mut self, bytes: &[u8]) {
+        for b in bytes {
+            self.output.push(*b);
+        }
+    }
+
+    fn serialize_varint(&mut self, var_int: VarInt) -> Result<(), Error> {
+        var_int.serialize(self)
+    }
 }
 
 impl <'a> Serializer for &'a mut McSerializer {
@@ -49,31 +63,36 @@ impl <'a> Serializer for &'a mut McSerializer {
     }
 
     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.output.push(v as u8);
+
+        Ok(())
     }
 
+    // Note that all data sent must be big Endian
     fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_bytes(v.to_be_bytes().as_slice())
     }
 
     fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_bytes(v.to_be_bytes().as_slice())
     }
 
     fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_bytes(v.to_be_bytes().as_slice())
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.output.push(v);
+
+        Ok(())
     }
 
     fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_bytes(v.to_be_bytes().as_slice())
     }
 
     fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_bytes(v.to_be_bytes().as_slice())
     }
 
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
@@ -93,9 +112,9 @@ impl <'a> Serializer for &'a mut McSerializer {
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        self.output += "\"";
-        self.output += v;
-        self.output += "\"";
+        self.serialize_varint(VarInt(v.len() as i32))?;
+        self.add_byte_slice(v.as_bytes());
+
         Ok(())
     }
 
@@ -109,7 +128,7 @@ impl <'a> Serializer for &'a mut McSerializer {
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
-        self.serialize_unit()
+        Ok(())
     }
 
     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error> where T: Serialize {
@@ -117,7 +136,6 @@ impl <'a> Serializer for &'a mut McSerializer {
     }
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
-        self.output += "null";
         Ok(())
     }
 
@@ -134,16 +152,10 @@ impl <'a> Serializer for &'a mut McSerializer {
     }
 
     fn serialize_newtype_variant<T: ?Sized>(self, name: &'static str, variant_index: u32, variant: &'static str, value: &T) -> Result<Self::Ok, Self::Error> where T: Serialize {
-        self.output += "{";
-        variant.serialize(&mut *self)?;
-        self.output += ":";
-        value.serialize(&mut *self)?;
-        self.output += "}";
-        Ok(())
+        value.serialize(self)
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        self.output += "[";
         Ok(self)
     }
 
@@ -156,14 +168,11 @@ impl <'a> Serializer for &'a mut McSerializer {
     }
 
     fn serialize_tuple_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        self.output += "{";
         variant.serialize(&mut *self)?;
-        self.output += ":[";
         Ok(self)
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        self.output += "{";
         Ok(self)
     }
 
@@ -172,9 +181,7 @@ impl <'a> Serializer for &'a mut McSerializer {
     }
 
     fn serialize_struct_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeStructVariant, Self::Error> {
-        self.output += "{";
         variant.serialize(&mut *self)?;
-        self.output += ":{";
         Ok(self)
     }
 }
@@ -184,15 +191,11 @@ impl<'a> ser::SerializeSeq for &'a mut McSerializer {
     type Error = Error;
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<(), Error> where T: ?Sized + Serialize {
-        if !self.output.ends_with('[') {
-            self.output += ",";
-        }
         value.serialize(&mut **self)
     }
 
     // Close the sequence.
     fn end(self) -> Result<(), Error> {
-        self.output += "]";
         Ok(())
     }
 }
@@ -203,32 +206,23 @@ impl<'a> ser::SerializeTuple for &'a mut McSerializer {
     type Error = Error;
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<(), Error> where T: ?Sized + Serialize {
-        if !self.output.ends_with('[') {
-            self.output += ",";
-        }
         value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<(), Error> {
-        self.output += "]";
         Ok(())
     }
 }
 
-// Same thing but for tuple structs.
 impl<'a> ser::SerializeTupleStruct for &'a mut McSerializer {
     type Ok = ();
     type Error = Error;
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<(), Error> where T: ?Sized + Serialize {
-        if !self.output.ends_with('[') {
-            self.output += ",";
-        }
         value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<(), Error> {
-        self.output += "]";
         Ok(())
     }
 }
@@ -238,14 +232,10 @@ impl<'a> ser::SerializeTupleVariant for &'a mut McSerializer {
     type Error = Error;
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<(), Error> where T: ?Sized + Serialize {
-        if !self.output.ends_with('[') {
-            self.output += ",";
-        }
         value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<(), Error> {
-        self.output += "]}";
         Ok(())
     }
 }
@@ -255,19 +245,14 @@ impl<'a> ser::SerializeMap for &'a mut McSerializer {
     type Error = Error;
 
     fn serialize_key<T>(&mut self, key: &T) -> Result<(), Error> where T: ?Sized + Serialize {
-        if !self.output.ends_with('{') {
-            self.output += ",";
-        }
         key.serialize(&mut **self)
     }
 
     fn serialize_value<T>(&mut self, value: &T) -> Result<(), Error> where T: ?Sized + Serialize {
-        self.output += ":";
         value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<(), Error> {
-        self.output += "}";
         Ok(())
     }
 }
@@ -298,24 +283,133 @@ impl<'a> ser::SerializeStructVariant for &'a mut McSerializer {
     }
 }
 
-impl McSerializer {
-    pub fn new() -> Self {
-        McSerializer {
-            output: String::new()
-        }
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        self.output.as_bytes()
-    }
+pub struct McDeserializer<'de> {
+    byte_slice: &'de [u8]
 }
 
-/*
-ServerboundHandshake
-- Presumably the fields are unnamed as they come in
-- They are sorted by their order
+impl<'de> McDeserializer<'de> {
 
-*/
+}
+
+impl<'de, 'a> Deserializer<'de> for &'a mut McDeserializer<'de> {
+    type Error = serde::de::value::Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_bool<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_i8<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_i16<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_i32<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_i64<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_u8<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_u16<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_u32<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_u64<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_f32<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_f64<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_char<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_str<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_string<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_bytes<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_byte_buf<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_option<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_unit<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_unit_struct<V>(self, name: &'de str, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_newtype_struct<V>(self, name: &'de str, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_seq<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_tuple_struct<V>(self, name: &'de str, len: usize, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_map<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_struct<V>(self, name: &'de str, fields: &'de [&'de str], visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_enum<V>(self, name: &'de str, variants: &'de [&'de str], visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_identifier<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+
+    fn deserialize_ignored_any<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        todo!()
+    }
+}
 
 #[test]
 pub fn test_serialize_vartypes() {
@@ -329,4 +423,22 @@ pub fn test_serialize_vartypes() {
     }
 
     //println!("{}", mcs.output);
+}
+
+#[test]
+fn serialize_handshake() {
+    let handshake = v1_20::HandshakingBody {
+        protocol_version: VarInt(758),
+        server_address: "localhost".to_string(),
+        port: 25565,
+        next_state: VarInt(1),
+    };
+
+    let mut serializer = McSerializer::new();
+
+    handshake.serialize(&mut serializer).unwrap();
+    println!("{:?}", serializer.output);
+
+    // length, id      protocol      Address                                          port         next state
+    // [16, 0,         246, 5,       9, 108, 111, 99, 97, 108, 104, 111, 115, 116,    99, 221,     1]
 }

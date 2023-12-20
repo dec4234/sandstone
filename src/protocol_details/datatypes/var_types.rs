@@ -12,7 +12,7 @@ const SEGMENT_LONG: i64 = 0x7F;
 const CONTINUE_INT: i32 = 0x80;
 const CONTINUE_LONG: i64 = 0x80;
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
 #[repr(C)]
 pub struct VarInt(pub i32);
 
@@ -123,7 +123,7 @@ impl <'de> Deserialize<'de> for VarInt { // https://serde.rs/impl-deserialize.ht
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
 #[repr(C)]
 pub struct VarLong(i64);
 
@@ -454,7 +454,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_varint_from_bytes() {
-        let vec = vec![99, 221, 1];
+        let vec = vec![246, 5];
         let var = VarInt::new_from_bytes(vec).unwrap();
 
         println!("{}", var.0);
