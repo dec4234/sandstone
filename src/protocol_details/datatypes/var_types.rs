@@ -233,7 +233,7 @@ impl <'de> Deserialize<'de> for VarLong { // https://serde.rs/impl-deserialize.h
     }
 }
 
-const CONTINUE_BYTE: u8 = 0x80; // 10000000
+pub(crate) const CONTINUE_BYTE: u8 = 0x80; // 10000000
 
 pub struct VarIntVisitor;
 
@@ -250,7 +250,11 @@ impl <'de> Visitor<'de> for VarIntVisitor {
         let mut vec: Vec<u8> = Vec::new();
         let mut i = 0;
 
-        while (v[i] & CONTINUE_BYTE) == CONTINUE_BYTE {
+        while i < v.len() {
+            if (v[i] & CONTINUE_BYTE) != CONTINUE_BYTE { // Early termination
+                break;
+            }
+
             if i > 5 {
                 return Err(serde::de::Error::custom("Byte array length greater than 5"));
             }

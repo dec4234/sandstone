@@ -1,8 +1,13 @@
+use std::any::{Any, TypeId};
+use std::env::var;
 use std::fmt::{Debug, Display, Error, Formatter};
-use serde::{Deserializer, ser, Serialize, Serializer};
-use anyhow::Result;
-use serde::de::Visitor;
+use serde::{Deserialize, Deserializer, ser, Serialize, Serializer};
+use anyhow::{anyhow, Result};
+use bincode::config;
+use serde::de::{Error as SerdeError, Visitor};
+use serde::de::Unexpected::StructVariant;
 use crate::packets::versions::v1_20;
+use crate::protocol_details::datatypes::var_types;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
 pub fn to_string<T: Serialize>(value: &T) -> Result<String> {
@@ -283,12 +288,100 @@ impl<'a> ser::SerializeStructVariant for &'a mut McSerializer {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct McDeserializer<'de> {
-    byte_slice: &'de [u8]
+    byte_slice: &'de [u8],
+    index: usize
 }
 
 impl<'de> McDeserializer<'de> {
+    pub fn new(byte_slice: &'de[u8]) -> Self {
+        Self {
+            byte_slice,
+            index: 0
+        }
+    }
 
+    pub fn parse_u8(&mut self) -> Result<u8, serde::de::value::Error> {
+        if self.index >= self.byte_slice.len() {
+            return Err(serde::de::value::Error::custom("Index out of bounds for incoming bytes"));
+        }
+
+        self.index += 1;
+
+        Ok(self.byte_slice[self.index - 1])
+    }
+
+    pub fn parse_varint(&mut self) -> Result<VarInt, serde::de::value::Error> {
+        if self.byte_slice.len() == 0 {
+            return Err(serde::de::value::Error::custom("No data to parse from"));
+        }
+
+        let mut bytes: Vec<u8> = vec![];
+        let mut i = 0;
+
+        while self.byte_slice[self.index] & var_types::CONTINUE_BYTE == 1 && i < 5 {
+            bytes.push(self.byte_slice[self.index]);
+
+            i += 1;
+            self.increment()?;
+        }
+
+        // push the last byte or only byte
+        bytes.push(self.byte_slice[self.index]);
+        self.increment()?;
+
+        return if let Ok(v) = VarInt::new_from_bytes(bytes) {
+            Ok(v)
+        } else {
+            Err(serde::de::value::Error::custom("Could not parse VarInt"))
+        }
+    }
+
+    pub fn parse_string(&mut self) -> Result<String, serde::de::value::Error> {
+        let len = self.parse_varint()?; // no need to separately increment
+
+        let mut i = 0;
+
+        let mut bytes = vec![];
+
+        while i < len.0 && self.index < self.byte_slice.len() {
+            bytes.push(self.byte_slice[self.index]);
+
+            i += 1;
+            let _ = self.increment(); // ignore result, we check for out of bounds
+        }
+
+        return if let Ok(s) = String::from_utf8(bytes) {
+            Ok(s)
+        } else {
+            Err(serde::de::value::Error::custom("Could not parse String"))
+        }
+    }
+
+    pub fn parse_struct<V: Visitor<'de>>(&mut self) -> Result<V::Value, serde::de::value::Error>
+        where <V as Visitor<'de>>::Value: Deserialize<'de> {
+
+        if let Ok(val) = bincode::deserialize::<V::Value>(self.byte_slice) {
+            Ok(val)
+        } else {
+            Err(serde::de::value::Error::custom("Could not deserialize struct"))
+        }
+    }
+
+    fn increment(&mut self) -> Result<(), serde::de::value::Error> {
+        self.index += 1;
+
+        if self.index >= self.byte_slice.len() {
+            Err(serde::de::value::Error::custom("Index out of bounds while deserializing"))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn remaining(&self) -> Result<usize, serde::de::value::Error>{
+        return Ok(self.byte_slice.len() - self.index);
+    }
 }
 
 impl<'de, 'a> Deserializer<'de> for &'a mut McDeserializer<'de> {
@@ -319,11 +412,13 @@ impl<'de, 'a> Deserializer<'de> for &'a mut McDeserializer<'de> {
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
-        todo!()
+        visitor.visit_u8(self.parse_u8()?)
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
-        todo!()
+        let b: [u8; 2] = [self.byte_slice[0], self.byte_slice[1]];
+
+        visitor.visit_u16(u16::from_be_bytes(b))
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
@@ -347,11 +442,11 @@ impl<'de, 'a> Deserializer<'de> for &'a mut McDeserializer<'de> {
     }
 
     fn deserialize_str<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
-        todo!()
+        visitor.visit_str(self.parse_string()?.as_str())
     }
 
     fn deserialize_string<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
-        todo!()
+        visitor.visit_string(self.parse_string()?)
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
@@ -395,10 +490,12 @@ impl<'de, 'a> Deserializer<'de> for &'a mut McDeserializer<'de> {
     }
 
     fn deserialize_struct<V>(self, name: &'de str, fields: &'de [&'de str], visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
-        todo!()
+        panic!("Should not attempt to deserialize struct");
     }
 
     fn deserialize_enum<V>(self, name: &'de str, variants: &'de [&'de str], visitor: V) -> std::result::Result<V::Value, Self::Error> where V: Visitor<'de> {
+        println!("{:?}", variants);
+
         todo!()
     }
 
@@ -411,18 +508,73 @@ impl<'de, 'a> Deserializer<'de> for &'a mut McDeserializer<'de> {
     }
 }
 
-#[test]
-pub fn test_serialize_vartypes() {
-    let var = VarInt(3);
-    let mut mcs = McSerializer::new();
 
-    var.serialize(&mut mcs).unwrap();
+#[derive(Serialize)]
+struct Testing {
+    s: u16
+}
 
-    for b in mcs.as_bytes() {
-        print!("{:x} ", b);
+impl <'a> Deserialize<'a> for Testing {
+    fn deserialize<D>(d: D) -> Result<Self, <D as Deserializer<'a>>::Error> where D: Deserializer<'a> {
+        Ok(Self {
+            s: u16::deserialize(d)?,
+        })
+    }
+}
+
+#[derive(Serialize)]
+enum TestEnum {
+    ALPHA(Testing)
+}
+
+impl <'de> Deserialize<'de> for TestEnum {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error> where D: Deserializer<'de> {
+        let test= Testing::deserialize(deserializer);
+
+        if let Ok(test) = test {
+            return Ok(TestEnum::ALPHA(test));
+        } else {
+            return Err(test.err().unwrap());
+        }
+    }
+}
+
+pub struct MyVisitor {
+
+}
+
+impl Visitor<'_> for MyVisitor {
+    type Value = u16;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        todo!()
     }
 
-    //println!("{}", mcs.output);
+    fn visit_u16<E>(self, v: u16) -> std::result::Result<Self::Value, E> where E: SerdeError {
+        Ok(v)
+    }
+}
+
+#[test]
+pub fn test_serialize() {
+    let mut serializer = McSerializer::new();
+    let test = Testing {
+        s: 35,
+    };
+
+    test.serialize(&mut serializer).unwrap();
+
+    println!("{:?}", serializer.output);
+
+    let mut deserializer = McDeserializer::new(serializer.as_bytes());
+    /*let out = Testing::deserialize(&mut deserializer).unwrap();
+    println!("{}", out.s);*/
+
+    let out = TestEnum::deserialize(&mut deserializer).unwrap();
+
+    match out {
+        TestEnum::ALPHA(b) => {println!("Inner: {}", b.s)}
+    }
 }
 
 #[test]
