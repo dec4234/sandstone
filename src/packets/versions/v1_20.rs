@@ -41,7 +41,7 @@ protocol!(v1_20, 764 => {
 
 
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Debug)]
 pub struct RawPacket {
     Length: VarInt,
     Packet_ID: VarInt,

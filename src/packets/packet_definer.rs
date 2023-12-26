@@ -35,7 +35,7 @@ pub mod macros {
             }),*
         }) => {
             $(
-                #[derive(Debug, Clone, Deserialize, Serialize)]
+                #[derive(Debug, Clone)]
                 pub struct $name_body {
                     $(pub(crate) $field: $t),*
                 }
@@ -52,7 +52,7 @@ pub mod macros {
             )*
 
             $crate::as_item!(
-                #[derive(Debug, Clone, Deserialize, Serialize)]
+                #[derive(Debug, Clone)]
                 pub enum $nice_name {
                     $($name($name_body)),*
                 }

@@ -1,14 +1,12 @@
-use base64::{alphabet, Engine, engine};
+use base64::{alphabet, Engine};
 use base64::alphabet::Alphabet;
 use base64::engine::{GeneralPurpose, GeneralPurposeConfig};
-use serde::{Deserialize, Serialize};
-use crate::packets::mc_serializer::McSerializer;
 
 const ALPHABET: Alphabet = alphabet::STANDARD;
 const CONFIG: GeneralPurposeConfig = GeneralPurposeConfig::new();
 const ENGINE: GeneralPurpose = GeneralPurpose::new(&ALPHABET, CONFIG);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/*#[derive(Debug, Clone)]
 pub struct StatusSpec {
     version: StatusResponseVersionInfo,
     players: StatusResponsePlayersInfo,
@@ -28,20 +26,20 @@ impl StatusSpec {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct StatusResponseVersionInfo {
     name: String,
     protocol: u16,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct StatusResponsePlayersInfo {
     max: u32,
     online: u32,
     sample: Vec<StatusResponseUserInfo>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct StatusResponseUserInfo {
     name: String,
     id: String, // UUID
@@ -71,4 +69,4 @@ fn serialization_test() {
     /*let mut serializer = McSerializer::new();
     spec.serialize(&mut serializer).unwrap();
     println!("{:?}", serializer.output);*/
-}
+}*/
