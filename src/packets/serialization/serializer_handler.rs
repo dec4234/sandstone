@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 use crate::packets::serialization::serialize_error::SerializingErr;
 
-pub type DeserializeResult<'a, T> = Result<(T, &'a [u8]), SerializingErr>;
+pub type DeserializeResult<'a, T> = Result<T, SerializingErr>;
 
 pub struct McSerializer {
     pub output: Vec<u8>
@@ -37,8 +37,30 @@ impl McSerializer {
     }
 }
 
+pub struct McDeserializer<'a> {
+    pub data: &'a [u8],
+    pub index: usize
+}
+
+impl <'a> McDeserializer<'a> {
+    pub fn new(data: &'a [u8]) -> Self {
+        Self {
+            data,
+            index: 0
+        }
+    }
+
+    pub fn remainder(&self) -> &'a [u8] {
+        &self.data[self.index..]
+    }
+
+    pub fn increment(&mut self, amount: usize) {
+        self.index += amount;
+    }
+}
+
 pub trait McDeserialize {
-    fn mc_deserialize(input: &mut [u8]) -> DeserializeResult<Self> where Self: Sized;
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized;
 }
 
 pub trait McSerialize {

@@ -1,4 +1,4 @@
-use std::net::TcpListener;
+/*use std::net::TcpListener;
 use std::time::Duration;
 use craftio_rs::{CraftIo, CraftSyncReader, CraftSyncWriter, CraftTcpConnection};
 use mcproto_rs::protocol::{HasPacketBody, PacketDirection, State};
@@ -157,4 +157,4 @@ fn ensure_buf_has_size(buf: &mut Vec<u8>, total_size: usize) {
     if total_size > buf.len() {
         buf.resize(total_size, 0u8);
     }
-}
+}*/

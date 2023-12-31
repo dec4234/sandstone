@@ -4,7 +4,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 use crate::packets::serialization::serialize_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McSerialize, McSerializer};
+use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 
 // https://wiki.vg/Protocol#VarInt_and_VarLong
 const SEGMENT_INT: i32 = 0x7F;
@@ -121,29 +121,31 @@ impl McSerialize for VarInt {
 }
 
 impl McDeserialize for VarInt {
-    fn mc_deserialize(input: &mut [u8]) -> DeserializeResult<VarInt> {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, VarInt> {
         let mut bytes = vec![];
 
-        if input.len() == 0 {
+        if deserializer.data.len() == 0 {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        let mut i = 0;
+        let mut i = deserializer.index;
 
-        while input[i] & CONTINUE_BYTE == CONTINUE_BYTE {
+        while deserializer.data[i] & CONTINUE_BYTE == CONTINUE_BYTE {
             if i >= 5 {
                 return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
             }
 
-            bytes.push(input[i]);
+            bytes.push(deserializer.data[i]);
             i += 1;
         }
 
-        if i == input.len() {
+        if i == deserializer.data.len() {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        bytes.push(input[i]);
+        bytes.push(deserializer.data[i]);
+
+        deserializer.index = i;
 
         if bytes.len() > 5 {
             return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
@@ -156,7 +158,7 @@ impl McDeserialize for VarInt {
         }
 
 
-        return Ok((var.unwrap(), &input[i..]));
+        return Ok(var.unwrap()); // safe to unwrap because we check for error above
     }
 }
 
@@ -267,29 +269,31 @@ impl McSerialize for VarLong {
 }
 
 impl McDeserialize for VarLong {
-    fn mc_deserialize(input: &mut [u8]) -> DeserializeResult<VarLong> {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, VarLong> {
         let mut bytes = vec![];
 
-        if input.len() == 0 {
+        if deserializer.data.len() == 0 {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        let mut i = 0;
+        let mut i = deserializer.index;
 
-        while input[i] & CONTINUE_BYTE == CONTINUE_BYTE {
+        while deserializer.data[i] & CONTINUE_BYTE == CONTINUE_BYTE {
             if i >= 10 {
                 return Err(SerializingErr::VarTypeTooLong("VarLong must be a max of 10 bytes.".to_string()));
             }
 
-            bytes.push(input[i]);
+            bytes.push(deserializer.data[i]);
             i += 1;
         }
 
-        if i == input.len() {
+        if i == deserializer.data.len() {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        bytes.push(input[i]);
+        bytes.push(deserializer.data[i]);
+
+        deserializer.index = i;
 
         if bytes.len() > 10 {
             return Err(SerializingErr::VarTypeTooLong("VarLong must be a max of 10 bytes.".to_string()));
@@ -302,13 +306,13 @@ impl McDeserialize for VarLong {
         }
 
 
-        return Ok((var.unwrap(), &input[i..]));
+        return Ok(var.unwrap());
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::packets::serialization::serializer_handler::{McDeserialize, McSerialize, McSerializer};
+    use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
     use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
     #[test]
@@ -347,15 +351,18 @@ mod tests {
         let mut serializer = McSerializer::new();
 
         VarInt(25565).mc_serialize(&mut serializer).unwrap();
-        assert_eq!(25565, VarInt::mc_deserialize(&mut serializer.output).unwrap().0.0);
+        let mut deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!(25565, VarInt::mc_deserialize(&mut deserializer).unwrap().0);
 
         serializer.clear();
         VarInt(2097151).mc_serialize(&mut serializer).unwrap();
-        assert_eq!(2097151, VarInt::mc_deserialize(&mut serializer.output).unwrap().0.0);
+        deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!(2097151, VarInt::mc_deserialize(&mut deserializer).unwrap().0);
 
         serializer.clear();
         VarInt(-2147483648).mc_serialize(&mut serializer).unwrap();
-        assert_eq!(-2147483648, VarInt::mc_deserialize(&mut serializer.output).unwrap().0.0);
+        deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!(-2147483648, VarInt::mc_deserialize(&mut deserializer).unwrap().0);
 
         serializer.clear();
         VarInt(-2147483648).mc_serialize(&mut serializer).unwrap();
@@ -367,19 +374,23 @@ mod tests {
         let mut serializer = McSerializer::new();
 
         VarLong(25565).mc_serialize(&mut serializer).unwrap();
-        assert_eq!(25565, VarLong::mc_deserialize(&mut serializer.output).unwrap().0.0);
+        let mut deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!(25565, VarLong::mc_deserialize(&mut deserializer).unwrap().0);
 
         serializer.clear();
         VarLong(2097151).mc_serialize(&mut serializer).unwrap();
-        assert_eq!(2097151, VarLong::mc_deserialize(&mut serializer.output).unwrap().0.0);
+        deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!(2097151, VarLong::mc_deserialize(&mut deserializer).unwrap().0);
 
         serializer.clear();
         VarLong(9223372036854775807).mc_serialize(&mut serializer).unwrap();
-        assert_eq!(9223372036854775807, VarLong::mc_deserialize(&mut serializer.output).unwrap().0.0);
+        deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!(9223372036854775807, VarLong::mc_deserialize(&mut deserializer).unwrap().0);
 
         serializer.clear();
         VarLong(-2147483648).mc_serialize(&mut serializer).unwrap();
-        assert_eq!(-2147483648, VarLong::mc_deserialize(&mut serializer.output).unwrap().0.0);
+        deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!(-2147483648, VarLong::mc_deserialize(&mut deserializer).unwrap().0);
 
         serializer.clear();
         VarLong(-9223372036854775808).mc_serialize(&mut serializer).unwrap();
@@ -391,7 +402,8 @@ mod tests {
         let mut serializer = McSerializer::new();
 
         "ABC".to_string().mc_serialize(&mut serializer).unwrap();
-        assert_eq!("ABC".to_string(), String::mc_deserialize(&mut serializer.output).unwrap().0);
+        let mut deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!("ABC".to_string(), String::mc_deserialize(&mut deserializer).unwrap());
         assert_eq!(serializer.output, vec![3, 65, 66, 67]);
     }
 }

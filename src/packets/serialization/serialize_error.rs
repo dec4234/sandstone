@@ -26,7 +26,8 @@ impl Display for SerializingErr {
                 f.write_str(s)
             },
             SerializingErr::UnknownFailure => {f.write_str("Unknown deserialization failure")},
-            SerializingErr::CouldNotDeserializeString => {f.write_str("Could not deserialize String")}
+            SerializingErr::CouldNotDeserializeString => {f.write_str("Could not deserialize String")},
+            SerializingErr::InputEnded => {f.write_str("Input ended prematurely")}
         }
     }
 }

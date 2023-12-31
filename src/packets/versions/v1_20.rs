@@ -1,17 +1,9 @@
-use std::net::TcpListener;
-use craftio_rs::{CraftIo, CraftSyncReader, CraftSyncWriter, CraftTcpConnection, PacketSerializeFail};
-use mcproto_rs::protocol::{PacketDirection, State};
-use mcproto_rs::{Serializer, SerializeResult};
-use mcproto_rs::status::{StatusPlayersSpec, StatusSpec, StatusVersionSpec};
-use mcproto_rs::types::Chat;
-use mcproto_rs::v1_15_2::{Packet578, RawPacket578, StatusResponseSpec};
 use crate::protocol;
 use crate::packets::packet_definer::{Packet, PacketState, PacketVersionDefinition};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-use uuid::Uuid;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
 // https://wiki.vg/Protocol
@@ -30,9 +22,9 @@ protocol!(v1_20, 764 => {
     },
 
     // Client bound
-    StatusResponse, StatusResponseBody, 0x00, STATUS => {
+    /*StatusResponse, StatusResponseBody, 0x00, STATUS => {
         data: StatusSpec
-    },
+    },*/
 
     PingResponse, PingResponseBody, 0x01, STATUS => {
         payload: u64
