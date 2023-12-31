@@ -11,7 +11,7 @@ pub enum PacketState {
     PLAY
 }
 
-pub trait Packet {
+pub trait PacketTrait {
     fn packet_id() -> u8;
 
     fn state() -> PacketState;
@@ -40,7 +40,7 @@ pub mod macros {
                     $(pub(crate) $field: $t),*
                 }
 
-                impl Packet for $name_body {
+                impl PacketTrait for $name_body {
                     fn packet_id() -> u8 {
                         return $packetID;
                     }

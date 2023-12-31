@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display, Error, Formatter};
 use serde::{ser, Serialize, Serializer};
-use crate::packets::packet_definer::Packet;
+use crate::packets::packet_definer::PacketTrait;
 use crate::protocol_details::datatypes::var_types::{VarInt};
 use anyhow::Result;
 
@@ -11,7 +11,7 @@ use anyhow::Result;
 }*/
 
 pub trait RawPacketBodyTrait {
-    fn from_packet<P: Packet>(p: P) -> Self;
+    fn from_packet<P: PacketTrait>(p: P) -> Self;
 }
 
 pub struct UncompressedRawPacketBody {
@@ -21,7 +21,7 @@ pub struct UncompressedRawPacketBody {
 }
 
 impl RawPacketBodyTrait for UncompressedRawPacketBody {
-    fn from_packet<P: Packet>(p: P) -> Self {
+    fn from_packet<P: PacketTrait>(p: P) -> Self {
         todo!()
     }
 }

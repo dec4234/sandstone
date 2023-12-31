@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display};
-use crate::packets::serialization::serialize_error::SerializingErr;
+use crate::packets::serialization::serializer_error::SerializingErr;
 
 pub type DeserializeResult<'a, T> = Result<T, SerializingErr>;
 

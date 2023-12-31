@@ -1,5 +1,5 @@
 use crate::protocol;
-use crate::packets::packet_definer::{Packet, PacketState, PacketVersionDefinition};
+use crate::packets::packet_definer::{PacketTrait, PacketState, PacketVersionDefinition};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::io::AsyncWriteExt;

@@ -3,7 +3,7 @@ use std::fmt::{Display, Error, Formatter, Write};
 use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
-use crate::packets::serialization::serialize_error::SerializingErr;
+use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 
 // https://wiki.vg/Protocol#VarInt_and_VarLong

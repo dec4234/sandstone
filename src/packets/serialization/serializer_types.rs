@@ -1,6 +1,7 @@
-use crate::packets::serialization::serialize_error::SerializingErr;
+use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_details::datatypes::var_types::VarInt;
+use crate::serialize_primitives;
 
 
 impl McSerialize for String {
@@ -28,82 +29,63 @@ impl McDeserialize for String {
     }
 }
 
-impl McSerialize for u8 {
+impl McSerialize for bool {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        serializer.serialize_u8(*self);
-
-        Ok(())
-    }
-}
-
-impl McDeserialize for u8 {
-    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, u8> {
-        if deserializer.data.len() == 0 {
-            return Err(SerializingErr::InputEnded);
+        match *self {
+            true => {serializer.serialize_u8(1)}
+            false => {serializer.serialize_u8(0)}
         }
 
-        let b = deserializer.data[deserializer.index];
-        deserializer.increment(1);
-
-        return Ok(b);
-    }
-}
-
-struct Testing {
-    first: u8,
-    second: String,
-    third: String,
-    fourth: u8,
-    fifth: String
-}
-
-impl McSerialize for Testing {
-    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        self.first.mc_serialize(serializer).unwrap();
-        self.second.mc_serialize(serializer).unwrap();
-        self.third.mc_serialize(serializer).unwrap();
-        self.fourth.mc_serialize(serializer).unwrap();
-        self.fifth.mc_serialize(serializer).unwrap();
-
         Ok(())
     }
 }
 
-impl McDeserialize for Testing {
-    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
-        let testing = Testing {
-            first: u8::mc_deserialize(deserializer)?,
-            second: String::mc_deserialize(deserializer)?,
-            third: String::mc_deserialize(deserializer)?,
-            fourth: u8::mc_deserialize(deserializer)?,
-            fifth: String::mc_deserialize(deserializer)?,
-        };
+impl McDeserialize for bool {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, bool> {
+        let b = u8::mc_deserialize(deserializer)?;
 
-        Ok(testing)
+        match b {
+            0 => {Ok(false)},
+            1 => {Ok(true)},
+            _ => {Err(SerializingErr::UniqueFailure("Byte received does not match any bool value.".to_string()))}
+        }
     }
 }
 
-#[test]
-fn testing2() {
-    let a = Testing {
-        first: 16,
-        second: "hello".to_string(),
-        third: "abcd".to_string(),
-        fourth: 13,
-        fifth: "zxy".to_string()
-    };
+serialize_primitives!(u8, u16, u32, u64, i8, i16, i32, i64, f32, f64);
 
-    let mut serializer = McSerializer::new();
-    a.mc_serialize(&mut serializer).unwrap();
-    println!("Serialized: {:?}", serializer.output);
+#[macro_use]
+mod macros {
+    #[macro_export]
+    macro_rules! serialize_primitives {
+        ($($t: ty),*) => {
+            $(
+            impl McSerialize for $t {
+                fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+                    for b in self.to_be_bytes() {
+                        serializer.serialize_u8(b);
+                    }
 
-    let mut deserializer = McDeserializer::new(&serializer.output);
+                    Ok(())
+                }
+            }
 
-    let b = Testing::mc_deserialize(&mut deserializer).unwrap();
-    println!("First: {}", b.first);
-    println!("Second: \"{}\"", b.second);
-    println!("Third: \"{}\"", b.third);
-    println!("Fourth: {}", b.fourth);
-    println!("Fifth: \"{}\"", b.fifth);
-    println!("Data: {:?}", deserializer.data);
+            impl McDeserialize for $t {
+                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, $t> {
+                    if deserializer.data.len() == 0 {
+                        return Err(SerializingErr::InputEnded);
+                    }
+
+                    let split = deserializer.data[deserializer.index..].split_at(std::mem::size_of::<$t>());
+
+                    let b = <$t>::from_be_bytes(split.0.try_into().unwrap());
+                    deserializer.increment(std::mem::size_of::<$t>());
+
+                    return Ok(b);
+                }
+            }
+
+            )*
+        };
+    }
 }

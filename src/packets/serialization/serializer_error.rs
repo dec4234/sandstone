@@ -8,6 +8,7 @@ pub enum SerializingErr {
     CouldNotDeserializeString,
     InputEnded,
     UnknownFailure,
+    UniqueFailure(String),
 }
 
 impl Debug for SerializingErr {
@@ -27,7 +28,8 @@ impl Display for SerializingErr {
             },
             SerializingErr::UnknownFailure => {f.write_str("Unknown deserialization failure")},
             SerializingErr::CouldNotDeserializeString => {f.write_str("Could not deserialize String")},
-            SerializingErr::InputEnded => {f.write_str("Input ended prematurely")}
+            SerializingErr::InputEnded => {f.write_str("Input ended prematurely")},
+            SerializingErr::UniqueFailure(s) => {f.write_str(s)}
         }
     }
 }
