@@ -50,12 +50,20 @@ impl <'a> McDeserializer<'a> {
         }
     }
 
+    pub fn collect_remaining(&self) -> &[u8] {
+        &self.data[self.index..]
+    }
+
     pub fn remainder(&self) -> &'a [u8] {
         &self.data[self.index..]
     }
 
     pub fn increment(&mut self, amount: usize) {
         self.index += amount;
+    }
+
+    pub fn isAtEnd(&self) -> bool {
+        self.index >= self.data.len()
     }
 }
 

@@ -3,51 +3,33 @@ use serde::{ser, Serialize, Serializer};
 use crate::packets::packet_definer::PacketTrait;
 use crate::protocol_details::datatypes::var_types::{VarInt};
 use anyhow::Result;
+use crate::packets::serialization::serializer_error::SerializingErr;
+use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 
-/*pub struct RawPacket {
-    Length: VarInt,
-    PacketID: VarInt,
-    Data: Vec<u8>
-}*/
-
-pub trait RawPacketBodyTrait {
-    fn from_packet<P: PacketTrait>(p: P) -> Self;
-}
-
-pub struct UncompressedRawPacketBody {
+pub struct RawPacket<P: McSerialize + McDeserialize> {
     length: VarInt,
-    packetID: VarInt,
-    data: Vec<u8>
+    packet_id: VarInt,
+    data: P
 }
 
-impl RawPacketBodyTrait for UncompressedRawPacketBody {
-    fn from_packet<P: PacketTrait>(p: P) -> Self {
-        todo!()
+impl<P: McSerialize + McDeserialize> McSerialize for RawPacket<P> {
+    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        self.length.mc_serialize(serializer)?;
+        self.packet_id.mc_serialize(serializer)?;
+        self.data.mc_serialize(serializer)?;
+
+        Ok(())
     }
 }
 
-pub struct CompressedRawPacketBody {
-    compressedLength: VarInt,
-    dataLength: VarInt,
-    packetID: VarInt,
-    data: Vec<u8>
-}
+impl<P: McSerialize + McDeserialize> McDeserialize for RawPacket<P> {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+        let raw = RawPacket {
+            length: VarInt::mc_deserialize(deserializer)?,
+            packet_id: VarInt::mc_deserialize(deserializer)?,
+            data: P::mc_deserialize(deserializer)?,
+        };
 
-pub enum RawPacket {
-    UNCOMPRESSED(UncompressedRawPacketBody),
-    COMPRESSED(CompressedRawPacketBody)
-}
-
-impl Serialize for RawPacket {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer,
-    {
-        match self {
-            RawPacket::UNCOMPRESSED(body) => {
-                todo!()
-            }
-            RawPacket::COMPRESSED(body) => {
-                todo!()
-            }
-        }
+        return Ok(raw);
     }
 }

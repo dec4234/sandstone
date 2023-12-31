@@ -7,6 +7,7 @@ pub enum SerializingErr {
     VarTypeTooLong(String),
     CouldNotDeserializeString,
     InputEnded,
+    LeftoverInput,
     UnknownFailure,
     UniqueFailure(String),
 }
@@ -29,7 +30,8 @@ impl Display for SerializingErr {
             SerializingErr::UnknownFailure => {f.write_str("Unknown deserialization failure")},
             SerializingErr::CouldNotDeserializeString => {f.write_str("Could not deserialize String")},
             SerializingErr::InputEnded => {f.write_str("Input ended prematurely")},
-            SerializingErr::UniqueFailure(s) => {f.write_str(s)}
+            SerializingErr::UniqueFailure(s) => {f.write_str(s)},
+            SerializingErr::LeftoverInput => {f.write_str("There is unused input data left")}
         }
     }
 }

@@ -43,6 +43,7 @@ pub struct RawPacket {
 #[cfg(test)]
 mod tests {
     use tokio::io::AsyncReadExt;
+    use crate::packets::serialization::serializer_handler::McDeserializer;
     use crate::packets::versions::v1_20::{send_status};
 
     #[tokio::test]
@@ -56,6 +57,25 @@ mod tests {
 
         if let Ok(size) = stream.read(&mut buf).await {
             println!("{:?}", buf[0..size].to_vec());
+        }
+
+        send_status(&mut stream).await;
+    }
+
+    #[tokio::test]
+    async fn read_handshake() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:25565").await.unwrap();
+
+        let pair = listener.accept().await.unwrap();
+        let mut stream = pair.0;
+
+        let mut buf = [0u8; 2048];
+
+        if let Ok(size) = stream.read(&mut buf).await {
+            println!("{:?}", buf[0..size].to_vec());
+            
+            let mut deserializer = McDeserializer::new(&buf[0..size]);
+            
         }
 
         send_status(&mut stream).await;

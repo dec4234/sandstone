@@ -20,6 +20,23 @@ impl McSerialize for VarIntMix {
     }
 }
 
+impl McDeserialize for VarIntMix {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+        let varmix = VarIntMix {
+            one: VarInt::mc_deserialize(deserializer)?,
+            two: String::mc_deserialize(deserializer)?,
+            three: u32::mc_deserialize(deserializer)?,
+            four: VarLong::mc_deserialize(deserializer)?,
+        };
+
+        if !deserializer.isAtEnd() {
+            return Err(SerializingErr::LeftoverInput);
+        }
+
+        Ok(varmix)
+    }
+}
+
 struct StringMix {
     first: u8,
     second: String,
@@ -50,6 +67,10 @@ impl McDeserialize for StringMix {
             fifth: String::mc_deserialize(deserializer)?,
         };
 
+        if !deserializer.isAtEnd() {
+            return Err(SerializingErr::LeftoverInput);
+        }
+
         Ok(testing)
     }
 }
@@ -77,4 +98,25 @@ fn struct_serialization() {
     assert_eq!(99, b.fourth);
     assert_eq!("zxy", b.fifth);
     assert_eq!(deserializer.data, vec![16, 5, 104, 101, 108, 108, 111, 4, 97, 98, 99, 100, 99, 3, 122, 120, 121]);
+}
+
+#[test]
+fn mixed_serialization() {
+    let mut serializer = McSerializer::new();
+
+    let varmix = VarIntMix {
+        one: VarInt(3),
+        two: "abcd".to_string(),
+        three: 98,
+        four: VarLong(17),
+    };
+
+    varmix.mc_serialize(&mut serializer).unwrap();
+
+    let mut deserializer = McDeserializer::new(&serializer.output);
+    let test = StringMix::mc_deserialize(&mut deserializer);
+
+    if test.is_ok() {
+        panic!("Deserialization should fail because types are mixed");
+    }
 }
