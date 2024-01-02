@@ -1,3 +1,4 @@
+use base64::decoded_len_estimate;
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_details::datatypes::var_types::VarInt;
@@ -16,10 +17,15 @@ impl McSerialize for String {
 impl McDeserialize for String {
     fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, String> {
         let var_output = VarInt::mc_deserialize(deserializer)?;
-        let bounds: (usize, usize) = (deserializer.index + 1, deserializer.index + var_output.0 as usize + 1);
+        let bounds: (usize, usize) = (deserializer.index, deserializer.index + var_output.0 as usize);
+
+        if bounds.1 > deserializer.data.len() {
+            return Err(SerializingErr::CouldNotDeserializeString);
+        }
+
         let s = String::from_utf8(deserializer.data[bounds.0..bounds.1].to_vec());
 
-        deserializer.increment(var_output.0 as usize + 1); //
+        deserializer.increment(var_output.0 as usize); // length of string
 
         if let Ok(s) = s {
             Ok(s)
@@ -71,7 +77,7 @@ mod macros {
             }
 
             impl McDeserialize for $t {
-                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, $t> {
+                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
                     if deserializer.data.len() == 0 {
                         return Err(SerializingErr::InputEnded);
                     }

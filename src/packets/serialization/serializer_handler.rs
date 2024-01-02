@@ -65,6 +65,10 @@ impl <'a> McDeserializer<'a> {
     pub fn isAtEnd(&self) -> bool {
         self.index >= self.data.len()
     }
+
+    pub fn reset(&mut self) {
+        self.index = 0;
+    }
 }
 
 pub trait McDeserialize {

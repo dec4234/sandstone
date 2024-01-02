@@ -2,6 +2,7 @@ use std::fmt;
 use std::fmt::{Display, Error, Formatter, Write};
 use std::str::FromStr;
 use anyhow::{anyhow, Result};
+use base64::decoded_len_estimate;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
@@ -128,14 +129,14 @@ impl McDeserialize for VarInt {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        let mut i = deserializer.index;
+        let mut i = 0;
 
-        while deserializer.data[i] & CONTINUE_BYTE == CONTINUE_BYTE {
+        while deserializer.data[i + deserializer.index] & CONTINUE_BYTE == CONTINUE_BYTE {
             if i >= 5 {
                 return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
             }
 
-            bytes.push(deserializer.data[i]);
+            bytes.push(deserializer.data[i + deserializer.index]);
             i += 1;
         }
 
@@ -143,9 +144,9 @@ impl McDeserialize for VarInt {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        bytes.push(deserializer.data[i]);
+        bytes.push(deserializer.data[i + deserializer.index]);
 
-        deserializer.index = i;
+        deserializer.increment(i + 1);
 
         if bytes.len() > 5 {
             return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
@@ -156,7 +157,6 @@ impl McDeserialize for VarInt {
         if var.is_err() {
             return Err(SerializingErr::UnknownFailure);
         }
-
 
         return Ok(var.unwrap()); // safe to unwrap because we check for error above
     }
@@ -276,14 +276,14 @@ impl McDeserialize for VarLong {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        let mut i = deserializer.index;
+        let mut i = 0;
 
-        while deserializer.data[i] & CONTINUE_BYTE == CONTINUE_BYTE {
+        while i + deserializer.index < deserializer.data.len() && deserializer.data[i + deserializer.index] & CONTINUE_BYTE == CONTINUE_BYTE {
             if i >= 10 {
                 return Err(SerializingErr::VarTypeTooLong("VarLong must be a max of 10 bytes.".to_string()));
             }
 
-            bytes.push(deserializer.data[i]);
+            bytes.push(deserializer.data[i + deserializer.index]);
             i += 1;
         }
 
@@ -293,7 +293,7 @@ impl McDeserialize for VarLong {
 
         bytes.push(deserializer.data[i]);
 
-        deserializer.index = i;
+        deserializer.increment(i);
 
         if bytes.len() > 10 {
             return Err(SerializingErr::VarTypeTooLong("VarLong must be a max of 10 bytes.".to_string()));
@@ -304,7 +304,6 @@ impl McDeserialize for VarLong {
         if var.is_err() {
             return Err(SerializingErr::UnknownFailure);
         }
-
 
         return Ok(var.unwrap());
     }

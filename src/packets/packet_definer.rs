@@ -49,6 +49,28 @@ pub mod macros {
                         return PacketState::$state;
                     }
                 }
+
+                impl McSerialize for $name_body {
+                     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+                         $(self.$field.mc_serialize(serializer)?;)*
+
+                         Ok(())
+                     }
+                }
+
+                impl McDeserialize for $name_body {
+                    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+                        let s = Self {
+                            $($field: <$t>::mc_deserialize(deserializer)?,)*
+                        };
+
+                        if !deserializer.isAtEnd() {
+                            return Err(SerializingErr::LeftoverInput);
+                        }
+
+                        Ok(s)
+                    }
+                }
             )*
 
             $crate::as_item!(
@@ -61,51 +83,12 @@ pub mod macros {
             impl PacketVersionDefinition for $nice_name {
 
             }
-        };
-    }
 
-    #[macro_export]
-    macro_rules! define_packet {
-        ($name: ident, $traitname: ident, $direction: ty => {
-            $($name_ver: ident, $id: expr, $lower_version: expr, $upper_version: expr => {
-                $($field: ident, $t: ty),*
-            }),*
-        }) => {
-            $crate::as_item!(
-                pub trait $traitname {
-                    fn get_lower_version() -> u16;
-                    fn get_upper_version() -> u16;
-                }
-            );
-
-            $(
-                #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
-                pub struct $name_ver {
-                    $($field: $t),*
-                }
-
-                impl $traitname for $name_ver {
-                    fn get_lower_version() -> u16 {
-                        return $lower_version;
-                    }
-
-                    fn get_upper_version() -> u16 {
-                        return $upper_version;
-                    }
-                }
+            impl McSerialize for $nice_name {
+                fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 
 
-            ),*
-
-            $crate::as_item!(
-                pub enum $name {
-                    $($name_ver($name_ver)),*
-                }
-            );
-
-            impl $name {
-                pub fn get_for_version(version: u16) -> Option<impl $traitname> {
-                    None::<PingRequestUniversal>
+                     Ok(())
                 }
             }
         };
