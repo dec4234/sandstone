@@ -1,7 +1,6 @@
 use std::fmt::{Debug, Display};
 
 use anyhow::Result;
-use serde::Serializer;
 
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};

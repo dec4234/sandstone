@@ -89,21 +89,3 @@ pub trait McDeserialize {
 pub trait McSerialize {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr>;
 }
-
-#[test]
-fn serialize_handshake() {
-    /*let handshake = v1_20::HandshakingBody {
-        protocol_version: VarInt(758),
-        server_address: "localhost".to_string(),
-        port: 25565,
-        next_state: VarInt(1),
-    };
-
-    let mut serializer = McSerializer::new();
-
-    handshake.serialize(&mut serializer).unwrap();
-    println!("{:?}", serializer.output);*/
-
-    // length, id      protocol      Address                                          port         next state
-    // [16, 0,         246, 5,       9, 108, 111, 99, 97, 108, 104, 111, 115, 116,    99, 221,     1]
-}

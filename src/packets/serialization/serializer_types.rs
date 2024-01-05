@@ -1,9 +1,7 @@
-use base64::decoded_len_estimate;
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::serialize_primitives;
-
 
 impl McSerialize for String {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
@@ -15,7 +13,7 @@ impl McSerialize for String {
 }
 
 impl McDeserialize for String {
-    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, String> {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
         let var_output = VarInt::mc_deserialize(deserializer)?;
         let bounds: (usize, usize) = (deserializer.index, deserializer.index + var_output.0 as usize);
 

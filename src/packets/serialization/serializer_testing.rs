@@ -128,6 +128,7 @@ impl McDeserialize for StringMix {
 mod tests {
     use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
     use crate::packets::serialization::serializer_testing::{Group, StringMix, VarIntMix};
+    use crate::packets::versions::v1_20;
     use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
     #[test]
@@ -199,5 +200,24 @@ mod tests {
             Group::VarI(b) => {println!("VarI: {}", b.two)}
             Group::StrM(b) => {println!("StrM: {}", b.fifth)}
         }
+    }
+
+    #[test]
+    #[ignore]
+    fn serialize_handshake() {
+        let handshake = v1_20::HandshakingBody {
+            protocol_version: VarInt(758),
+            server_address: "localhost".to_string(),
+            port: 25565,
+            next_state: VarInt(1),
+        };
+
+        let mut serializer = McSerializer::new();
+
+        handshake.mc_serialize(&mut serializer).unwrap();
+        println!("{:?}", serializer.output);
+
+        // length, id      protocol      Address                                          port         next state
+        // [16, 0,         246, 5,       9, 108, 111, 99, 97, 108, 104, 111, 115, 116,    99, 221,     1]
     }
 }
