@@ -36,6 +36,10 @@ impl McSerializer {
     pub fn serialize_u8(&mut self, b: u8) {
         self.output.push(b);
     }
+
+    pub fn serialize_str(&mut self, s: &str) {
+        self.serialize_bytes(s.as_bytes());
+    }
 }
 
 pub struct McDeserializer<'a> {
