@@ -1,13 +1,14 @@
-use crate::protocol;
-use crate::packets::packet_definer::{PacketTrait, PacketState, PacketVersionDefinition};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-use crate::protocol_details::datatypes::var_types::VarInt;
-use crate::packets::serialization::serializer_handler::{McSerialize, McDeserialize, McSerializer, McDeserializer};
+
+use crate::packets::packet_definer::{PacketState, PacketTrait, PacketVersionDefinition};
 use crate::packets::serialization::serializer_error::SerializingErr;
+use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::packets::serialization::serializer_handler::DeserializeResult;
+use crate::protocol;
+use crate::protocol_details::datatypes::var_types::VarInt;
 
 // https://wiki.vg/Protocol
 protocol!(v1_20, 764 => {
@@ -34,8 +35,6 @@ protocol!(v1_20, 764 => {
     }
 });
 
-
-
 #[derive(Debug)]
 pub struct RawPacket {
     Length: VarInt,
@@ -46,10 +45,13 @@ pub struct RawPacket {
 #[cfg(test)]
 mod tests {
     use tokio::io::AsyncReadExt;
-    use crate::packets::serialization::serializer_handler::McDeserializer;
-    use crate::packets::versions::v1_20::{send_status};
+
+    use crate::packets::raw_packet;
+    use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer};
+    use crate::packets::versions::v1_20::{send_status, v1_20};
 
     #[tokio::test]
+    #[ignore]
     async fn read_all() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
@@ -66,6 +68,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn read_handshake() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
@@ -75,13 +78,50 @@ mod tests {
         let mut buf = [0u8; 2048];
 
         if let Ok(size) = stream.read(&mut buf).await {
-            println!("{:?}", buf[0..size].to_vec());
-
             let mut deserializer = McDeserializer::new(&buf[0..size]);
 
+            let p: raw_packet::RawPacket<v1_20> = raw_packet::RawPacket::mc_deserialize(&mut deserializer).unwrap();
+
+            match p.data {
+                v1_20::StatusRequest(_) => {}
+                v1_20::Handshaking(b) => {println!("Address: {}", b.server_address)}
+                v1_20::PingResponse(_) => {}
+            }
         }
 
         send_status(&mut stream).await;
+    }
+
+    #[test]
+    fn try_deserialize() {
+        // vari       string                                            u16         vari
+        // 251, 5,    9, 108, 111, 99, 97, 108, 104, 111, 115, 116,     99, 221,    1
+        /*let vec: &[u8] = &[251, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 1];
+
+        let mut deserializer = McDeserializer::new(vec);
+
+        let a = v1_20::mc_deserialize(&mut deserializer);
+
+        if let Ok(p) = a {
+
+            match p {
+                v1_20::StatusRequest(_) => {}
+                v1_20::Handshaking(b) => {println!("Yo Address: {}", b.server_address)}
+                v1_20::PingResponse(_) => {}
+            }
+        }*/
+
+        let vec: &[u8] = &[16, 0, 251, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 1];
+
+        let mut deserializer = McDeserializer::new(vec);
+
+        let p: raw_packet::RawPacket<v1_20> = raw_packet::RawPacket::mc_deserialize(&mut deserializer).unwrap();
+
+        match p.data {
+            v1_20::StatusRequest(_) => {}
+            v1_20::Handshaking(b) => {println!("Address: {}", b.server_address)}
+            v1_20::PingResponse(_) => {}
+        }
     }
 }
 

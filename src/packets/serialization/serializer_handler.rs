@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display};
+
 use crate::packets::serialization::serializer_error::SerializingErr;
 
 pub type DeserializeResult<'a, T> = Result<T, SerializingErr>;
@@ -62,12 +63,22 @@ impl <'a> McDeserializer<'a> {
         self.index += amount;
     }
 
+    pub fn increment_by_diff(&mut self, other: usize) {
+        if other > self.index {
+            self.increment(other - self.index);
+        }
+    }
+
     pub fn isAtEnd(&self) -> bool {
         self.index >= self.data.len()
     }
 
     pub fn reset(&mut self) {
         self.index = 0;
+    }
+
+    pub fn create_sub_deserializer(&self) -> McDeserializer {
+        McDeserializer::new(&self.data[self.index..])
     }
 }
 

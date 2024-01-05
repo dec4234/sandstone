@@ -7,6 +7,15 @@ enum Group {
     StrM(StringMix),
 }
 
+impl Group {
+    pub fn id(&self) -> u8{
+        match self {
+            Group::VarI(_) => {0}
+            Group::StrM(_) => {1}
+        }
+    }
+}
+
 impl McSerialize for Group {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
         match self {
@@ -27,6 +36,8 @@ impl McDeserialize for Group {
         }
 
         deserializer.reset();
+
+        drop(a);
 
         let a = VarIntMix::mc_deserialize(deserializer);
 

@@ -86,9 +86,41 @@ pub mod macros {
 
             impl McSerialize for $nice_name {
                 fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-
+                    match self {
+                        $($nice_name::$name(b) => {b.mc_serialize(serializer)?}),*
+                    }
 
                      Ok(())
+                }
+            }
+
+            impl McDeserialize for $nice_name {
+                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+                    // subdeserializer needed so that way clears will not affect the main deserializer
+                    let mut subdeserializer = deserializer.create_sub_deserializer();
+
+                    $(
+                    let a = $name_body::mc_deserialize(&mut subdeserializer);
+
+                    if let Ok(a) = a {
+                        return Ok($nice_name::$name(a));
+                    }
+
+                    subdeserializer.reset();
+
+                    drop(a);
+
+                    )*
+
+                    deserializer.increment_by_diff(subdeserializer.index);
+
+                    return Err(SerializingErr::UniqueFailure("Reached end while trying to deserialize packet type".to_string()));
+                }
+            }
+
+            impl $nice_name {
+                pub fn deserialize_id(id: u8) -> Self {
+                    todo!()
                 }
             }
         };

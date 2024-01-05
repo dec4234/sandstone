@@ -1,9 +1,10 @@
 use std::fmt;
 use std::fmt::{Display, Error, Formatter, Write};
 use std::str::FromStr;
+
 use anyhow::{anyhow, Result};
-use base64::decoded_len_estimate;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
+
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 
@@ -404,5 +405,11 @@ mod tests {
         let mut deserializer = McDeserializer::new(&mut serializer.output);
         assert_eq!("ABC".to_string(), String::mc_deserialize(&mut deserializer).unwrap());
         assert_eq!(serializer.output, vec![3, 65, 66, 67]);
+
+        serializer.clear();
+
+        "HELLO WORLD 123456789".to_string().mc_serialize(&mut serializer).unwrap();
+        let mut deserializer = McDeserializer::new(&mut serializer.output);
+        assert_eq!("HELLO WORLD 123456789".to_string(), String::mc_deserialize(&mut deserializer).unwrap());
     }
 }

@@ -1,15 +1,16 @@
-use std::fmt::{Debug, Display, Error, Formatter};
-use serde::{ser, Serialize, Serializer};
-use crate::packets::packet_definer::PacketTrait;
-use crate::protocol_details::datatypes::var_types::{VarInt};
+use std::fmt::{Debug, Display};
+
 use anyhow::Result;
+use serde::Serializer;
+
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol_details::datatypes::var_types::VarInt;
 
 pub struct RawPacket<P: McSerialize + McDeserialize> {
     length: VarInt,
     packet_id: VarInt,
-    data: P
+    pub data: P
 }
 
 impl<P: McSerialize + McDeserialize> McSerialize for RawPacket<P> {
