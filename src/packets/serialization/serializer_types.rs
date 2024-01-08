@@ -56,7 +56,7 @@ impl McDeserialize for bool {
     }
 }
 
-serialize_primitives!(u8, u16, u32, u64, i8, i16, i32, i64, f32, f64);
+serialize_primitives!(u8, u16, u32, u64, i8, i16, i32, i64, f32, f64, usize, isize);
 
 #[macro_use]
 mod macros {
@@ -91,5 +91,25 @@ mod macros {
 
             )*
         };
+    }
+}
+
+impl<T> McSerialize for Option<T> where T: McSerialize + McDeserialize {
+    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        if let Some(s) = self {
+            s.mc_serialize(serializer)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<T> McDeserialize for Option<T>  where T: McSerialize + McDeserialize {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+        if let Ok(t) = T::mc_deserialize(deserializer) {
+            Ok(Some(t))
+        } else {
+            Ok(None)
+        }
     }
 }

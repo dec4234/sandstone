@@ -1,8 +1,13 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
+use crate::packets::serialization::serializer_error::SerializingErr;
+use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 
 pub enum NbtParseError {
-    UnmatchedBrace,
+    InputEndedPrematurely,
+    UnknownTypeNumber,
+    UnexpectedByte,
+    MissingEndTag,
 }
 
 impl Debug for NbtParseError {
@@ -27,7 +32,30 @@ pub struct NamedTag {
     tag: NbtTag,
 }
 
+impl McSerialize for NamedTag {
+    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        self.tag.type_id().mc_serialize(serializer)?; // type identifier
 
+        (self.name.len() as u16).mc_serialize(serializer)?; // name (not using VarInt)
+        serializer.serialize_bytes(self.name.as_bytes());
+
+        self.tag.mc_serialize(serializer)?;
+
+        Ok(())
+    }
+}
+
+impl McDeserialize for NamedTag {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+
+
+        todo!()
+    }
+}
+
+pub struct NbtCompound {
+    list: Vec<NamedTag>,
+}
 
 pub enum NbtTag {
     End,

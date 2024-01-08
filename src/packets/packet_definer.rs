@@ -1,7 +1,7 @@
 pub enum PacketDirection {
     SERVER,
     CLIENT,
-    BILATERAL
+    BIDIRECTIONAL
 }
 
 pub enum PacketState {

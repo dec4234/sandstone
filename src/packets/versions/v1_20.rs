@@ -80,7 +80,7 @@ mod tests {
         if let Ok(size) = stream.read(&mut buf).await {
             let mut deserializer = McDeserializer::new(&buf[0..size]);
 
-            let p: raw_packet::RawPacket<v1_20> = raw_packet::RawPacket::mc_deserialize(&mut deserializer).unwrap();
+            let p: raw_packet::PackagedPacket<v1_20> = raw_packet::PackagedPacket::mc_deserialize(&mut deserializer).unwrap();
 
             match p.data {
                 v1_20::StatusRequest(_) => {}
@@ -96,26 +96,12 @@ mod tests {
     fn try_deserialize() {
         // vari       string                                            u16         vari
         // 251, 5,    9, 108, 111, 99, 97, 108, 104, 111, 115, 116,     99, 221,    1
-        /*let vec: &[u8] = &[251, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 1];
-
-        let mut deserializer = McDeserializer::new(vec);
-
-        let a = v1_20::mc_deserialize(&mut deserializer);
-
-        if let Ok(p) = a {
-
-            match p {
-                v1_20::StatusRequest(_) => {}
-                v1_20::Handshaking(b) => {println!("Yo Address: {}", b.server_address)}
-                v1_20::PingResponse(_) => {}
-            }
-        }*/
 
         let vec: &[u8] = &[16, 0, 251, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 1];
 
         let mut deserializer = McDeserializer::new(vec);
 
-        let p: raw_packet::RawPacket<v1_20> = raw_packet::RawPacket::mc_deserialize(&mut deserializer).unwrap();
+        let p: raw_packet::PackagedPacket<v1_20> = raw_packet::PackagedPacket::mc_deserialize(&mut deserializer).unwrap();
 
         match p.data {
             v1_20::StatusRequest(_) => {}

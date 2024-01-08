@@ -2,8 +2,11 @@ use std::fmt::{Debug, Display};
 
 use crate::packets::serialization::serializer_error::SerializingErr;
 
+/// The result of a deserialization operation
 pub type DeserializeResult<'a, T> = Result<T, SerializingErr>;
 
+/// Handles the serialization of any types that `impl McSerialize`. Holds an
+/// internal buffer representing the serialized data.
 pub struct McSerializer {
     pub output: Vec<u8>
 }
@@ -15,10 +18,13 @@ impl McSerializer {
         }
     }
 
+    /// Clear the existing serialized data from the internal buffer
     pub fn clear(&mut self) {
         self.output.clear();
     }
 
+    /// Add a slice of bytes to the internal buffer. Reallocates the buffer
+    /// for the new amount of space required before pushing.
     pub fn serialize_bytes(&mut self, input: &[u8]) {
         let mut i = self.output.len();
         self.output.resize(self.output.len() + input.len(), 1); // maybe this is helpful?
@@ -42,6 +48,7 @@ impl McSerializer {
     }
 }
 
+/// Helper for deserializing byte data into types that `impl McDeserialize`
 pub struct McDeserializer<'a> {
     pub data: &'a [u8],
     pub index: usize
@@ -55,12 +62,19 @@ impl <'a> McDeserializer<'a> {
         }
     }
 
+    /// Collect the remaining data into a sub-slice
     pub fn collect_remaining(&self) -> &[u8] {
         &self.data[self.index..]
     }
 
-    pub fn remainder(&self) -> &'a [u8] {
-        &self.data[self.index..]
+    pub fn pop(&mut self) -> Option<u8> {
+        if self.index < self.data.len() {
+            let u = self.data[self.index];
+            self.increment(1);
+            Some(u)
+        } else {
+            None
+        }
     }
 
     pub fn increment(&mut self, amount: usize) {
@@ -81,6 +95,8 @@ impl <'a> McDeserializer<'a> {
         self.index = 0;
     }
 
+    /// Creates a new McDeserializer only including the remaining unused data.
+    /// Used in conjunction with reset()
     pub fn create_sub_deserializer(&self) -> McDeserializer {
         McDeserializer::new(&self.data[self.index..])
     }
