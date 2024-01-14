@@ -15,7 +15,7 @@ const CONTINUE_INT: i32 = 0x80;
 const CONTINUE_LONG: i64 = 0x80;
 pub(crate) const CONTINUE_BYTE: u8 = 0x80; // 10000000
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
 #[repr(C)]
 pub struct VarInt(pub i32);
 
@@ -163,7 +163,7 @@ impl McDeserialize for VarInt {
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
 #[repr(C)]
 pub struct VarLong(pub i64);
 

@@ -48,7 +48,7 @@ mod tests {
 
     use crate::packets::raw_packet;
     use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer};
-    use crate::packets::versions::v1_20::{send_status, v1_20};
+    use crate::packets::versions::v1_20::{HandshakingBody, send_status, v1_20};
 
     #[tokio::test]
     #[ignore]

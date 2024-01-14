@@ -67,7 +67,6 @@ pub enum NbtTag {
     Double(f64),
     String(String),
     List((u8, i32, Vec<NbtTag>)),
-    Compound((String, Vec<NbtTag>)),
     Byte_Array((i32, Vec<i8>)),
     Int_Array((i32, Vec<i32>)),
     Long_Array((i32, Vec<i64>)),
@@ -85,7 +84,6 @@ impl NbtTag {
             NbtTag::Double(_) => {6}
             NbtTag::String(_) => {8}
             NbtTag::List(_) => {9}
-            NbtTag::Compound(_) => {10}
             NbtTag::Byte_Array(_) => {7}
             NbtTag::Int_Array(_) => {11}
             NbtTag::Long_Array(_) => {12}
@@ -103,7 +101,6 @@ impl NbtTag {
             NbtTag::Double(_) => {Some(8)}
             NbtTag::String(_) => {None}
             NbtTag::List(_) => {None}
-            NbtTag::Compound(_) => {None}
             NbtTag::Byte_Array(_) => {None}
             NbtTag::Int_Array(_) => {None}
             NbtTag::Long_Array(_) => {None}
@@ -121,10 +118,37 @@ impl NbtTag {
             NbtTag::Double(_) => {"TAG_Double".to_string()}
             NbtTag::String(_) => {"TAG_String".to_string()}
             NbtTag::List(_) => {"TAG_List".to_string()}
-            NbtTag::Compound(_) => {"TAG_Compound".to_string()}
             NbtTag::Byte_Array(_) => {"TAG_Byte_Array".to_string()}
             NbtTag::Int_Array(_) => {"TAG_Int_Array".to_string()}
             NbtTag::Long_Array(_) => {"TAG_Long_Array".to_string()}
         }
+    }
+}
+
+
+/**
+1. finish serialization for nbttag
+2. implement serialization for nbtcomound, as well as other functions needed
+ **/
+impl McSerialize for NbtTag {
+    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        self.type_id().mc_serialize(serializer)?;
+
+        match self {
+            NbtTag::End => {} // nothing
+            NbtTag::Byte(b) => {b.mc_serialize(serializer)?}
+            NbtTag::Short(b) => {b.mc_serialize(serializer)?}
+            NbtTag::Int(b) => {b.mc_serialize(serializer)?}
+            NbtTag::Long(b) => {b.mc_serialize(serializer)?}
+            NbtTag::Float(b) => {b.mc_serialize(serializer)?}
+            NbtTag::Double(b) => {b.mc_serialize(serializer)?}
+            NbtTag::String(b) => {}
+            NbtTag::List(b) => {}
+            NbtTag::Byte_Array(b) => {}
+            NbtTag::Int_Array(b) => {}
+            NbtTag::Long_Array(b) => {}
+        }
+
+        Ok(())
     }
 }

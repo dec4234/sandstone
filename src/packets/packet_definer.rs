@@ -35,7 +35,7 @@ pub mod macros {
             }),*
         }) => {
             $(
-                #[derive(Debug, Clone)]
+                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                 pub struct $name_body {
                     $(pub(crate) $field: $t),*
                 }
@@ -119,8 +119,20 @@ pub mod macros {
             }
 
             impl $nice_name {
-                pub fn deserialize_id(id: u8) -> Self {
-                    todo!()
+                /// Deserialize in a more efficient manner when the type id is known before hand
+                /// TODO: Closer optimization inspection
+                pub fn mc_deserialize_id<'a>(deserializer: &'a mut McDeserializer, id: u8) -> DeserializeResult<'a, Self> {
+                    $(
+
+                    if(id == $packetID) { // if might be compiler optimized here? not sure how else to do it right now
+                        if let Ok(p) = $name_body::mc_deserialize(deserializer) {
+                            return Ok($nice_name::$name(p));
+                        }
+                    }
+
+                    )*
+
+                    return Err(SerializingErr::UniqueFailure("Could not find matching type.".to_string()));
                 }
             }
         };

@@ -129,6 +129,7 @@ mod tests {
     use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
     use crate::packets::serialization::serializer_testing::{Group, StringMix, VarIntMix};
     use crate::packets::versions::v1_20;
+    use crate::packets::versions::v1_20::HandshakingBody;
     use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
     #[test]
@@ -219,5 +220,24 @@ mod tests {
 
         // length, id      protocol      Address                                          port         next state
         // [16, 0,         246, 5,       9, 108, 111, 99, 97, 108, 104, 111, 115, 116,    99, 221,     1]
+    }
+
+    #[test]
+    fn try_direct_deserialize() {
+        let mut serializer = McSerializer::new();
+
+        let p = v1_20::v1_20::Handshaking(HandshakingBody {
+            protocol_version: VarInt(3),
+            server_address: "".to_string(),
+            port: 0,
+            next_state: VarInt(6),
+        });
+
+        p.mc_serialize(&mut serializer).unwrap();
+
+        let mut deserializer = McDeserializer::new(&serializer.output);
+        let out = v1_20::v1_20::mc_deserialize_id(&mut deserializer, 0).unwrap();
+
+        println!("{:?}", out);
     }
 }
