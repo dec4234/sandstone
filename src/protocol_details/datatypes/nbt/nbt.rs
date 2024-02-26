@@ -4,6 +4,7 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::primvalue_nbtvalue;
+use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NbtCompound<T: NbtValue + McSerialize + Clone + Debug> {
@@ -32,6 +33,7 @@ impl<T: NbtValue + McSerialize + Clone + Debug> McSerialize for NbtCompound<T> {
                 serializer.serialize_u8(payload_size);
             }
 
+            // TODO: look into FROM/TO
             match tag.get_type_id() {
                 0 => { // END
                     return Err(SerializingErr::UniqueFailure("END Tag not allowed in compound.".to_string()));
@@ -40,12 +42,7 @@ impl<T: NbtValue + McSerialize + Clone + Debug> McSerialize for NbtCompound<T> {
                     let s = tag.get_name();
                     serializer.serialize_str(&s);
                 },
-                9 => { // LIST
-                    // TODO: cast to list?
-                    // list.mc_serialize(serializer)?; // TODO: implement serialize on all lists
-                },
-                // TODO: Rest of the lists here
-                _ => { // primitives
+                _ => { // anything with default / individual serialization
                     tag.mc_serialize(serializer)?;
                 }
             }
@@ -99,11 +96,37 @@ impl McSerialize for EndTag {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NbtList<T: NbtValue> {
+pub struct NbtList<T: NbtValue + McSerialize + Clone + Debug> {
+    type_id: u8,
     list: Vec<T>
 }
 
-impl<T: NbtValue> NbtValue for NbtList<T> {
+impl <T: NbtValue + McSerialize + Clone + Debug> NbtList<T> {
+    pub fn new() -> Self {
+        Self {
+            type_id: 0, // set to END by default
+            list: vec![]
+        }
+    }
+
+    pub fn add(&mut self, tag: T) -> Result<()> {
+        if tag.get_type_id() == 0 {
+            return Err(anyhow!("END Tag not allowed in NbtList"));
+        }
+        
+        if self.type_id == 0 {
+            self.type_id = tag.get_type_id();
+        } else if self.type_id != tag.get_type_id() {
+            return Err(anyhow!("Type mismatch in NbtList"));
+        }
+        
+        self.list.push(tag);
+        
+        Ok(())
+    }
+}
+
+impl<T: NbtValue + McSerialize + Clone + Debug> NbtValue for NbtList<T> {
     fn get_type_id(&self) -> u8 {
         9
     }
@@ -116,6 +139,21 @@ impl<T: NbtValue> NbtValue for NbtList<T> {
         "TAG_List".to_string()
     }
 }
+
+impl<T: NbtValue + McSerialize + Clone + Debug> McSerialize for NbtList<T> {
+    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        serializer.serialize_u8(self.type_id);
+        (self.list.len() as i32).mc_serialize(serializer)?;
+
+        for tag in &self.list {
+            tag.mc_serialize(serializer)?;
+        }
+
+        Ok(())
+    }
+}
+
+// TODO: Serialization and new functions for all lists
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NbtByteArray {

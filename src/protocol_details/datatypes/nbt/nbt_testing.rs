@@ -7,6 +7,7 @@ fn test_serializer_nbt() {
     let mut compound = NbtCompound::new();
     compound.insert("foo", 123);
     compound.insert("bar", -3.6f32);
+    compound.insert("test", vec![1, 2, 3, 4, 5]);
 
     let mut binary: Vec<u8> = Vec::new();
     io::write_nbt(&mut binary, Some("root-tag"), &compound, Flavor::Uncompressed).unwrap();
