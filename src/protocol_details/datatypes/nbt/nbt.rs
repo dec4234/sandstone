@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
-use crate::primvalue_nbtvalue;
+use crate::{list_nbtvalue, primvalue_nbtvalue};
 use anyhow::{anyhow, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -97,15 +97,17 @@ impl McSerialize for EndTag {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NbtList<T: NbtValue + McSerialize + Clone + Debug> {
-    type_id: u8,
-    list: Vec<T>
+    pub type_id: u8,
+    pub list: Vec<T>,
+    count: u32, // used for iterator
 }
 
 impl <T: NbtValue + McSerialize + Clone + Debug> NbtList<T> {
     pub fn new() -> Self {
         Self {
             type_id: 0, // set to END by default
-            list: vec![]
+            list: vec![],
+            count: 0
         }
     }
 
@@ -123,6 +125,20 @@ impl <T: NbtValue + McSerialize + Clone + Debug> NbtList<T> {
         self.list.push(tag);
         
         Ok(())
+    }
+}
+
+impl<T: NbtValue + McSerialize + Clone + Debug> Iterator for NbtList<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count < self.list.len() as u32 {
+            let tag = self.list[self.count as usize].clone();
+            self.count += 1;
+            Some(tag)
+        } else {
+            None
+        }
     }
 }
 
@@ -153,61 +169,8 @@ impl<T: NbtValue + McSerialize + Clone + Debug> McSerialize for NbtList<T> {
     }
 }
 
-// TODO: Serialization and new functions for all lists
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NbtByteArray {
-    list: Vec<i8>
-}
-
-impl NbtValue for NbtByteArray {
-    fn get_type_id(&self) -> u8 {
-        7
-    }
-
-    fn get_payload_size(&self) -> Option<u8> {
-        None
-    }
-
-    fn get_name(&self) -> String {
-        "TAG_Byte_Array".to_string()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NbtIntArray {
-    list: Vec<i32>
-}
-
-impl NbtValue for NbtIntArray {
-    fn get_type_id(&self) -> u8 {
-        11
-    }
-
-    fn get_payload_size(&self) -> Option<u8> {
-        None
-    }
-
-    fn get_name(&self) -> String {
-        "TAG_Int_Array".to_string()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NbtLongArray {
-    list: Vec<i64>
-}
-
-impl NbtValue for NbtLongArray {
-    fn get_type_id(&self) -> u8 {
-        12
-    }
-
-    fn get_payload_size(&self) -> Option<u8> {
-        None
-    }
-
-    fn get_name(&self) -> String {
-        "TAG_Long_Array".to_string()
-    }
-}
+list_nbtvalue!(
+    (i8, 7, "TAG_Byte", NbtByteList), 
+    (i32, 11, "TAG_Int", NbtIntList), 
+    (i64, 12, "TAG_Long", NbtLongList)
+);

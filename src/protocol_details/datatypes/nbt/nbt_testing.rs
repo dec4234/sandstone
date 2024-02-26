@@ -14,7 +14,9 @@ fn test_serializer_nbt() {
 
     println!("Out: {:?}", binary);
     
-    
+    let mut compound = crate::protocol_details::datatypes::nbt::nbt::NbtCompound::new();
+    compound.add(1);
+    compound.add(-3.6f32); // TODO: problem
 
     //         String(root name)                                       String (tag name)    i32?                                                   f32
     // type    u16      data                                     type  u16                  data                  type   u16     String            data             END?
