@@ -1,154 +1,175 @@
+use std::any::Any;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::primvalue_nbtvalue;
 
-pub enum NbtParseError {
-    InputEndedPrematurely,
-    UnknownTypeNumber,
-    UnexpectedByte,
-    MissingEndTag,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NbtCompound<T: NbtValue + McSerialize + Clone + Debug> {
+    list: Vec<T>
 }
 
-impl Debug for NbtParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.to_string())?;
-        Ok(())
-    }
-}
-
-impl Display for NbtParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            _ => f.write_str("Unknown Error"),
+impl<T: NbtValue + McSerialize + Clone + Debug> NbtCompound<T> {
+    pub fn new() -> Self {
+        Self {
+            list: vec![]
         }
     }
+
+    pub fn add(&mut self, tag: T) {
+        self.list.push(tag);
+    }
 }
 
-impl Error for NbtParseError {}
-
-pub struct NamedTag {
-    name: String,
-    tag: NbtTag,
-}
-
-impl McSerialize for NamedTag {
+impl<T: NbtValue + McSerialize + Clone + Debug> McSerialize for NbtCompound<T> {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        self.tag.type_id().mc_serialize(serializer)?; // type identifier
+        for tag in &self.list {
+            serializer.serialize_u8(tag.get_type_id());
+            serializer.serialize_str(&tag.get_name());
 
-        (self.name.len() as u16).mc_serialize(serializer)?; // name (not using VarInt)
-        serializer.serialize_bytes(self.name.as_bytes());
+            if let Some(payload_size) = tag.get_payload_size() {
+                serializer.serialize_u8(payload_size);
+            }
 
-        self.tag.mc_serialize(serializer)?;
+            match tag.get_type_id() {
+                0 => { // END
+                    return Err(SerializingErr::UniqueFailure("END Tag not allowed in compound.".to_string()));
+                },
+                8 => { // STRING
+                    let s = tag.get_name();
+                    serializer.serialize_str(&s);
+                },
+                9 => { // LIST
+                    // TODO: cast to list?
+                    // list.mc_serialize(serializer)?; // TODO: implement serialize on all lists
+                },
+                // TODO: Rest of the lists here
+                _ => { // primitives
+                    tag.mc_serialize(serializer)?;
+                }
+            }
+        }
+
+        EndTag {}.mc_serialize(serializer)?;
 
         Ok(())
     }
 }
 
-impl McDeserialize for NamedTag {
-    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+pub trait NbtValue {
+    fn get_type_id(&self) -> u8;
+    fn get_payload_size(&self) -> Option<u8>;
+    fn get_name(&self) -> String;
+}
 
+primvalue_nbtvalue!(
+    (i8, 1, 1, "TAG_Byte"),
+    (i16, 2, 2, "TAG_Short"),
+    (i32, 3, 4, "TAG_Int"),
+    (i64, 4, 8, "TAG_Long"),
+    (f32, 5, 4, "TAG_Float"),
+    (f64, 6, 8, "TAG_Double"),
+    (String, 8, 0, "TAG_String")
+);
 
-        todo!()
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EndTag {}
+
+impl NbtValue for EndTag {
+    fn get_type_id(&self) -> u8 {
+        0
+    }
+
+    fn get_payload_size(&self) -> Option<u8> {
+        Some(0)
+    }
+
+    fn get_name(&self) -> String {
+        "TAG_End".to_string()
     }
 }
 
-pub struct NbtCompound {
-    list: Vec<NamedTag>,
-}
-
-pub enum NbtTag {
-    End,
-    Byte(i8),
-    Short(i16),
-    Int(i32),
-    Long(i64),
-    Float(f32),
-    Double(f64),
-    String(String),
-    List((u8, i32, Vec<NbtTag>)),
-    Byte_Array((i32, Vec<i8>)),
-    Int_Array((i32, Vec<i32>)),
-    Long_Array((i32, Vec<i64>)),
-}
-
-impl NbtTag {
-    pub fn type_id(&self) -> u8 {
-        match self {
-            NbtTag::End => {0}
-            NbtTag::Byte(_) => {1}
-            NbtTag::Short(_) => {2}
-            NbtTag::Int(_) => {3}
-            NbtTag::Long(_) => {4}
-            NbtTag::Float(_) => {5}
-            NbtTag::Double(_) => {6}
-            NbtTag::String(_) => {8}
-            NbtTag::List(_) => {9}
-            NbtTag::Byte_Array(_) => {7}
-            NbtTag::Int_Array(_) => {11}
-            NbtTag::Long_Array(_) => {12}
-        }
-    }
-
-    pub fn get_payload_size(&self) -> Option<u8> {
-        match self {
-            NbtTag::End => {Some(0)}
-            NbtTag::Byte(_) => {Some(1)}
-            NbtTag::Short(_) => {Some(2)}
-            NbtTag::Int(_) => {Some(4)}
-            NbtTag::Long(_) => {Some(8)}
-            NbtTag::Float(_) => {Some(4)}
-            NbtTag::Double(_) => {Some(8)}
-            NbtTag::String(_) => {None}
-            NbtTag::List(_) => {None}
-            NbtTag::Byte_Array(_) => {None}
-            NbtTag::Int_Array(_) => {None}
-            NbtTag::Long_Array(_) => {None}
-        }
-    }
-
-    pub fn get_name(&self) -> String {
-        match self {
-            NbtTag::End => {"TAG_End".to_string()}
-            NbtTag::Byte(_) => {"TAG_Byte".to_string()}
-            NbtTag::Short(_) => {"TAG_Short".to_string()}
-            NbtTag::Int(_) => {"TAG_Int".to_string()}
-            NbtTag::Long(_) => {"TAG_Long".to_string()}
-            NbtTag::Float(_) => {"TAG_Float".to_string()}
-            NbtTag::Double(_) => {"TAG_Double".to_string()}
-            NbtTag::String(_) => {"TAG_String".to_string()}
-            NbtTag::List(_) => {"TAG_List".to_string()}
-            NbtTag::Byte_Array(_) => {"TAG_Byte_Array".to_string()}
-            NbtTag::Int_Array(_) => {"TAG_Int_Array".to_string()}
-            NbtTag::Long_Array(_) => {"TAG_Long_Array".to_string()}
-        }
-    }
-}
-
-
-/**
-1. finish serialization for nbttag
-2. implement serialization for nbtcomound, as well as other functions needed
- **/
-impl McSerialize for NbtTag {
+impl McSerialize for EndTag {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        self.type_id().mc_serialize(serializer)?;
-
-        match self {
-            NbtTag::End => {} // nothing
-            NbtTag::Byte(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Short(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Int(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Long(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Float(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Double(b) => {b.mc_serialize(serializer)?}
-            NbtTag::String(b) => {}
-            NbtTag::List(b) => {}
-            NbtTag::Byte_Array(b) => {}
-            NbtTag::Int_Array(b) => {}
-            NbtTag::Long_Array(b) => {}
-        }
-
+        serializer.serialize_u8(0);
+        
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NbtList<T: NbtValue> {
+    list: Vec<T>
+}
+
+impl<T: NbtValue> NbtValue for NbtList<T> {
+    fn get_type_id(&self) -> u8 {
+        9
+    }
+
+    fn get_payload_size(&self) -> Option<u8> {
+        None
+    }
+
+    fn get_name(&self) -> String {
+        "TAG_List".to_string()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NbtByteArray {
+    list: Vec<i8>
+}
+
+impl NbtValue for NbtByteArray {
+    fn get_type_id(&self) -> u8 {
+        7
+    }
+
+    fn get_payload_size(&self) -> Option<u8> {
+        None
+    }
+
+    fn get_name(&self) -> String {
+        "TAG_Byte_Array".to_string()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NbtIntArray {
+    list: Vec<i32>
+}
+
+impl NbtValue for NbtIntArray {
+    fn get_type_id(&self) -> u8 {
+        11
+    }
+
+    fn get_payload_size(&self) -> Option<u8> {
+        None
+    }
+
+    fn get_name(&self) -> String {
+        "TAG_Int_Array".to_string()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NbtLongArray {
+    list: Vec<i64>
+}
+
+impl NbtValue for NbtLongArray {
+    fn get_type_id(&self) -> u8 {
+        12
+    }
+
+    fn get_payload_size(&self) -> Option<u8> {
+        None
+    }
+
+    fn get_name(&self) -> String {
+        "TAG_Long_Array".to_string()
     }
 }

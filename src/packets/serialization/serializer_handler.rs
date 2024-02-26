@@ -43,6 +43,7 @@ impl McSerializer {
         self.output.push(b);
     }
 
+    /// Serialized as is, NO LENGTH PREFIX
     pub fn serialize_str(&mut self, s: &str) {
         self.serialize_bytes(s.as_bytes());
     }
