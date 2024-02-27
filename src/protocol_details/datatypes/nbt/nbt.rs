@@ -6,6 +6,8 @@ use anyhow::{anyhow, Result};
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 
 
+// https://wiki.vg/NBT
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum NbtTag {
     End,
@@ -42,6 +44,7 @@ impl NbtTag {
         }
     }
 
+    /// Used to assist in deserialization
     pub fn get_payload_size(&self) -> Option<u8> {
         match self {
             NbtTag::End => Some(0),
@@ -82,22 +85,13 @@ impl NbtTag {
 impl McSerialize for NbtTag {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> std::result::Result<(), SerializingErr> {
         match self {
+            // stuff with special cases
             NbtTag::End => {serializer.serialize_u8(0)}
-            NbtTag::Byte(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Short(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Int(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Long(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Float(b) => {b.mc_serialize(serializer)?}
-            NbtTag::Double(b) => {b.mc_serialize(serializer)?}
-            NbtTag::String(s) => {
+            NbtTag::String(s) => { // not the same as regular string serialization (no varint)
                 (s.len() as u16).mc_serialize(serializer)?;
                 serializer.serialize_bytes(s.as_bytes());
             }
-            NbtTag::List(l) => {}
-            NbtTag::Compound(c) => {}
-            NbtTag::ByteArray(ba) => {}
-            NbtTag::IntArray(ia) => {}
-            NbtTag::LongArray(la) => {}
+            b => {b.mc_serialize(serializer)?} // everything else
         }
         
         Ok(())
@@ -119,23 +113,42 @@ list_nbtvalue!(
     (i64, LongArray, NbtLongArray)
 );
 
-
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct NbtCompound {
-    map: HashMap<String, NbtTag>
+    map: HashMap<String, NbtTag>,
+    root_name: String,
 }
 
 impl NbtCompound {
-    pub fn new() -> Self {
+    pub fn new<T: Into<String>>(root_name: T) -> Self {
         Self {
-            map: HashMap::new()
+            map: HashMap::new(),
+            root_name: root_name.into()
         }
+    }
+    
+    pub fn change_root_name<T: Into<String>>(&mut self, name: T) {
+        self.root_name = name.into();
     }
 
     #[inline]
     pub fn add<K: Into<String>, V: Into<NbtTag>>(&mut self, name: K, tag: V) {
         self.map.insert(name.into(), tag.into());
+    }
+}
+
+impl McSerialize for NbtCompound {
+    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        // TODO: some sort of type? then the name
+        
+        for (name, tag) in &self.map {
+            serializer.serialize_u8(tag.get_type_id());
+            (name.len() as u16).mc_serialize(serializer)?;
+            serializer.serialize_bytes(name.as_bytes());
+            tag.mc_serialize(serializer)?;
+        }
+        serializer.serialize_u8(0); // end tag
+        Ok(())
     }
 }
 
@@ -185,5 +198,16 @@ impl Iterator for NbtList {
         } else {
             None
         }
+    }
+}
+
+impl McSerialize for NbtList {
+    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        serializer.serialize_u8(self.type_id);
+        (self.list.len() as i32).mc_serialize(serializer)?;
+        for tag in &self.list {
+            tag.mc_serialize(serializer)?;
+        }
+        Ok(())
     }
 }
