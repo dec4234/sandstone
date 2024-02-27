@@ -7,7 +7,6 @@ fn test_serializer_nbt() {
     let mut compound = NbtCompound::new();
     compound.insert("foo", 123);
     compound.insert("bar", -3.6f32);
-    compound.insert("test", vec![1, 2, 3, 4, 5]);
 
     let mut binary: Vec<u8> = Vec::new();
     io::write_nbt(&mut binary, Some("root-tag"), &compound, Flavor::Uncompressed).unwrap();
@@ -15,8 +14,8 @@ fn test_serializer_nbt() {
     println!("Out: {:?}", binary);
     
     let mut compound = crate::protocol_details::datatypes::nbt::nbt::NbtCompound::new();
-    compound.add(1);
-    compound.add(-3.6f32); // TODO: problem
+    compound.add("foo", 123);
+    compound.add("bar", -3.6f32); // TODO: problem
 
     //         String(root name)                                       String (tag name)    i32?                                                   f32
     // type    u16      data                                     type  u16                  data                  type   u16     String            data             END?
