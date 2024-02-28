@@ -30,15 +30,13 @@ mod macros {
     /// Used to generate the NbtValue trait for list types such as bytearray, intarray, and longarray
     #[macro_export]
     macro_rules! list_nbtvalue {
-        ($(($t: ty, $name: ident, $fancyname: ident)),*) => {
+        ($(($t: ty, $name: ident, $fancyname: ident, $num: literal)),*) => {
             $(  
                 #[derive(Debug, Clone, PartialEq)]
                 pub struct $fancyname {
                     pub list: Vec<$t>,
                     pub count: u32, // iterator
                 }
-                
-                
             
                 impl Iterator for $fancyname {
                     type Item = $t;
@@ -56,9 +54,7 @@ mod macros {
             
                 impl McSerialize for $fancyname {
                     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-                        let fancy: NbtTag = self.clone().into();
-                        
-                        serializer.serialize_u8(fancy.get_type_id());
+                        serializer.serialize_u8($num);
                         (self.list.len() as u32).mc_serialize(serializer)?;
                         for tag in &self.list {
                             tag.mc_serialize(serializer)?;

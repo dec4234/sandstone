@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display};
 use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::packets::serialization::serializer_handler::{McSerialize, McSerializer};
 use anyhow::{anyhow, Result};
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 
@@ -84,12 +84,31 @@ impl NbtTag {
 
 impl McSerialize for NbtTag {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> std::result::Result<(), SerializingErr> {
+        // do not include type id here - list and compound tags will include it themselves
         match self {
             // stuff with special cases
-            NbtTag::End => {serializer.serialize_u8(0)}
+            NbtTag::End => {}
             NbtTag::String(s) => { // not the same as regular string serialization (no varint)
                 (s.len() as u16).mc_serialize(serializer)?;
                 serializer.serialize_bytes(s.as_bytes());
+            }
+            NbtTag::Byte(i) => {
+                serializer.serialize_bytes(i.to_be_bytes().as_slice());
+            }
+            NbtTag::Short(i) => {
+                serializer.serialize_bytes(i.to_be_bytes().as_slice());
+            }
+            NbtTag::Int(i) => {
+                serializer.serialize_bytes(i.to_be_bytes().as_slice());
+            }
+            NbtTag::Long(i) => {
+                serializer.serialize_bytes(i.to_be_bytes().as_slice());
+            }
+            NbtTag::Float(f) => {
+                serializer.serialize_bytes(f.to_be_bytes().as_slice());
+            }
+            NbtTag::Double(f) => {
+                serializer.serialize_bytes(f.to_be_bytes().as_slice());
             }
             b => {b.mc_serialize(serializer)?} // everything else
         }
@@ -108,13 +127,17 @@ primvalue_nbtvalue!(
 );
 
 list_nbtvalue!(
-    (i8, ByteArray, NbtByteArray), 
-    (i32, IntArray, NbtIntArray), 
-    (i64, LongArray, NbtLongArray)
+    (i8, ByteArray, NbtByteArray, 7),
+    (i32, IntArray, NbtIntArray, 11),
+    (i64, LongArray, NbtLongArray, 12)
 );
 
+/// Effectively a map of NbtTags
+/// 
+/// Order is not guaranteed
 #[derive(Debug, Clone, PartialEq)]
 pub struct NbtCompound {
+    // TODO: find something that actually preserves order
     map: HashMap<String, NbtTag>,
     root_name: String,
 }
@@ -135,11 +158,19 @@ impl NbtCompound {
     pub fn add<K: Into<String>, V: Into<NbtTag>>(&mut self, name: K, tag: V) {
         self.map.insert(name.into(), tag.into());
     }
+
+    #[inline]
+    pub fn remove<T: Into<String>>(&mut self, name: T) {
+        self.map.remove(&name.into());
+    }
 }
 
 impl McSerialize for NbtCompound {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        // TODO: some sort of type? then the name
+        serializer.serialize_u8(10); // compound tag
+
+        (self.root_name.len() as u16).mc_serialize(serializer)?;
+        serializer.serialize_bytes(self.root_name.as_bytes());
         
         for (name, tag) in &self.map {
             serializer.serialize_u8(tag.get_type_id());
@@ -168,6 +199,7 @@ impl NbtList {
         }
     }
 
+    #[inline]
     pub fn add<T: Into<NbtTag>>(&mut self, tag: T) -> Result<()> {
         let tag = tag.into();
         
@@ -203,7 +235,6 @@ impl Iterator for NbtList {
 
 impl McSerialize for NbtList {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        serializer.serialize_u8(self.type_id);
         (self.list.len() as i32).mc_serialize(serializer)?;
         for tag in &self.list {
             tag.mc_serialize(serializer)?;

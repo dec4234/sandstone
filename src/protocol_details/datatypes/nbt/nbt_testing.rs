@@ -1,3 +1,5 @@
+use std::thread;
+use std::time::Duration;
 use quartz_nbt::io::Flavor;
 use quartz_nbt::{io, NbtCompound};
 use crate::packets::serialization::serializer_handler::{McSerialize, McSerializer};
@@ -19,10 +21,10 @@ fn test_serializer_nbt() {
     compound.add("foo", 123);
     compound.add("bar", -3.6f32);
     
-    let mut serializaer = McSerializer::new();
-    compound.mc_serialize(&mut serializaer).unwrap();
+    let mut serializer = McSerializer::new();
+    compound.mc_serialize(&mut serializer).unwrap();
     
-    println!("Out: {:?}", serializaer.output);
+    println!("Out: {:?}", serializer.output);
 
     //         String(root name)                                       String (tag name)    i32?                                                   f32
     // type    u16      data                                     type  u16                  data                  type   u16     String            data             END?
