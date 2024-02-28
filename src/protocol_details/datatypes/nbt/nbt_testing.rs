@@ -3,7 +3,6 @@ use std::time::Duration;
 use quartz_nbt::io::Flavor;
 use quartz_nbt::{io, NbtCompound};
 use crate::packets::serialization::serializer_handler::{McSerialize, McSerializer};
-use crate::primvalue_nbtvalue;
 
 #[ignore]
 #[test]

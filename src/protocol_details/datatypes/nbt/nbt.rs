@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
+use std::hash::{Hash, Hasher};
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{McSerialize, McSerializer};
 use anyhow::{anyhow, Result};
@@ -163,6 +164,25 @@ impl NbtCompound {
     pub fn remove<T: Into<String>>(&mut self, name: T) {
         self.map.remove(&name.into());
     }
+    
+    pub fn mc_serialize_network(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        serializer.serialize_u8(10); // compound tag
+        
+        // skip root tag
+        self.serialize_tags(serializer)?;
+        Ok(())
+    }
+    
+    fn serialize_tags(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+        for (name, tag) in &self.map {
+            serializer.serialize_u8(tag.get_type_id());
+            (name.len() as u16).mc_serialize(serializer)?;
+            serializer.serialize_bytes(name.as_bytes());
+            tag.mc_serialize(serializer)?;
+        }
+        serializer.serialize_u8(0); // end tag
+        Ok(())
+    }
 }
 
 impl McSerialize for NbtCompound {
@@ -172,13 +192,7 @@ impl McSerialize for NbtCompound {
         (self.root_name.len() as u16).mc_serialize(serializer)?;
         serializer.serialize_bytes(self.root_name.as_bytes());
         
-        for (name, tag) in &self.map {
-            serializer.serialize_u8(tag.get_type_id());
-            (name.len() as u16).mc_serialize(serializer)?;
-            serializer.serialize_bytes(name.as_bytes());
-            tag.mc_serialize(serializer)?;
-        }
-        serializer.serialize_u8(0); // end tag
+        self.serialize_tags(serializer)?;
         Ok(())
     }
 }
