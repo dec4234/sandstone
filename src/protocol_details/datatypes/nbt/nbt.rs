@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::{Hash, Hasher};
+use std::ops::Index;
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{McSerialize, McSerializer};
 use anyhow::{anyhow, Result};
+use indexmap::IndexMap;
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 
 
@@ -135,18 +137,17 @@ list_nbtvalue!(
 
 /// Effectively a map of NbtTags
 /// 
-/// Order is not guaranteed
+/// Order is not needed according to NBT specification, but I do it anyways
 #[derive(Debug, Clone, PartialEq)]
 pub struct NbtCompound {
-    // TODO: find something that actually preserves order
-    map: HashMap<String, NbtTag>,
+    map: IndexMap<String, NbtTag>,
     root_name: String,
 }
 
 impl NbtCompound {
     pub fn new<T: Into<String>>(root_name: T) -> Self {
         Self {
-            map: HashMap::new(),
+            map: IndexMap::new(),
             root_name: root_name.into()
         }
     }
@@ -174,7 +175,7 @@ impl NbtCompound {
     }
     
     fn serialize_tags(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        for (name, tag) in &self.map {
+        for (name, tag) in self.map.iter() {
             serializer.serialize_u8(tag.get_type_id());
             (name.len() as u16).mc_serialize(serializer)?;
             serializer.serialize_bytes(name.as_bytes());
@@ -182,6 +183,14 @@ impl NbtCompound {
         }
         serializer.serialize_u8(0); // end tag
         Ok(())
+    }
+}
+
+impl Index<&str> for NbtCompound {
+    type Output = NbtTag;
+
+    fn index(&self, index: &str) -> &Self::Output {
+        &self.map[index]
     }
 }
 

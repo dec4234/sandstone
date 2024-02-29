@@ -21,3 +21,4 @@ base64 = "0.21.5"
 #craftio-rs = "0.1.0"
 #mcproto-rs = {version = "0.2.0", features = ["v1_15_2"]}
 error = "0.1.9"
+indexmap = "2.2.3"

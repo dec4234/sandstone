@@ -71,6 +71,10 @@ pub mod macros {
                         Ok(s)
                     }
                 }
+            
+            
+                // TODO: Into/From enum type here
+                
             )*
 
             $crate::as_item!(
