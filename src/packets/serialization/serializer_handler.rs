@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::fmt::{Debug, Display};
 
 use crate::packets::serialization::serializer_error::SerializingErr;
@@ -66,6 +67,17 @@ impl <'a> McDeserializer<'a> {
     /// Collect the remaining data into a sub-slice
     pub fn collect_remaining(&self) -> &[u8] {
         &self.data[self.index..]
+    }
+
+    /// Slice the internal buffer, starting at the current index and up to the bound provided. Will
+    /// cut off the subslice at max(data.len, bound + index) to prevent overflow
+    pub fn slice(&mut self, bound: usize) -> &[u8] {
+        let actual = min(self.data.len(), bound) + self.index;
+        let actual = min(actual, self.data.len());
+
+        let slice = &self.data[self.index..actual];
+        self.increment(slice.len());
+        slice
     }
 
     pub fn pop(&mut self) -> Option<u8> {

@@ -1,8 +1,6 @@
-use std::thread;
-use std::time::Duration;
-use indexmap::IndexMap;
-use quartz_nbt::io::Flavor;
 use quartz_nbt::{io, NbtCompound};
+use quartz_nbt::io::Flavor;
+
 use crate::packets::serialization::serializer_handler::{McSerialize, McSerializer};
 
 #[ignore]
@@ -38,6 +36,10 @@ fn test_compound_serialization() {
     compound.add("foo", 123);
     compound.add("bar", -3.6f32);
     compound.add("baz", "hello");
-    
-    
+
+
+    let mut serializer = McSerializer::new();
+    compound.mc_serialize(&mut serializer).unwrap();
+
+    println!("Out: {:?}", serializer.output);
 }

@@ -1,13 +1,13 @@
-use std::collections::HashMap;
 use std::fmt::{Debug, Display};
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ops::Index;
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{McSerialize, McSerializer};
+
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
-use crate::{list_nbtvalue, primvalue_nbtvalue};
 
+use crate::{list_nbtvalue, primvalue_nbtvalue};
+use crate::packets::serialization::serializer_error::SerializingErr;
+use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 
 // https://wiki.vg/NBT
 
@@ -117,6 +117,39 @@ impl McSerialize for NbtTag {
         }
         
         Ok(())
+    }
+}
+
+impl McDeserialize for NbtTag {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, NbtTag> {
+        let ty = u8::mc_deserialize(deserializer)?;
+
+        match ty {
+            // Primitives
+            0 => Ok(NbtTag::End),
+            1 => Ok(NbtTag::Byte(i8::mc_deserialize(deserializer)?)),
+            2 => Ok(NbtTag::Short(i16::mc_deserialize(deserializer)?)),
+            3 => Ok(NbtTag::Int(i32::mc_deserialize(deserializer)?)),
+            4 => Ok(NbtTag::Long(i64::mc_deserialize(deserializer)?)),
+            5 => Ok(NbtTag::Float(f32::mc_deserialize(deserializer)?)),
+            6 => Ok(NbtTag::Double(f64::mc_deserialize(deserializer)?)),
+
+            8 => { // String
+                let len = u16::mc_deserialize(deserializer)?;
+                let bytes = deserializer.slice(len as usize);
+
+                Ok(NbtTag::String(String::from_utf8_lossy(bytes).to_string()))
+            },
+
+            // TODO: do list types
+            _ => Err(SerializingErr::UniqueFailure("Could not identify tag type".to_string())),
+        }
+    }
+}
+
+impl From<&str> for NbtTag {
+    fn from(value: &str) -> Self {
+        NbtTag::String(value.to_string())
     }
 }
 

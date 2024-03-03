@@ -240,4 +240,14 @@ mod tests {
 
         println!("{:?}", out);
     }
+    
+    #[test]
+    fn test_subslicing() {
+        let v: Vec<u8> = vec![3, 5, 6, 7, 8, 9, 10];
+        let mut deserializer = McDeserializer::new(&v);
+        
+        assert_eq!([3, 5, 6], deserializer.slice(3));
+        assert_eq!([7, 8, 9], deserializer.slice(3));
+        assert_eq!([10], deserializer.slice(3));
+    }
 }
