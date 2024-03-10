@@ -1,7 +1,7 @@
 use quartz_nbt::{io, NbtCompound};
 use quartz_nbt::io::Flavor;
 
-use crate::packets::serialization::serializer_handler::{McSerialize, McSerializer};
+use crate::packets::serialization::serializer_handler::{McDeserializer, McSerialize, McSerializer};
 
 #[ignore]
 #[test]
@@ -42,4 +42,7 @@ fn test_compound_serialization() {
     compound.mc_serialize(&mut serializer).unwrap();
 
     println!("Out: {:?}", serializer.output);
+    
+    let mut deserializer = McDeserializer::new(&serializer.output);
+    let compound = NbtCompound::
 }

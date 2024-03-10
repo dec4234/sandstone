@@ -4,7 +4,6 @@ mod nbt_error;
 
 #[macro_use]
 mod macros {
-    use quartz_nbt::NbtTag;
     /// Used to generate the NbtValue trait for primitive types
     #[macro_export]
     macro_rules! primvalue_nbtvalue  {
@@ -37,6 +36,15 @@ mod macros {
                     pub list: Vec<$t>,
                     pub count: u32, // iterator
                 }
+                
+                impl $fancyname {
+                    pub fn new(list: Vec<$t>) -> Self {
+                        Self {
+                            list,
+                            count: 0,
+                        }
+                    }
+                }
             
                 impl Iterator for $fancyname {
                     type Item = $t;
@@ -60,6 +68,25 @@ mod macros {
                             tag.mc_serialize(serializer)?;
                         }
                         Ok(())
+                    }
+                }
+                
+                impl McDeserialize for $fancyname {
+                    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, $fancyname> {
+                        let length = i32::mc_deserialize(deserializer)?;
+                        let mut bytes = vec![];
+                        
+                        for _ in 0..length {
+                            let u = <$t>::mc_deserialize(deserializer);
+                            
+                            if let Ok(u) = u {
+                                bytes.push(u);
+                            } else {
+                                return Err(SerializingErr::UniqueFailure("Could not find expected element to deserialize".to_string()));
+                            }
+                        }
+                        
+                        return Ok($fancyname::new(bytes));
                     }
                 }
             

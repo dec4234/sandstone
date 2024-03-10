@@ -7,6 +7,7 @@ pub enum NbtParseError {
     UnknownTypeNumber,
     UnexpectedByte,
     MissingEndTag,
+    MismatchedTypes
 }
 
 impl Debug for NbtParseError {

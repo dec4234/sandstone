@@ -140,8 +140,25 @@ impl McDeserialize for NbtTag {
 
                 Ok(NbtTag::String(String::from_utf8_lossy(bytes).to_string()))
             },
+            
+            7 => { // Byte array
+                Ok(NbtTag::ByteArray(NbtByteArray::mc_deserialize(deserializer)?))
+            },
+            11 => { // Int Array
+                Ok(NbtTag::IntArray(NbtIntArray::mc_deserialize(deserializer)?))
+            },
+            12 => { // Int Array
+                Ok(NbtTag::LongArray(NbtLongArray::mc_deserialize(deserializer)?))
+            },
+            
+            9 => { // List
+                Ok(NbtTag::List(NbtList::mc_deserialize(deserializer)?))
+            },
+            
+            10 => { // compound
+                todo!()
+            }
 
-            // TODO: do list types
             _ => Err(SerializingErr::UniqueFailure("Could not identify tag type".to_string())),
         }
     }
@@ -239,6 +256,15 @@ impl McSerialize for NbtCompound {
     }
 }
 
+impl McDeserialize for NbtCompound {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+        let t = u8::mc_deserialize(deserializer)?;
+        // TODO: how to handle network vs local nbt root name
+        
+        todo!()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NbtList {
     pub type_id: u8,
@@ -273,6 +299,17 @@ impl NbtList {
         
         Ok(())
     }
+    
+    #[inline]
+    pub fn add_tag(&mut self, tag: NbtTag) -> Result<()> {
+        if tag.get_type_id() != self.type_id {
+            return Err(anyhow!("Incompatible types"));
+        }
+        
+        self.list.push(tag);
+        
+        Ok(())
+    }
 }
 
 impl Iterator for NbtList {
@@ -296,5 +333,32 @@ impl McSerialize for NbtList {
             tag.mc_serialize(serializer)?;
         }
         Ok(())
+    }
+}
+
+impl McDeserialize for NbtList {
+    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, NbtList> {
+        let t = u8::mc_deserialize(deserializer)?;
+        let length = i32::mc_deserialize(deserializer)?;
+        
+        if t == 0 && length > 0 {
+            return Err(SerializingErr::UniqueFailure("Type cannot be END when length is positive".to_string()))
+        }
+        
+        let mut list = NbtList::new();
+        
+        for _ in 0..length {
+            let tag = NbtTag::mc_deserialize(deserializer)?;
+            
+            if tag.get_type_id() != t {
+                return Err(SerializingErr::UniqueFailure("Type must be the same as the type for the list".to_string()))
+            }
+            
+            if let Err(e) = list.add_tag(tag) {
+                return Err(SerializingErr::UniqueFailure("Could not push tag to list".to_string()));
+            }
+        }
+        
+        Ok(list)
     }
 }

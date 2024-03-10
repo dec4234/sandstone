@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display, Formatter, Write};
 use std::str::Utf8Error;
 
 pub enum SerializingErr {
@@ -31,7 +31,7 @@ impl Display for SerializingErr {
             SerializingErr::CouldNotDeserializeString => {f.write_str("Could not deserialize String")},
             SerializingErr::InputEnded => {f.write_str("Input ended prematurely")},
             SerializingErr::UniqueFailure(s) => {f.write_str(s)},
-            SerializingErr::LeftoverInput => {f.write_str("There is unused input data left")}
+            SerializingErr::LeftoverInput => {f.write_str("There is unused input data left")},
         }
     }
 }
