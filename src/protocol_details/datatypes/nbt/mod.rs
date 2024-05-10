@@ -4,9 +4,9 @@ mod nbt_error;
 
 #[macro_use]
 mod macros {
-    /// Used to generate the NbtValue trait for primitive types
-    #[macro_export]
-    macro_rules! primvalue_nbtvalue  {
+	/// Used to generate the NbtValue trait for primitive types
+	#[macro_export]
+	macro_rules! primvalue_nbtvalue  {
         ($(($t: ty, $name: ident)),*) => {
             $(
             impl Into<NbtTag> for $t {
@@ -26,9 +26,9 @@ mod macros {
         )*
         };
 }
-    /// Used to generate the NbtValue trait for list types such as bytearray, intarray, and longarray
-    #[macro_export]
-    macro_rules! list_nbtvalue {
+	/// Used to generate the NbtValue trait for list types such as bytearray, intarray, and longarray
+	#[macro_export]
+	macro_rules! list_nbtvalue {
         ($(($t: ty, $name: ident, $fancyname: ident, $num: literal)),*) => {
             $(  
                 #[derive(Debug, Clone, PartialEq)]

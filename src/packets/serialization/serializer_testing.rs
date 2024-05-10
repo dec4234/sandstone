@@ -3,251 +3,251 @@ use crate::packets::serialization::serializer_handler::{DeserializeResult, McDes
 use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
 enum Group {
-    VarI(VarIntMix),
-    StrM(StringMix),
+	VarI(VarIntMix),
+	StrM(StringMix),
 }
 
 impl Group {
-    pub fn id(&self) -> u8{
-        match self {
-            Group::VarI(_) => {0}
-            Group::StrM(_) => {1}
-        }
-    }
+	pub fn id(&self) -> u8{
+		match self {
+			Group::VarI(_) => {0}
+			Group::StrM(_) => {1}
+		}
+	}
 }
 
 impl McSerialize for Group {
-    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        match self {
-            Group::VarI(b) => {b.mc_serialize(serializer)?}
-            Group::StrM(b) => {b.mc_serialize(serializer)?}
-        }
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		match self {
+			Group::VarI(b) => {b.mc_serialize(serializer)?}
+			Group::StrM(b) => {b.mc_serialize(serializer)?}
+		}
 
-        Ok(())
-    }
+		Ok(())
+	}
 }
 
 impl McDeserialize for Group {
-    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
-        let a = StringMix::mc_deserialize(deserializer);
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+		let a = StringMix::mc_deserialize(deserializer);
 
-        if let Ok(a) = a {
-            return Ok(Group::StrM(a));
-        }
+		if let Ok(a) = a {
+			return Ok(Group::StrM(a));
+		}
 
-        deserializer.reset();
+		deserializer.reset();
 
-        drop(a);
+		drop(a);
 
-        let a = VarIntMix::mc_deserialize(deserializer);
+		let a = VarIntMix::mc_deserialize(deserializer);
 
-        if let Ok(a) = a {
-            return Ok(Group::VarI(a));
-        }
+		if let Ok(a) = a {
+			return Ok(Group::VarI(a));
+		}
 
-        deserializer.reset();
+		deserializer.reset();
 
-        return Err(SerializingErr::UniqueFailure("Reached end".to_string()));
-    }
+		return Err(SerializingErr::UniqueFailure("Reached end".to_string()));
+	}
 }
 
 struct VarIntMix {
-    one: VarInt,
-    two: String,
-    three: u32,
-    four: VarLong,
+	one: VarInt,
+	two: String,
+	three: u32,
+	four: VarLong,
 }
 
 impl McSerialize for VarIntMix {
-    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        self.one.mc_serialize(serializer)?;
-        self.two.mc_serialize(serializer)?;
-        self.three.mc_serialize(serializer)?;
-        self.four.mc_serialize(serializer)?;
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		self.one.mc_serialize(serializer)?;
+		self.two.mc_serialize(serializer)?;
+		self.three.mc_serialize(serializer)?;
+		self.four.mc_serialize(serializer)?;
 
-        Ok(())
-    }
+		Ok(())
+	}
 }
 
 impl McDeserialize for VarIntMix {
-    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
-        let varmix = Self {
-            one: VarInt::mc_deserialize(deserializer)?,
-            two: String::mc_deserialize(deserializer)?,
-            three: u32::mc_deserialize(deserializer)?,
-            four: VarLong::mc_deserialize(deserializer)?,
-        };
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+		let varmix = Self {
+			one: VarInt::mc_deserialize(deserializer)?,
+			two: String::mc_deserialize(deserializer)?,
+			three: u32::mc_deserialize(deserializer)?,
+			four: VarLong::mc_deserialize(deserializer)?,
+		};
 
-        if !deserializer.isAtEnd() {
-            return Err(SerializingErr::LeftoverInput);
-        }
+		if !deserializer.isAtEnd() {
+			return Err(SerializingErr::LeftoverInput);
+		}
 
-        Ok(varmix)
-    }
+		Ok(varmix)
+	}
 }
 
 struct StringMix {
-    first: u8,
-    second: String,
-    third: String,
-    fourth: u8,
-    fifth: String
+	first: u8,
+	second: String,
+	third: String,
+	fourth: u8,
+	fifth: String
 }
 
 impl McSerialize for StringMix {
-    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-        self.first.mc_serialize(serializer).unwrap();
-        self.second.mc_serialize(serializer).unwrap();
-        self.third.mc_serialize(serializer).unwrap();
-        self.fourth.mc_serialize(serializer).unwrap();
-        self.fifth.mc_serialize(serializer).unwrap();
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		self.first.mc_serialize(serializer).unwrap();
+		self.second.mc_serialize(serializer).unwrap();
+		self.third.mc_serialize(serializer).unwrap();
+		self.fourth.mc_serialize(serializer).unwrap();
+		self.fifth.mc_serialize(serializer).unwrap();
 
-        Ok(())
-    }
+		Ok(())
+	}
 }
 
 impl McDeserialize for StringMix {
-    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
-        let testing = Self {
-            first: u8::mc_deserialize(deserializer)?,
-            second: String::mc_deserialize(deserializer)?,
-            third: String::mc_deserialize(deserializer)?,
-            fourth: u8::mc_deserialize(deserializer)?,
-            fifth: String::mc_deserialize(deserializer)?,
-        };
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+		let testing = Self {
+			first: u8::mc_deserialize(deserializer)?,
+			second: String::mc_deserialize(deserializer)?,
+			third: String::mc_deserialize(deserializer)?,
+			fourth: u8::mc_deserialize(deserializer)?,
+			fifth: String::mc_deserialize(deserializer)?,
+		};
 
-        if !deserializer.isAtEnd() {
-            return Err(SerializingErr::LeftoverInput);
-        }
+		if !deserializer.isAtEnd() {
+			return Err(SerializingErr::LeftoverInput);
+		}
 
-        Ok(testing)
-    }
+		Ok(testing)
+	}
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-    use crate::packets::serialization::serializer_testing::{Group, StringMix, VarIntMix};
-    use crate::packets::versions::v1_20;
-    use crate::packets::versions::v1_20::HandshakingBody;
-    use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
+	use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use crate::packets::serialization::serializer_testing::{Group, StringMix, VarIntMix};
+	use crate::packets::versions::v1_20;
+	use crate::packets::versions::v1_20::HandshakingBody;
+	use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
-    #[test]
-    fn struct_serialization() {
-        let a = StringMix {
-            first: 16,
-            second: "hello".to_string(),
-            third: "abcd".to_string(),
-            fourth: 99,
-            fifth: "zxy".to_string()
-        };
+	#[test]
+	fn struct_serialization() {
+		let a = StringMix {
+			first: 16,
+			second: "hello".to_string(),
+			third: "abcd".to_string(),
+			fourth: 99,
+			fifth: "zxy".to_string()
+		};
 
-        let mut serializer = McSerializer::new();
-        a.mc_serialize(&mut serializer).unwrap();
-        println!("Serialized: {:?}", serializer.output);
+		let mut serializer = McSerializer::new();
+		a.mc_serialize(&mut serializer).unwrap();
+		println!("Serialized: {:?}", serializer.output);
 
-        let mut deserializer = McDeserializer::new(&serializer.output);
+		let mut deserializer = McDeserializer::new(&serializer.output);
 
-        let b = StringMix::mc_deserialize(&mut deserializer).unwrap();
-        assert_eq!(16, b.first);
-        assert_eq!("hello", b.second);
-        assert_eq!("abcd", b.third);
-        assert_eq!(99, b.fourth);
-        assert_eq!("zxy", b.fifth);
-        assert_eq!(deserializer.data, vec![16, 5, 104, 101, 108, 108, 111, 4, 97, 98, 99, 100, 99, 3, 122, 120, 121]);
-    }
+		let b = StringMix::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(16, b.first);
+		assert_eq!("hello", b.second);
+		assert_eq!("abcd", b.third);
+		assert_eq!(99, b.fourth);
+		assert_eq!("zxy", b.fifth);
+		assert_eq!(deserializer.data, vec![16, 5, 104, 101, 108, 108, 111, 4, 97, 98, 99, 100, 99, 3, 122, 120, 121]);
+	}
 
-    #[test]
-    fn mixed_serialization() {
-        let mut serializer = McSerializer::new();
+	#[test]
+	fn mixed_serialization() {
+		let mut serializer = McSerializer::new();
 
-        let varmix = VarIntMix {
-            one: VarInt(3),
-            two: "abcd".to_string(),
-            three: 98,
-            four: VarLong(17),
-        };
+		let varmix = VarIntMix {
+			one: VarInt(3),
+			two: "abcd".to_string(),
+			three: 98,
+			four: VarLong(17),
+		};
 
-        varmix.mc_serialize(&mut serializer).unwrap();
+		varmix.mc_serialize(&mut serializer).unwrap();
 
-        let mut deserializer = McDeserializer::new(&serializer.output);
-        let test = StringMix::mc_deserialize(&mut deserializer);
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let test = StringMix::mc_deserialize(&mut deserializer);
 
-        if test.is_ok() {
-            panic!("Deserialization should fail because types are mixed");
-        }
-    }
+		if test.is_ok() {
+			panic!("Deserialization should fail because types are mixed");
+		}
+	}
 
-    #[test]
-    fn test_enum_serialization() {
-        let mut serializer = McSerializer::new();
+	#[test]
+	fn test_enum_serialization() {
+		let mut serializer = McSerializer::new();
 
-        let e = Group::StrM(StringMix {
-            first: 78,
-            second: "a".to_string(),
-            third: "b".to_string(),
-            fourth: 7,
-            fifth: "c".to_string(),
-        });
+		let e = Group::StrM(StringMix {
+			first: 78,
+			second: "a".to_string(),
+			third: "b".to_string(),
+			fourth: 7,
+			fifth: "c".to_string(),
+		});
 
-        e.mc_serialize(&mut serializer).unwrap();
+		e.mc_serialize(&mut serializer).unwrap();
 
-        println!("{:?}", serializer.output);
+		println!("{:?}", serializer.output);
 
-        let mut deserializer = McDeserializer::new(&serializer.output);
-        let group = Group::mc_deserialize(&mut deserializer).unwrap();
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let group = Group::mc_deserialize(&mut deserializer).unwrap();
 
-        match group {
-            Group::VarI(b) => {println!("VarI: {}", b.two)}
-            Group::StrM(b) => {println!("StrM: {}", b.fifth)}
-        }
-    }
+		match group {
+			Group::VarI(b) => {println!("VarI: {}", b.two)}
+			Group::StrM(b) => {println!("StrM: {}", b.fifth)}
+		}
+	}
 
-    #[test]
-    #[ignore]
-    fn serialize_handshake() {
-        let handshake = v1_20::HandshakingBody {
-            protocol_version: VarInt(758),
-            server_address: "localhost".to_string(),
-            port: 25565,
-            next_state: VarInt(1),
-        };
+	#[test]
+	#[ignore]
+	fn serialize_handshake() {
+		let handshake = v1_20::HandshakingBody {
+			protocol_version: VarInt(758),
+			server_address: "localhost".to_string(),
+			port: 25565,
+			next_state: VarInt(1),
+		};
 
-        let mut serializer = McSerializer::new();
+		let mut serializer = McSerializer::new();
 
-        handshake.mc_serialize(&mut serializer).unwrap();
-        println!("{:?}", serializer.output);
+		handshake.mc_serialize(&mut serializer).unwrap();
+		println!("{:?}", serializer.output);
 
-        // length, id      protocol      Address                                          port         next state
-        // [16, 0,         246, 5,       9, 108, 111, 99, 97, 108, 104, 111, 115, 116,    99, 221,     1]
-    }
+		// length, id      protocol      Address                                          port         next state
+		// [16, 0,         246, 5,       9, 108, 111, 99, 97, 108, 104, 111, 115, 116,    99, 221,     1]
+	}
 
-    #[test]
-    fn try_direct_deserialize() {
-        let mut serializer = McSerializer::new();
+	#[test]
+	fn try_direct_deserialize() {
+		let mut serializer = McSerializer::new();
 
-        let p = v1_20::v1_20::Handshaking(HandshakingBody {
-            protocol_version: VarInt(3),
-            server_address: "".to_string(),
-            port: 0,
-            next_state: VarInt(6),
-        });
+		let p = v1_20::v1_20::Handshaking(HandshakingBody {
+			protocol_version: VarInt(3),
+			server_address: "".to_string(),
+			port: 0,
+			next_state: VarInt(6),
+		});
 
-        p.mc_serialize(&mut serializer).unwrap();
+		p.mc_serialize(&mut serializer).unwrap();
 
-        let mut deserializer = McDeserializer::new(&serializer.output);
-        let out = v1_20::v1_20::mc_deserialize_id(&mut deserializer, 0).unwrap();
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let out = v1_20::v1_20::mc_deserialize_id(&mut deserializer, 0).unwrap();
 
-        println!("{:?}", out);
-    }
-    
-    #[test]
-    fn test_subslicing() {
-        let v: Vec<u8> = vec![3, 5, 6, 7, 8, 9, 10];
-        let mut deserializer = McDeserializer::new(&v);
-        
-        assert_eq!([3, 5, 6], deserializer.slice(3));
-        assert_eq!([7, 8, 9], deserializer.slice(3));
-        assert_eq!([10], deserializer.slice(3));
-    }
+		println!("{:?}", out);
+	}
+
+	#[test]
+	fn test_subslicing() {
+		let v: Vec<u8> = vec![3, 5, 6, 7, 8, 9, 10];
+		let mut deserializer = McDeserializer::new(&v);
+
+		assert_eq!([3, 5, 6], deserializer.slice(3));
+		assert_eq!([7, 8, 9], deserializer.slice(3));
+		assert_eq!([10], deserializer.slice(3));
+	}
 }

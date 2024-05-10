@@ -15,7 +15,7 @@ serde_json = "1.0.114"
 serde = {version = "1.0.197", features = ["derive"]}
 uuid = "1.7.0"
 zerocopy = {version = "0.7.29", features = ["derive"]}
-quartz_nbt = "0.2.8"
+quartz_nbt = "0.2.9"
 bincode = {version = "2.0.0-rc.3", features = ["default", "serde"]}
 base64 = "0.21.5"
 #craftio-rs = "0.1.0"

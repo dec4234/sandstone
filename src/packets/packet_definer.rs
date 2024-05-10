@@ -1,20 +1,20 @@
 pub enum PacketDirection {
-    SERVER,
-    CLIENT,
-    BIDIRECTIONAL
+	SERVER,
+	CLIENT,
+	BIDIRECTIONAL
 }
 
 pub enum PacketState {
-    STATUS,
-    HANDSHAKING,
-    LOGIN,
-    PLAY
+	STATUS,
+	HANDSHAKING,
+	LOGIN,
+	PLAY
 }
 
 pub trait PacketTrait {
-    fn packet_id() -> u8;
+	fn packet_id() -> u8;
 
-    fn state() -> PacketState;
+	fn state() -> PacketState;
 }
 
 pub trait PacketVersionDefinition {
@@ -22,13 +22,13 @@ pub trait PacketVersionDefinition {
 }
 
 pub trait PacketDirectionTrait {
-    fn get_direction() -> PacketDirection;
+	fn get_direction() -> PacketDirection;
 }
 
 #[macro_use]
 pub mod macros {
-    #[macro_export]
-    macro_rules! protocol {
+	#[macro_export]
+	macro_rules! protocol {
         ($nice_name: ident, $version_number: literal => {
             $($name: ident, $name_body: ident, $packetID: literal, $state: ident => {
                 $($field: ident: $t: ty),*
@@ -124,7 +124,7 @@ pub mod macros {
 
             impl $nice_name {
                 /// Deserialize in a more efficient manner when the type id is known before hand
-                /// TODO: Closer optimization inspection
+				/// TODO: Closer optimization inspection
                 pub fn mc_deserialize_id<'a>(deserializer: &'a mut McDeserializer, id: u8) -> DeserializeResult<'a, Self> {
                     $(
 
