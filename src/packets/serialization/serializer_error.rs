@@ -1,3 +1,4 @@
+use std::array::TryFromSliceError;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter, Write};
 use std::str::Utf8Error;
@@ -41,5 +42,11 @@ impl Error for SerializingErr {}
 impl From<Utf8Error> for SerializingErr {
 	fn from(value: Utf8Error) -> Self {
 		Self::CouldNotDeserializeString
+	}
+}
+
+impl From<TryFromSliceError> for SerializingErr {
+	fn from(value: TryFromSliceError) -> Self {
+		Self::UniqueFailure("Something went wrong when converting from bytes to primitive".to_string())
 	}
 }

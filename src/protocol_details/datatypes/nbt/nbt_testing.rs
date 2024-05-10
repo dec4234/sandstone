@@ -2,6 +2,7 @@ use quartz_nbt::{io, NbtCompound};
 use quartz_nbt::io::Flavor;
 
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol_details::datatypes::nbt::nbt::{NbtByteArray, NbtTag};
 
 #[ignore]
 #[test]
@@ -33,9 +34,17 @@ fn test_serializer_nbt() {
 #[test]
 fn test_compound_serialization() {
 	let mut compound = crate::protocol_details::datatypes::nbt::nbt::NbtCompound::new(Some("root-tag"));
-	compound.add("foo", 123);
-	compound.add("bar", -3.6f32);
-	compound.add("baz", "hello");
+	compound.add("i8", 123i8);
+	compound.add("i16", 1234i16);
+	compound.add("i32", 12345i32);
+	compound.add("f32", -3.6f32);
+	compound.add("f64", -3.6789f64);
+	compound.add("str", "hello");
+	compound.add("byte_array", NbtByteArray::new(vec![1, 2, 3, 4, 5]));
+	//compound.add("int_array", NbtIntArray::new(vec![1, 2, 3, 4, 5]));
+	//compound.add("long_array", NbtLongArray::new(vec![1, 2, 3, 4, 5]));
+	//compound.add("list", NbtList::from_vec(vec![NbtTag::Int(1), NbtTag::Int(2), NbtTag::Int(3)]).unwrap());
+	//compound.add("compound", compound.clone());
 
 
 	let mut serializer = McSerializer::new();
@@ -44,13 +53,21 @@ fn test_compound_serialization() {
 	println!("Out: {:?}", serializer.output);
 
 	let mut deserializer = McDeserializer::new(&serializer.output);
-	let deserialized = crate::protocol_details::datatypes::nbt::nbt::NbtTag::mc_deserialize(&mut deserializer).unwrap();
+	let deserialized = NbtTag::mc_deserialize(&mut deserializer).unwrap();
 	
 	match deserialized {
-		crate::protocol_details::datatypes::nbt::nbt::NbtTag::Compound(deserialized) => {
-			assert_eq!(compound["foo"], deserialized["foo"]);
-			assert_eq!(compound["bar"], deserialized["bar"]);
-			assert_eq!(compound["baz"], deserialized["baz"]);
+		NbtTag::Compound(deserialized) => {
+			assert_eq!(compound["i8"], deserialized["i8"]);
+			assert_eq!(compound["i16"], deserialized["i16"]);
+			assert_eq!(compound["i32"], deserialized["i32"]);
+			assert_eq!(compound["f32"], deserialized["f32"]);
+			assert_eq!(compound["f64"], deserialized["f64"]);
+			assert_eq!(compound["str"], deserialized["str"]);
+			assert_eq!(compound["byte_array"], deserialized["byte_array"]);
+			//assert_eq!(compound["int_array"], deserialized["int_array"]);
+			//assert_eq!(compound["long_array"], deserialized["long_array"]);
+			//assert_eq!(compound["list"], deserialized["list"]);
+			//assert_eq!(compound["compound"], deserialized["compound"]);
 		},
 		_ => panic!("Expected compound")
 	}

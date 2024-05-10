@@ -153,6 +153,21 @@ impl McSerialize for NbtTag {
 			NbtTag::Double(f) => {
 				serializer.serialize_bytes(f.to_be_bytes().as_slice());
 			}
+			NbtTag::ByteArray(b) => { // TODO: lol we have to do for all
+				b.mc_serialize(serializer)?
+			}
+			NbtTag::IntArray(b) => {
+				b.mc_serialize(serializer)?
+			}
+			NbtTag::LongArray(b) => {
+				b.mc_serialize(serializer)?
+			}
+			NbtTag::List(b) => {
+				b.mc_serialize(serializer)?
+			}
+			NbtTag::Compound(c) => {
+				c.mc_serialize(serializer)?
+			}
 			b => {b.mc_serialize(serializer)?} // everything else
 		}
 
@@ -289,32 +304,42 @@ impl McSerialize for NbtCompound {
 
 impl McDeserialize for NbtCompound {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
-		/*let t = u8::mc_deserialize(deserializer)?;
-		
-		if t != 10 {
-			return Err(SerializingErr::UniqueFailure("Expected compound tag".to_string()));
-		}*/
-		
 		let name_length = u16::mc_deserialize(deserializer)?;
 		let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
 		let mut compound = NbtCompound::new(Some(name));
 		
 		loop {
-			let tag = deserializer.slice(1)[0];
+			let tag = deserializer.pop();
 			
-			if tag == 0 { // END tag
+			if tag.is_none() || tag.unwrap() == 0 { // END Tag
 				break;
 			}
 			
 			let name_length = u16::mc_deserialize(deserializer)?;
 			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
 			
-			let tag = NbtTag::deserialize_specific(deserializer, tag)?;
+			let tag = NbtTag::deserialize_specific(deserializer, tag.unwrap())?;
 			
 			compound.add(name, tag);
 		}
 		
 		return Ok(compound);
+	}
+}
+
+impl Into<NbtTag> for NbtCompound {
+	fn into(self) -> NbtTag {
+		NbtTag::Compound(self)
+	}
+}
+
+impl From<NbtTag> for NbtCompound {
+	fn from(tag: NbtTag) -> Self {
+		if let NbtTag::Compound(c) = tag {
+			c
+		} else {
+			panic!("Cannot convert non-compound tag to compound");
+		}
 	}
 }
 
@@ -332,6 +357,16 @@ impl NbtList {
 			list: vec![],
 			count: 0
 		}
+	}
+	
+	pub fn from_vec(vec: Vec<NbtTag>) -> Result<Self> {
+		let mut list = NbtList::new();
+		
+		for tag in vec {
+			list.add_tag(tag)?;
+		}
+		
+		return Ok(list);
 	}
 
 	#[inline]
@@ -355,7 +390,9 @@ impl NbtList {
 
 	#[inline]
 	pub fn add_tag(&mut self, tag: NbtTag) -> Result<()> {
-		if tag.get_type_id() != self.type_id {
+		if self.type_id == 0 {
+			self.type_id = tag.get_type_id();
+		} else if tag.get_type_id() != self.type_id {
 			return Err(anyhow!("Incompatible types"));
 		}
 
@@ -413,5 +450,21 @@ impl McDeserialize for NbtList {
 		}
 
 		Ok(list)
+	}
+}
+
+impl From<NbtTag> for NbtList {
+	fn from(tag: NbtTag) -> Self {
+		if let NbtTag::List(l) = tag {
+			l
+		} else {
+			panic!("Cannot convert non-list tag to list");
+		}
+	}
+}
+
+impl Into<NbtTag> for NbtList {
+	fn into(self) -> NbtTag {
+		NbtTag::List(self)
 	}
 }

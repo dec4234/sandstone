@@ -79,10 +79,15 @@ mod macros {
                     if deserializer.data.len() == 0 {
                         return Err(SerializingErr::InputEnded);
                     }
+					let length = std::mem::size_of::<$t>();
 
-                    let split = deserializer.data[deserializer.index..].split_at(std::mem::size_of::<$t>());
+					if deserializer.index + length > deserializer.data.len() {
+						return Err(SerializingErr::InputEnded);
+					}
+					
+                    let split = deserializer.data[deserializer.index..].split_at(length);
 
-                    let b = <$t>::from_be_bytes(split.0.try_into().unwrap());
+                    let b = <$t>::from_be_bytes(split.0.try_into()?);
                     deserializer.increment(std::mem::size_of::<$t>());
 
                     return Ok(b);

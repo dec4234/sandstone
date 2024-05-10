@@ -62,7 +62,6 @@ mod macros {
             
                 impl McSerialize for $fancyname {
                     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-                        serializer.serialize_u8($num);
                         (self.list.len() as u32).mc_serialize(serializer)?;
                         for tag in &self.list {
                             tag.mc_serialize(serializer)?;
