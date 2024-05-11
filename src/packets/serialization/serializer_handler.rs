@@ -48,6 +48,10 @@ impl McSerializer {
 	pub fn serialize_str(&mut self, s: &str) {
 		self.serialize_bytes(s.as_bytes());
 	}
+	
+	pub fn get_last(&self) -> Option<&u8> {
+		self.output.last()
+	}
 }
 
 /// Helper for deserializing byte data into types that `impl McDeserialize`

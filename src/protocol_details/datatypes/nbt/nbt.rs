@@ -153,7 +153,7 @@ impl McSerialize for NbtTag {
 			NbtTag::Double(f) => {
 				serializer.serialize_bytes(f.to_be_bytes().as_slice());
 			}
-			NbtTag::ByteArray(b) => { // TODO: lol we have to do for all
+			NbtTag::ByteArray(b) => {
 				b.mc_serialize(serializer)?
 			}
 			NbtTag::IntArray(b) => {
@@ -207,7 +207,7 @@ list_nbtvalue!(
 /// Effectively a map of NbtTags
 ///
 /// Order is not needed according to NBT specification, but I do it anyways
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct NbtCompound {
 	map: IndexMap<String, NbtTag>,
 	root_name: Option<String>,
@@ -241,6 +241,12 @@ impl NbtCompound {
 		self.map.shift_remove(&name.into());
 	}
 	
+	pub fn sort_and_return(mut self) -> Self {
+		self.map.sort_keys();
+		
+		self
+	}
+	
 	pub fn from_network<'a>(deserializer: &mut McDeserializer) -> DeserializeResult<'a, NbtCompound> {
 		let t = u8::mc_deserialize(deserializer)?;
 		
@@ -270,7 +276,7 @@ impl NbtCompound {
 	fn serialize_tags(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		for (name, tag) in self.map.iter() {
 			serializer.serialize_u8(tag.get_type_id());
-			(name.len() as u16).mc_serialize(serializer)?;
+			(name.as_bytes().len() as u16).mc_serialize(serializer)?;
 			serializer.serialize_bytes(name.as_bytes());
 			tag.mc_serialize(serializer)?;
 		}
@@ -287,10 +293,18 @@ impl Index<&str> for NbtCompound {
 	}
 }
 
+impl PartialEq for NbtCompound {
+	fn eq(&self, other: &Self) -> bool {
+		return self.map == other.map && self.root_name == other.root_name
+	}
+}
+
 impl McSerialize for NbtCompound {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		serializer.serialize_u8(10); // compound tag
-
+		if serializer.get_last().is_none() { // only serialize tag type if its the main compound
+			10u8.mc_serialize(serializer)?; // TODO: needs more investigation
+		}
+		
 		// only serialize root name if present (non-network compound tag or pre 1.20.2)
 		if let Some(root_name) = &self.root_name {
 			(root_name.len() as u16).mc_serialize(serializer)?;
@@ -307,6 +321,7 @@ impl McDeserialize for NbtCompound {
 		let name_length = u16::mc_deserialize(deserializer)?;
 		let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
 		let mut compound = NbtCompound::new(Some(name));
+		println!("comp {:?}", deserializer.collect_remaining());
 		
 		loop {
 			let tag = deserializer.pop();
@@ -319,7 +334,6 @@ impl McDeserialize for NbtCompound {
 			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
 			
 			let tag = NbtTag::deserialize_specific(deserializer, tag.unwrap())?;
-			
 			compound.add(name, tag);
 		}
 		
@@ -429,7 +443,6 @@ impl McSerialize for NbtList {
 
 impl McDeserialize for NbtList {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, NbtList> {
-		println!("{:?}", deserializer.collect_remaining());
 		let t = u8::mc_deserialize(deserializer)?;
 		let length = i32::mc_deserialize(deserializer)?;
 

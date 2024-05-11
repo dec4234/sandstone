@@ -33,7 +33,7 @@ fn test_serializer_nbt() {
 
 #[test]
 fn test_compound_serialization() {
-	let mut compound = crate::protocol_details::datatypes::nbt::nbt::NbtCompound::new(Some("root-tag"));
+	let mut compound = crate::protocol_details::datatypes::nbt::nbt::NbtCompound::new(Some("A"));
 	compound.add("i8", 123i8);
 	compound.add("i16", 1234i16);
 	compound.add("i32", 12345i32);
@@ -44,10 +44,14 @@ fn test_compound_serialization() {
 	compound.add("int_array", NbtIntArray::new(vec![1, 2, 3, 4, 5]));
 	compound.add("long_array", NbtLongArray::new(vec![1, 2, 3, 4, 5]));
 	compound.add("list", NbtList::from_vec(vec![NbtTag::Int(1), NbtTag::Int(2), NbtTag::Int(3)]).unwrap());
-	compound.add("compound", compound.clone());
+	
+	let mut compound2 = crate::protocol_details::datatypes::nbt::nbt::NbtCompound::new(Some("AB"));
+	compound2.add("byte", 13i8);
+	compound.add("compound", compound2);
 
 
 	let mut serializer = McSerializer::new();
+	//serializer.serialize_u8(10);
 	compound.mc_serialize(&mut serializer).unwrap();
 
 	println!("Out: {:?}", serializer.output);
@@ -67,6 +71,7 @@ fn test_compound_serialization() {
 			assert_eq!(compound["int_array"], deserialized["int_array"]);
 			assert_eq!(compound["long_array"], deserialized["long_array"]);
 			assert_eq!(compound["list"], deserialized["list"]);
+			
 			assert_eq!(compound["compound"], deserialized["compound"]);
 		},
 		_ => panic!("Expected compound")
