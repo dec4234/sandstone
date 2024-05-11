@@ -2,7 +2,7 @@ use quartz_nbt::{io, NbtCompound};
 use quartz_nbt::io::Flavor;
 
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-use crate::protocol_details::datatypes::nbt::nbt::{NbtByteArray, NbtTag};
+use crate::protocol_details::datatypes::nbt::nbt::{NbtByteArray, NbtIntArray, NbtList, NbtLongArray, NbtTag};
 
 #[ignore]
 #[test]
@@ -41,10 +41,10 @@ fn test_compound_serialization() {
 	compound.add("f64", -3.6789f64);
 	compound.add("str", "hello");
 	compound.add("byte_array", NbtByteArray::new(vec![1, 2, 3, 4, 5]));
-	//compound.add("int_array", NbtIntArray::new(vec![1, 2, 3, 4, 5]));
-	//compound.add("long_array", NbtLongArray::new(vec![1, 2, 3, 4, 5]));
-	//compound.add("list", NbtList::from_vec(vec![NbtTag::Int(1), NbtTag::Int(2), NbtTag::Int(3)]).unwrap());
-	//compound.add("compound", compound.clone());
+	compound.add("int_array", NbtIntArray::new(vec![1, 2, 3, 4, 5]));
+	compound.add("long_array", NbtLongArray::new(vec![1, 2, 3, 4, 5]));
+	compound.add("list", NbtList::from_vec(vec![NbtTag::Int(1), NbtTag::Int(2), NbtTag::Int(3)]).unwrap());
+	compound.add("compound", compound.clone());
 
 
 	let mut serializer = McSerializer::new();
@@ -64,10 +64,10 @@ fn test_compound_serialization() {
 			assert_eq!(compound["f64"], deserialized["f64"]);
 			assert_eq!(compound["str"], deserialized["str"]);
 			assert_eq!(compound["byte_array"], deserialized["byte_array"]);
-			//assert_eq!(compound["int_array"], deserialized["int_array"]);
-			//assert_eq!(compound["long_array"], deserialized["long_array"]);
-			//assert_eq!(compound["list"], deserialized["list"]);
-			//assert_eq!(compound["compound"], deserialized["compound"]);
+			assert_eq!(compound["int_array"], deserialized["int_array"]);
+			assert_eq!(compound["long_array"], deserialized["long_array"]);
+			assert_eq!(compound["list"], deserialized["list"]);
+			assert_eq!(compound["compound"], deserialized["compound"]);
 		},
 		_ => panic!("Expected compound")
 	}

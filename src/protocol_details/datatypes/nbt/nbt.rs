@@ -418,6 +418,7 @@ impl Iterator for NbtList {
 
 impl McSerialize for NbtList {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		self.type_id.mc_serialize(serializer)?;
 		(self.list.len() as i32).mc_serialize(serializer)?;
 		for tag in &self.list {
 			tag.mc_serialize(serializer)?;
@@ -428,6 +429,7 @@ impl McSerialize for NbtList {
 
 impl McDeserialize for NbtList {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, NbtList> {
+		println!("{:?}", deserializer.collect_remaining());
 		let t = u8::mc_deserialize(deserializer)?;
 		let length = i32::mc_deserialize(deserializer)?;
 
@@ -438,7 +440,7 @@ impl McDeserialize for NbtList {
 		let mut list = NbtList::new();
 
 		for _ in 0..length {
-			let tag = NbtTag::mc_deserialize(deserializer)?;
+			let tag = NbtTag::deserialize_specific(deserializer, t)?;
 
 			if tag.get_type_id() != t {
 				return Err(SerializingErr::UniqueFailure("Type must be the same as the type for the list".to_string()))
