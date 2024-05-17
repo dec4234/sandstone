@@ -1,10 +1,10 @@
-use std::fmt::Error;
 use serde::{Deserialize, Serialize, Serializer};
 use serde::ser::SerializeStruct;
 
 mod protocol_details;
 mod util;
 mod packets;
+mod network;
 
 #[cfg(test)]
 mod tests {
