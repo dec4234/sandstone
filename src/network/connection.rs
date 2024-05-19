@@ -13,13 +13,13 @@ use crate::packets::status::status_handler::handle_status;
 use crate::packets::status::status_packets::UniversalHandshakePacket;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
-pub struct CraftConnection {
+pub struct CraftClient {
 	tcp_stream: TcpStream,
 	socket_addr: SocketAddr,
 	pub packet_state: PacketState
 }
 
-impl CraftConnection {
+impl CraftClient {
 	pub fn from_connection(tcp_stream: TcpStream) -> Result<Self> {
 		Ok(Self {
 			socket_addr: tcp_stream.peer_addr()?,
@@ -56,7 +56,7 @@ impl CraftConnection {
 		
 		if packet.data.next_state == VarInt(1) {
 			self.change_state(PacketState::STATUS);
-			handle_status(self)?;
+			handle_status(self).await?;
 		} else if packet.data.next_state == VarInt(2) {
 			self.change_state(PacketState::LOGIN);
 			login_handler.handle_login(self)?;
@@ -68,7 +68,7 @@ impl CraftConnection {
 	}
 }
 
-impl Display for CraftConnection {
+impl Display for CraftClient {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let s = if let Ok(addr) = self.tcp_stream.peer_addr() {
 			format!("{}", addr)

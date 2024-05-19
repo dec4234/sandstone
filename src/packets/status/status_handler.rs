@@ -1,19 +1,16 @@
 use anyhow::Result;
-use base64::alphabet;
-use base64::alphabet::Alphabet;
-use base64::engine::{GeneralPurpose, GeneralPurposeConfig};
 use log::debug;
 
-use crate::network::connection::CraftConnection;
+use crate::network::connection::CraftClient;
+use crate::packets::status::status_packets::UniversalStatusRequest;
 
-const ALPHABET: Alphabet = alphabet::STANDARD;
-const CONFIG: GeneralPurposeConfig = GeneralPurposeConfig::new();
-const ENGINE: GeneralPurpose = GeneralPurpose::new(&ALPHABET, CONFIG);
-
-pub fn handle_status(connection: &mut CraftConnection) -> Result<()> {
+pub async fn handle_status(connection: &mut CraftClient) -> Result<()> {
 	debug!("Handling status for {}", connection);
 	
 	// TODO: make status packet, send it, and handle the response
+	let status_request = connection.receive_packet::<UniversalStatusRequest>().await?;
+	
+	// TODO: properly record the length of a packet, before and after serialization to put it in a packaged packet
 	
 	Ok(())
 }

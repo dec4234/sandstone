@@ -34,6 +34,7 @@ impl Display for SerializingErr {
 			SerializingErr::InputEnded => {f.write_str("Input ended prematurely")},
 			SerializingErr::UniqueFailure(s) => {f.write_str(s)},
 			SerializingErr::LeftoverInput => {f.write_str("There is unused input data left")},
+			SerializingErr::InvalidPacketState => {f.write_str("The current packet state does not match what is needed to deserialize this packet")}
 		}
 	}
 }
