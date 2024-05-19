@@ -4,11 +4,33 @@ pub enum PacketDirection {
 	BIDIRECTIONAL
 }
 
+/// Used to help discern the type of packet being received. Note that some states will have
+/// packets with the same ids. 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PacketState {
 	STATUS,
 	HANDSHAKING,
 	LOGIN,
+    CONFIGURATION,
 	PLAY
+}
+
+impl PacketState {
+    pub fn from_id(id: u8) -> Option<PacketState> {
+        match id {
+            1 => Some(PacketState::STATUS),
+            2 => Some(PacketState::LOGIN),
+            _ => None
+        }
+    }
+    
+    pub fn get_id(&self) -> Option<u8> {
+        match self {
+            PacketState::STATUS => Some(1),
+            PacketState::LOGIN => Some(2),
+            _ => None
+        }
+    }
 }
 
 pub trait PacketTrait {

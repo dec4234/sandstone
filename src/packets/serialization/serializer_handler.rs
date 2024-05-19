@@ -1,6 +1,7 @@
 use std::cmp::min;
 use std::fmt::{Debug, Display};
 
+use crate::packets::packet_definer::PacketState;
 use crate::packets::serialization::serializer_error::SerializingErr;
 
 /// The result of a deserialization operation
@@ -121,6 +122,10 @@ impl <'a> McDeserializer<'a> {
 
 pub trait McDeserialize {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized;
+}
+
+pub trait StateBasedDeserializer {
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> where Self: Sized;
 }
 
 pub trait McSerialize {

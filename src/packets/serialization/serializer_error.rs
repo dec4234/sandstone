@@ -11,6 +11,7 @@ pub enum SerializingErr {
 	LeftoverInput,
 	UnknownFailure,
 	UniqueFailure(String),
+	InvalidPacketState,
 }
 
 impl Debug for SerializingErr {
