@@ -1,6 +1,8 @@
 use std::cmp::min;
 use std::fmt::{Debug, Display};
 
+use anyhow::{anyhow, Result};
+
 use crate::packets::packet_definer::PacketState;
 use crate::packets::serialization::serializer_error::SerializingErr;
 
@@ -46,12 +48,16 @@ impl McSerializer {
 	}
 
 	/// Serialized as is, NO LENGTH PREFIX
-	pub fn serialize_str(&mut self, s: &str) {
+	pub fn serialize_str_no_length_prefix(&mut self, s: &str) {
 		self.serialize_bytes(s.as_bytes());
 	}
 	
 	pub fn get_last(&self) -> Option<&u8> {
 		self.output.last()
+	}
+	
+	pub fn merge(&mut self, serializer: McSerializer) {
+		self.serialize_bytes(&serializer.output);
 	}
 }
 
@@ -117,6 +123,18 @@ impl <'a> McDeserializer<'a> {
 	/// Used in conjunction with reset()
 	pub fn create_sub_deserializer(&self) -> McDeserializer {
 		McDeserializer::new(&self.data[self.index..])
+	}
+	
+	pub fn sub_deserializer_length(&mut self, end: usize) -> Result<McDeserializer> {
+		if self.index + end > self.data.len() {
+			return Err(anyhow!("Sub-deserializer length exceeds data length"));
+		}
+		
+		let ret = Ok(McDeserializer::new(&self.data[self.index..(self.index + end)]));
+		
+		self.index += end;
+		
+		ret
 	}
 }
 

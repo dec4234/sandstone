@@ -2,13 +2,14 @@ use std::fmt::Display;
 use std::net::SocketAddr;
 
 use anyhow::Result;
+use log::{debug, trace};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
 use crate::network::network_structure::LoginHandler;
 use crate::packets::packet_definer::PacketState;
 use crate::packets::raw_packet::PackagedPacket;
-use crate::packets::serialization::serializer_handler::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
+use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::packets::status::status_handler::handle_status;
 use crate::packets::status::status_packets::UniversalHandshakePacket;
 use crate::protocol_details::datatypes::var_types::VarInt;
@@ -38,6 +39,13 @@ impl CraftClient {
 	pub async fn receive_packet<P: McSerialize + StateBasedDeserializer>(&mut self) -> Result<PackagedPacket<P>> {
 		let mut buffer = vec![0; 1024];
 		let length = self.tcp_stream.read(&mut buffer).await?;
+		
+		trace!("Received {:?}", &buffer[0..length]);
+		
+		if length == 0 {
+			return Err(anyhow::anyhow!("No data received"));
+		}
+		
 		let mut deserializer = McDeserializer::new(&buffer[0..length]);
 		let packet = PackagedPacket::deserialize_state(&mut deserializer, &self.packet_state)?;
 		Ok(packet)
@@ -65,6 +73,25 @@ impl CraftClient {
 		}
 		
 		Ok(())
+	}
+	
+	pub async fn peek_next_packet_details(&mut self) -> Result<(VarInt, VarInt)> {
+		let mut buffer = vec![0; 1024];
+		let length = self.tcp_stream.peek(&mut buffer).await?;
+		
+		if length == 0 {
+			return Err(anyhow::anyhow!("No data received"));
+		}
+		
+		let mut deserializer = McDeserializer::new(&buffer[0..length]);
+		let length = VarInt::mc_deserialize(&mut deserializer)?;
+		let packet_id = VarInt::mc_deserialize(&mut deserializer)?;
+		Ok((length, packet_id))
+	}
+	
+	pub async fn close(&mut self) -> bool {
+		debug!("Closing connection to {}", self);
+		self.tcp_stream.shutdown().await.is_ok()
 	}
 }
 

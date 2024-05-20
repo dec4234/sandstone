@@ -14,6 +14,7 @@ const ALPHABET: Alphabet = alphabet::STANDARD;
 const CONFIG: GeneralPurposeConfig = GeneralPurposeConfig::new();
 const ENGINE: GeneralPurpose = GeneralPurpose::new(&ALPHABET, CONFIG);
 
+#[derive(Debug, Clone)]
 pub struct UniversalHandshakePacket {
 	pub protocol_version: VarInt,
 	pub server_address: String,
@@ -70,6 +71,7 @@ impl PacketTrait for UniversalHandshakePacket {
 	}
 }
 
+#[derive(Debug, Clone)]
 pub struct UniversalStatusRequest;
 
 impl McSerialize for UniversalStatusRequest {
@@ -98,15 +100,15 @@ impl PacketTrait for UniversalStatusRequest {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UniversalStatusResponse {
 	version: VersionInfo,
-	players: Vec<PlayerSample>,
+	players: PlayerInfo,
 	description: DescriptionInfo,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	favicon_data: Option<String>,
-	enforces_secure_chat: bool,
-	previews_chat: bool,
+	favicon: Option<String>,
+	enforcesSecureChat: bool,
+	previewsChat: bool,
 }
 
 impl UniversalStatusResponse {
@@ -116,22 +118,18 @@ impl UniversalStatusResponse {
 				name: protocol_verison.get_string(),
 				protocol: protocol_verison.get(),
 			},
-			players: Vec::new(),
+			players: PlayerInfo {
+				max: 0,
+				online: 0,
+				sample: Vec::new(),
+			},
 			description: DescriptionInfo {
 				text: description
 			},
-			favicon_data: None,
-			enforces_secure_chat: false,
-			previews_chat: false,
+			favicon: None,
+			enforcesSecureChat: false,
+			previewsChat: false,
 		}
-	}
-
-	pub fn add_player(&mut self, player: PlayerSample) {
-		self.players.push(player);
-	}
-
-	pub fn set_player_sample(&mut self, players: Vec<PlayerSample>) {
-		self.players = players;
 	}
 
 	/// The server icon should be a 64x64 PNG image, without new line (\n) characters.
@@ -141,18 +139,18 @@ impl UniversalStatusResponse {
 
 			s.push_str(&ENGINE.encode(data));
 
-			self.favicon_data = Some(s);
+			self.favicon = Some(s);
 		} else {
-			self.favicon_data = None;
+			self.favicon = None;
 		}
 	}
 
 	pub fn set_secure_chat(&mut self, secure: bool) {
-		self.enforces_secure_chat = secure;
+		self.enforcesSecureChat = secure;
 	}
 
 	pub fn set_preview_chat(&mut self, preview: bool) {
-		self.previews_chat = preview;
+		self.previewsChat = preview;
 	}
 
 	pub fn set_description(&mut self, description: String) {
@@ -180,18 +178,47 @@ impl McSerialize for UniversalStatusResponse {
 	}
 }
 
-#[derive(Serialize, Deserialize)]
+impl StateBasedDeserializer for UniversalStatusResponse {
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
+		if state != &PacketState::STATUS {
+			return Err(SerializingErr::InvalidPacketState);
+		}
+
+		let raw = serde_json::from_str(&String::mc_deserialize(deserializer)?).unwrap(); // TODO: test
+
+		Ok(raw)
+	}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VersionInfo {
 	name: String,
 	protocol: i16,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlayerInfo {
+	max: i32,
+	online: i32,
+	sample: Vec<PlayerSample>,
+}
+
+impl PlayerInfo {
+	pub fn add_player(&mut self, player: PlayerSample) {
+		self.sample.push(player);
+	}
+
+	pub fn set_player_sample(&mut self, players: Vec<PlayerSample>) {
+		self.sample = players;
+	}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DescriptionInfo { // TODO: update to chat thing?
 	text: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerSample {
 	name: String,
 	id: String,
@@ -203,6 +230,60 @@ impl PlayerSample {
 			name,
 			id: id.to_string(),
 		}
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct UniversalPingRequest {
+	pub payload: i64,
+}
+
+impl McSerialize for UniversalPingRequest {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		self.payload.mc_serialize(serializer)?;
+
+		Ok(())
+	}
+}
+
+impl StateBasedDeserializer for UniversalPingRequest {
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
+		if state != &PacketState::STATUS {
+			return Err(SerializingErr::InvalidPacketState);
+		}
+
+		let raw = UniversalPingRequest {
+			payload: i64::mc_deserialize(deserializer)?,
+		};
+
+		Ok(raw)
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct UniversalPingResponse {
+	pub payload: i64,
+}
+
+impl McSerialize for UniversalPingResponse {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		self.payload.mc_serialize(serializer)?;
+
+		Ok(())
+	}
+}
+
+impl StateBasedDeserializer for UniversalPingResponse {
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
+		if state != &PacketState::STATUS {
+			return Err(SerializingErr::InvalidPacketState);
+		}
+
+		let raw = UniversalPingResponse {
+			payload: i64::mc_deserialize(deserializer)?,
+		};
+
+		Ok(raw)
 	}
 }
 

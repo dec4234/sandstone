@@ -163,6 +163,18 @@ impl McDeserialize for VarInt {
 	}
 }
 
+impl From<i32> for VarInt {
+	fn from(i: i32) -> Self {
+		VarInt(i)
+	}
+}
+
+impl Into<i32> for VarInt {
+	fn into(self) -> i32 {
+		self.0
+	}
+}
+
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
 #[repr(C)]
 pub struct VarLong(pub i64);
@@ -307,6 +319,18 @@ impl McDeserialize for VarLong {
 		}
 
 		return Ok(var.unwrap());
+	}
+}
+
+impl From<i64> for VarLong {
+	fn from(i: i64) -> Self {
+		VarLong(i)
+	}
+}
+
+impl Into<i64> for VarLong {
+	fn into(self) -> i64 {
+		self.0
 	}
 }
 
