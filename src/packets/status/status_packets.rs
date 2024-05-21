@@ -101,6 +101,7 @@ impl PacketTrait for UniversalStatusRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct UniversalStatusResponse {
 	version: VersionInfo,
 	players: PlayerInfo,
@@ -115,8 +116,8 @@ impl UniversalStatusResponse {
 	pub fn new(protocol_verison: ProtocolVerison, description: String) -> Self {
 		Self {
 			version: VersionInfo {
-				name: protocol_verison.get_string(),
-				protocol: protocol_verison.get(),
+				name: protocol_verison.get_fancy_name(),
+				protocol: protocol_verison.get_version_number(),
 			},
 			players: PlayerInfo {
 				max: 0,

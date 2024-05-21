@@ -1,11 +1,13 @@
+use std::cmp::PartialEq;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
-use anyhow::Result;
+use anyhow::{Error, Result};
 use log::{debug, trace};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
+use crate::network::network_error::{ConnectionAbortedLocally, InvalidPacketState, NoDataReceivedError};
 use crate::network::network_structure::LoginHandler;
 use crate::packets::packet_definer::PacketState;
 use crate::packets::raw_packet::PackagedPacket;
@@ -22,6 +24,8 @@ pub struct CraftClient {
 
 impl CraftClient {
 	pub fn from_connection(tcp_stream: TcpStream) -> Result<Self> {
+		tcp_stream.set_nodelay(true)?;
+		
 		Ok(Self {
 			socket_addr: tcp_stream.peer_addr()?,
 			tcp_stream,
@@ -38,12 +42,25 @@ impl CraftClient {
 	
 	pub async fn receive_packet<P: McSerialize + StateBasedDeserializer>(&mut self) -> Result<PackagedPacket<P>> {
 		let mut buffer = vec![0; 1024];
-		let length = self.tcp_stream.read(&mut buffer).await?;
+		let length = self.tcp_stream.read(&mut buffer).await;
+		
+		if let Err(e) = length {
+			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
+				debug!("OS Error detected in packet receive, closing the connection: {}", e);
+				self.close().await;
+				return Err(Error::from(ConnectionAbortedLocally));
+			}
+			
+			return Err(Error::from(e));
+		}
+		
+		let length = length.unwrap();
 		
 		trace!("Received {:?}", &buffer[0..length]);
-		
+
 		if length == 0 {
-			return Err(anyhow::anyhow!("No data received"));
+			self.close().await;
+			return Err(Error::from(NoDataReceivedError));
 		}
 		
 		let mut deserializer = McDeserializer::new(&buffer[0..length]);
@@ -57,14 +74,18 @@ impl CraftClient {
 	
 	pub async fn handle_handshake<L: LoginHandler>(&mut self, login_handler: &mut L) -> Result<()> {
 		if self.packet_state != PacketState::HANDSHAKING {
-			return Err(anyhow::anyhow!("Invalid packet state"));
+			return Err(Error::from(InvalidPacketState));
 		}
 		
 		let packet = self.receive_packet::<UniversalHandshakePacket>().await?;
 		
 		if packet.data.next_state == VarInt(1) {
 			self.change_state(PacketState::STATUS);
-			handle_status(self).await?;
+			if let Err(e) = handle_status(self).await {
+				debug!("Error handling status, connection closed: {}", e);
+				self.close().await;
+				return Ok(())
+			}
 		} else if packet.data.next_state == VarInt(2) {
 			self.change_state(PacketState::LOGIN);
 			login_handler.handle_login(self)?;

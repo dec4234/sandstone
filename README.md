@@ -4,4 +4,5 @@ The ultimate goal is to use this library in a future implementation of a Minecra
 in Rust. 
 
 This library is provided as a structured baseline and as an open source software solution for anyone looking
-to create specialized **Minecraft: Java Edition** servers or clients.
+to create specialized **Minecraft: Java Edition** servers or clients. However, the library will be mostly built from a server perspective, with optimizations and
+features for a server context.

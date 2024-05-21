@@ -1,6 +1,7 @@
 use anyhow::Result;
 use log::debug;
 use simple_logger::SimpleLogger;
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 
 use crate::network::connection::CraftClient;
@@ -15,7 +16,8 @@ pub async fn test_status_handler() {
 	let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
 	loop {
-		let (mut socket, a) = server.accept().await.unwrap();
+		let (socket, a) = server.accept().await.unwrap();
+		
 		let mut client = CraftClient::from_connection(socket).unwrap();
 
 		client.handle_handshake(&mut Dummy).await.unwrap();

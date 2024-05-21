@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
 use anyhow::Result;
 use log::{debug, trace};
 
@@ -15,11 +17,11 @@ pub async fn handle_status(connection: &mut CraftClient) -> Result<()> {
 		return Ok(());
 	}
 	
-	let status_request = connection.receive_packet::<UniversalStatusRequest>().await?;
+	connection.receive_packet::<UniversalStatusRequest>().await?;
 	
 	trace!("Received status request from {}", connection);
 	
-	let response = UniversalStatusResponse::new(ProtocolVerison::v1_20_2, "Hello".to_string());
+	let response = UniversalStatusResponse::new(ProtocolVerison::v1_20, "Hello".to_string());
 	
 	let packed = PackagedPacket::new(VarInt(0x00), response);
 	
@@ -37,10 +39,14 @@ pub async fn handle_ping(connection: &mut CraftClient) -> Result<()> {
 	
 	let ping_request = connection.receive_packet::<UniversalPingRequest>().await;
 	
+	if let Err(e) = ping_request {
+		return Err(e); // pipe all other errors
+	}
+	
 	trace!("Received ping request from {}", connection);
 	
 	let packed = PackagedPacket::new(VarInt(0x01), UniversalPingResponse {
-		payload: ping_request?.data.payload
+		payload: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64
 	});
 	
 	connection.send_packet(packed).await?;
