@@ -6,6 +6,7 @@ use tokio::net::TcpListener;
 
 use crate::network::connection::CraftClient;
 use crate::network::network_structure::LoginHandler;
+use crate::packets::status::status_handler::DefaultStatusHandler;
 
 #[tokio::test]
 #[ignore]
@@ -20,7 +21,7 @@ pub async fn test_status_handler() {
 		
 		let mut client = CraftClient::from_connection(socket).unwrap();
 
-		client.handle_handshake(&mut Dummy).await.unwrap();
+		client.handle_handshake(&mut DefaultStatusHandler, &mut Dummy).await.unwrap();
 	}
 }
 

@@ -12,14 +12,15 @@ use crate::network::network_structure::LoginHandler;
 use crate::packets::packet_definer::PacketState;
 use crate::packets::raw_packet::PackagedPacket;
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
-use crate::packets::status::status_handler::handle_status;
+use crate::packets::status::status_handler::StatusHandler;
 use crate::packets::status::status_packets::UniversalHandshakePacket;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
 pub struct CraftClient {
 	tcp_stream: TcpStream,
 	socket_addr: SocketAddr,
-	pub packet_state: PacketState
+	pub packet_state: PacketState,
+	buffer: Vec<u8>
 }
 
 impl CraftClient {
@@ -29,7 +30,8 @@ impl CraftClient {
 		Ok(Self {
 			socket_addr: tcp_stream.peer_addr()?,
 			tcp_stream,
-			packet_state: PacketState::HANDSHAKING
+			packet_state: PacketState::HANDSHAKING,
+			buffer: vec![]
 		})
 	}
 	
@@ -41,7 +43,17 @@ impl CraftClient {
 	}
 	
 	pub async fn receive_packet<P: McSerialize + StateBasedDeserializer>(&mut self) -> Result<PackagedPacket<P>> {
-		let mut buffer = vec![0; 1024];
+		if !self.buffer.is_empty() {
+			let mut deserializer = McDeserializer::new(&self.buffer);
+			let packet = PackagedPacket::deserialize_state(&mut deserializer, &self.packet_state)?;
+			self.buffer = deserializer.collect_remaining().to_vec();
+			return Ok(packet);
+		}
+
+		/*
+		1. if n = buff.len then maybe continuously read until it != len? That should pull all data
+		 */
+		let mut buffer = vec![0; 1024]; // TODO: what happens if this overflows?
 		let length = self.tcp_stream.read(&mut buffer).await;
 		
 		if let Err(e) = length {
@@ -58,13 +70,16 @@ impl CraftClient {
 		
 		trace!("Received {:?}", &buffer[0..length]);
 
-		if length == 0 {
+		if length == 0 { // connection closed
 			self.close().await;
 			return Err(Error::from(NoDataReceivedError));
 		}
 		
 		let mut deserializer = McDeserializer::new(&buffer[0..length]);
 		let packet = PackagedPacket::deserialize_state(&mut deserializer, &self.packet_state)?;
+
+		self.buffer.append(&mut deserializer.collect_remaining().to_vec()); // if the next packet was also collected
+
 		Ok(packet)
 	}
 	
@@ -72,7 +87,7 @@ impl CraftClient {
 		self.packet_state = state;
 	}
 	
-	pub async fn handle_handshake<L: LoginHandler>(&mut self, login_handler: &mut L) -> Result<()> {
+	pub async fn handle_handshake<L: LoginHandler, S: StatusHandler>(&mut self, status_handler: &S, login_handler: &mut L) -> Result<()> {
 		if self.packet_state != PacketState::HANDSHAKING {
 			return Err(Error::from(InvalidPacketState));
 		}
@@ -81,7 +96,7 @@ impl CraftClient {
 		
 		if packet.data.next_state == VarInt(1) {
 			self.change_state(PacketState::STATUS);
-			if let Err(e) = handle_status(self).await {
+			if let Err(e) = status_handler.handle_status(self).await {
 				debug!("Error handling status, connection closed: {}", e);
 				self.close().await;
 				return Ok(())
@@ -97,6 +112,13 @@ impl CraftClient {
 	}
 	
 	pub async fn peek_next_packet_details(&mut self) -> Result<(VarInt, VarInt)> {
+		if !self.buffer.is_empty() {
+			let mut deserializer = McDeserializer::new(&self.buffer);
+			let length = VarInt::mc_deserialize(&mut deserializer)?;
+			let packet_id = VarInt::mc_deserialize(&mut deserializer)?;
+			return Ok((length, packet_id));
+		}
+
 		let mut buffer = vec![0; 1024];
 		let length = self.tcp_stream.peek(&mut buffer).await?;
 		
