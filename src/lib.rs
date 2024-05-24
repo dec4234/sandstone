@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize, Serializer};
 use serde::ser::SerializeStruct;
 
-mod protocol_details;
-mod util;
-mod packets;
-mod network;
+pub(crate) mod protocol_details;
+pub(crate) mod util;
+pub(crate) mod packets;
+pub(crate) mod network;
 
 #[cfg(test)]
 mod tests {
