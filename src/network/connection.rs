@@ -21,6 +21,7 @@ pub struct CraftClient {
 	tcp_stream: TcpStream,
 	socket_addr: SocketAddr,
 	pub packet_state: PacketState,
+	compression_threshold: Option<i32>,
 	buffer: Vec<u8>
 }
 
@@ -32,6 +33,7 @@ impl CraftClient {
 			socket_addr: tcp_stream.peer_addr()?,
 			tcp_stream,
 			packet_state: PacketState::HANDSHAKING,
+			compression_threshold: None,
 			buffer: vec![]
 		})
 	}
@@ -54,6 +56,8 @@ impl CraftClient {
 		/*
 		1. if n = buff.len then maybe continuously read until it != len? That should pull all data
 		 */
+		let mut aggregate = vec![];
+		let mut agg_length = 0;
 		let mut buffer = vec![0; 1024]; // TODO: what happens if this overflows?
 		let length = self.tcp_stream.read(&mut buffer).await;
 		
@@ -69,6 +73,29 @@ impl CraftClient {
 		
 		let length = length.unwrap();
 		
+		aggregate.append(&mut buffer[0..length].to_vec());
+		
+		if length == 1024 {
+			loop { // TODO: also break at max packet size
+				if let Ok(length) = self.tcp_stream.try_read(&mut buffer) {
+					if length == 0 {
+						break;
+					}
+					
+					agg_length += length;
+					aggregate.append(&mut buffer[0..length].to_vec());
+					
+					if length < 1024 {
+						break;
+					}
+				} else {
+					break;
+				}
+			}
+		} else {
+			agg_length += length;
+		}
+		
 		trace!("Received {:?}", &buffer[0..length]);
 
 		if length == 0 { // connection closed
@@ -76,7 +103,7 @@ impl CraftClient {
 			return Err(Error::from(NoDataReceivedError));
 		}
 		
-		let mut deserializer = McDeserializer::new(&buffer[0..length]);
+		let mut deserializer = McDeserializer::new(&aggregate[0..agg_length]);
 		let packet = PackagedPacket::deserialize_state(&mut deserializer, &self.packet_state)?;
 
 		self.buffer.append(&mut deserializer.collect_remaining().to_vec()); // if the next packet was also collected
@@ -88,6 +115,7 @@ impl CraftClient {
 		self.packet_state = state;
 	}
 	
+	// TODO: this won't work with compression, although I think we only use it for the length anyways
 	pub async fn peek_next_packet_details(&mut self) -> Result<(VarInt, VarInt)> {
 		if !self.buffer.is_empty() {
 			let mut deserializer = McDeserializer::new(&self.buffer);
@@ -107,6 +135,10 @@ impl CraftClient {
 		let length = VarInt::mc_deserialize(&mut deserializer)?;
 		let packet_id = VarInt::mc_deserialize(&mut deserializer)?;
 		Ok((length, packet_id))
+	}
+	
+	pub fn enable_compression(&mut self, threshold: Option<i32>) {
+		self.compression_threshold = threshold;
 	}
 	
 	pub async fn close(&mut self) -> bool {

@@ -4,7 +4,6 @@ use base64::{alphabet, Engine};
 use base64::alphabet::Alphabet;
 use base64::engine::{general_purpose, GeneralPurpose, GeneralPurposeConfig};
 use image::{DynamicImage, ImageFormat};
-use log::debug;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -129,7 +128,7 @@ impl UniversalStatusResponse {
 				sample: Vec::new(),
 			},
 			description: DescriptionInfo {
-				text: description.into()
+				text: description.into().replace("&", "§")
 			},
 			favicon: None,
 			enforcesSecureChat: false,
@@ -161,6 +160,14 @@ impl UniversalStatusResponse {
 		};
 	}
 
+	pub fn set_player_info(&mut self, max: i32, online: i32, sample: Vec<PlayerSample>) {
+		self.players = PlayerInfo {
+			max,
+			online,
+			sample
+		};
+	}
+
 	/// *version* can really be anything you want, but *protocol_version* must be a valid protocol version number
 	pub fn set_protocol_version(&mut self, version: String, protocol_version: i16) {
 		self.version = VersionInfo {
@@ -174,7 +181,6 @@ impl McSerialize for UniversalStatusResponse {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		let serialized = serde_json::to_string(self).unwrap();
 
-		debug!("Icon: {:?}", self.favicon);
 		serialized.mc_serialize(serializer)?;
 
 		Ok(())
@@ -228,10 +234,17 @@ pub struct PlayerSample {
 }
 
 impl PlayerSample {
-	pub fn new(name: String, id: Uuid) -> Self {
+	pub fn new<S: Into<String>>(name: S, id: Uuid) -> Self {
 		Self {
-			name,
+			name: name.into().replace("&", "§"),
 			id: id.to_string(),
+		}
+	}
+
+	pub fn new_random<S: Into<String>>(name: S) -> Self {
+		Self {
+			name: name.into().replace("&", "§"),
+			id: Uuid::new_v4().to_string(), // TODO: no-std support?
 		}
 	}
 }

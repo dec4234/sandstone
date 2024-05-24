@@ -7,7 +7,7 @@ use tokio::net::TcpListener;
 use crate::network::connection::{CraftClient, DefaultHandshakeHandler, HandshakeHandler};
 use crate::network::network_structure::LoginHandler;
 use crate::packets::status::status_handler::{DefaultPingHandler, DefaultStatusHandler, StatusHandler};
-use crate::packets::status::status_packets::UniversalStatusResponse;
+use crate::packets::status::status_packets::{PlayerSample, UniversalStatusResponse};
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
 #[tokio::test]
@@ -24,9 +24,7 @@ pub async fn test_status_handler() {
 		let mut client = CraftClient::from_connection(socket).unwrap();
 		
 		let mut response = UniversalStatusResponse::new(ProtocolVerison::v1_20, "§a§lThis is a test description §b§kttt");
-		
-		let image = image::open("test/resources/server-icon.png").unwrap();
-		response.set_favicon_image(image);
+		response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
 		
 		DefaultHandshakeHandler::handle_handshake(&mut client).await.unwrap();
 		DefaultStatusHandler::handle_status(&mut client, response, DefaultPingHandler).await.unwrap();
