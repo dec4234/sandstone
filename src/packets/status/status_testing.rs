@@ -4,9 +4,11 @@ use simple_logger::SimpleLogger;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 
-use crate::network::connection::CraftClient;
+use crate::network::connection::{CraftClient, DefaultHandshakeHandler, HandshakeHandler};
 use crate::network::network_structure::LoginHandler;
-use crate::packets::status::status_handler::DefaultStatusHandler;
+use crate::packets::status::status_handler::{DefaultPingHandler, DefaultStatusHandler, StatusHandler};
+use crate::packets::status::status_packets::UniversalStatusResponse;
+use crate::protocol_details::protocol_verison::ProtocolVerison;
 
 #[tokio::test]
 #[ignore]
@@ -20,15 +22,21 @@ pub async fn test_status_handler() {
 		let (socket, a) = server.accept().await.unwrap();
 		
 		let mut client = CraftClient::from_connection(socket).unwrap();
-
-		client.handle_handshake(&mut DefaultStatusHandler, &mut Dummy).await.unwrap();
+		
+		let mut response = UniversalStatusResponse::new(ProtocolVerison::v1_20, "§a§lThis is a test description §b§kttt");
+		
+		let image = image::open("test/resources/server-icon.png").unwrap();
+		response.set_favicon_image(image);
+		
+		DefaultHandshakeHandler::handle_handshake(&mut client).await.unwrap();
+		DefaultStatusHandler::handle_status(&mut client, response, DefaultPingHandler).await.unwrap();
 	}
 }
 
 pub struct Dummy;
 
 impl LoginHandler for Dummy {
-	fn handle_login(&mut self, _client: &mut CraftClient) -> Result<()> {
+	fn handle_login(client: &mut CraftClient) -> Result<()> {
 		Ok(())
 	}
 }

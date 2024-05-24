@@ -2,6 +2,10 @@
 name = "ironcraft"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "Networking library for Minecraft: Java Edition servers and clients"
+repository = "github.com/dec4234/ironcraft"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,6 +24,7 @@ base64 = "0.22.1"
 error = "0.1.9"
 indexmap = "2.2.6"
 log = "0.4.21"
+image = {version = "0.25.1", features = ["default", "png"]}
 
 [dev-dependencies]
 quartz_nbt = "0.2.9" # used to compare NBT

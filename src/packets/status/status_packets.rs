@@ -1,6 +1,10 @@
+use std::io::Cursor;
+
 use base64::{alphabet, Engine};
 use base64::alphabet::Alphabet;
-use base64::engine::{GeneralPurpose, GeneralPurposeConfig};
+use base64::engine::{general_purpose, GeneralPurpose, GeneralPurposeConfig};
+use image::{DynamicImage, ImageFormat};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -113,7 +117,7 @@ pub struct UniversalStatusResponse {
 }
 
 impl UniversalStatusResponse {
-	pub fn new(protocol_verison: ProtocolVerison, description: String) -> Self {
+	pub fn new<T: Into<String>>(protocol_verison: ProtocolVerison, description: T) -> Self {
 		Self {
 			version: VersionInfo {
 				name: protocol_verison.get_fancy_name(),
@@ -125,7 +129,7 @@ impl UniversalStatusResponse {
 				sample: Vec::new(),
 			},
 			description: DescriptionInfo {
-				text: description
+				text: description.into()
 			},
 			favicon: None,
 			enforcesSecureChat: false,
@@ -133,17 +137,14 @@ impl UniversalStatusResponse {
 		}
 	}
 
-	/// The server icon should be a 64x64 PNG image, without new line (\n) characters.
-	pub fn set_favicon(&mut self, data: Option<&[u8]>) {
-		if let Some(data) = data {
-			let mut s = "data:image/png;base64,".to_string();
+	pub fn set_favicon_image(&mut self, image: DynamicImage) {
+		let mut image_data: Vec<u8> = Vec::new();
+		image.write_to(&mut Cursor::new(&mut image_data), ImageFormat::Png)
+			.unwrap();
+		let res_base64 = general_purpose::STANDARD.encode(image_data);
+		let s = format!("data:image/png;base64,{}", res_base64);
 
-			s.push_str(&ENGINE.encode(data));
-
-			self.favicon = Some(s);
-		} else {
-			self.favicon = None;
-		}
+		self.favicon = Some(s);
 	}
 
 	pub fn set_secure_chat(&mut self, secure: bool) {
@@ -173,6 +174,7 @@ impl McSerialize for UniversalStatusResponse {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		let serialized = serde_json::to_string(self).unwrap();
 
+		debug!("Icon: {:?}", self.favicon);
 		serialized.mc_serialize(serializer)?;
 
 		Ok(())

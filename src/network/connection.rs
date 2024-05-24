@@ -4,6 +4,7 @@ use std::net::SocketAddr;
 
 use anyhow::{Error, Result};
 use log::{debug, trace};
+use serde::__private::ser::constrain;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -87,30 +88,6 @@ impl CraftClient {
 		self.packet_state = state;
 	}
 	
-	pub async fn handle_handshake<L: LoginHandler, S: StatusHandler>(&mut self, status_handler: &S, login_handler: &mut L) -> Result<()> {
-		if self.packet_state != PacketState::HANDSHAKING {
-			return Err(Error::from(InvalidPacketState));
-		}
-		
-		let packet = self.receive_packet::<UniversalHandshakePacket>().await?;
-		
-		if packet.data.next_state == VarInt(1) {
-			self.change_state(PacketState::STATUS);
-			if let Err(e) = status_handler.handle_status(self).await {
-				debug!("Error handling status, connection closed: {}", e);
-				self.close().await;
-				return Ok(())
-			}
-		} else if packet.data.next_state == VarInt(2) {
-			self.change_state(PacketState::LOGIN);
-			login_handler.handle_login(self)?;
-		} else {
-			return Err(anyhow::anyhow!("Invalid next state detected, got \"{}\"", packet.data.next_state.0));
-		}
-		
-		Ok(())
-	}
-	
 	pub async fn peek_next_packet_details(&mut self) -> Result<(VarInt, VarInt)> {
 		if !self.buffer.is_empty() {
 			let mut deserializer = McDeserializer::new(&self.buffer);
@@ -147,5 +124,31 @@ impl Display for CraftClient {
 		};
 
 		write!(f, "{}", format!("CraftConnection: {}", s))
+	}
+}
+
+pub trait HandshakeHandler {
+	async fn handle_handshake(client: &mut CraftClient) -> Result<()>;
+}
+
+pub struct DefaultHandshakeHandler;
+
+impl HandshakeHandler for DefaultHandshakeHandler {
+	async fn handle_handshake(client: &mut CraftClient) -> Result<()> {
+		if client.packet_state != PacketState::HANDSHAKING {
+			return Err(Error::from(InvalidPacketState));
+		}
+		
+		let packet = client.receive_packet::<UniversalHandshakePacket>().await?;
+		
+		if packet.data.next_state == VarInt(1) {
+			client.change_state(PacketState::STATUS);
+		} else if packet.data.next_state == VarInt(2) {
+			client.change_state(PacketState::LOGIN);
+		} else {
+			return Err(anyhow::anyhow!("Invalid next state detected, got \"{}\"", packet.data.next_state.0));
+		}
+		
+		Ok(())
 	}
 }

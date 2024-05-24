@@ -11,7 +11,7 @@ use crate::packets::serialization::serializer_handler::{DeserializeResult, McDes
 
 // https://wiki.vg/NBT
 
-pub trait SNBT {
+pub trait SNBT { // TODO: need to implement all SNBT stuff
 	fn to_snbt(&self) -> String;
 	fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized;
 }
