@@ -1,6 +1,6 @@
-mod nbt;
+pub mod nbt;
 mod nbt_testing;
-mod nbt_error;
+pub mod nbt_error;
 
 #[macro_use]
 mod macros {

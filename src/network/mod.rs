@@ -1,3 +1,3 @@
-pub(crate) mod connection;
-pub(crate) mod network_structure;
-pub(crate) mod network_error;
+pub mod connection;
+pub mod network_structure;
+pub mod network_error;
