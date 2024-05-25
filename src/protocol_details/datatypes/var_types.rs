@@ -3,6 +3,7 @@ use std::fmt::{Display, Error, Formatter, Write};
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
+use uuid::Uuid;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::packets::serialization::serializer_error::SerializingErr;
@@ -42,7 +43,7 @@ impl VarInt {
 
 			pos += 7;
 
-			if(pos >= 32) {
+			if pos >= 32 {
 				return Err(anyhow!("Bit length is too long"));
 			}
 		}
@@ -331,6 +332,54 @@ impl From<i64> for VarLong {
 impl Into<i64> for VarLong {
 	fn into(self) -> i64 {
 		self.0
+	}
+}
+
+// Other rust stuff
+impl<T: McSerialize> McSerialize for Vec<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> where T: McSerialize {
+		for item in self {
+			item.mc_serialize(serializer)?;
+		}
+
+		Ok(())
+	}
+}
+
+impl<T: McDeserialize> McDeserialize for Vec<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized, T: McDeserialize {
+		let mut vec = vec![];
+
+		while !deserializer.is_at_end() {
+			vec.push(T::mc_deserialize(deserializer)?);
+		}
+
+		Ok(vec)
+	}
+}
+
+// 3rd party items
+
+impl McSerialize for Uuid {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		serializer.serialize_str_no_length_prefix(&self.to_string());
+
+		Ok(())
+	}
+}
+
+impl McDeserialize for Uuid {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+		if let Some(out) = deserializer.slice_option(36) {
+			let s = String::from_utf8(out.to_vec()).map_err(|_| SerializingErr::UniqueFailure("Could not extract UUID String".to_string()))?;
+
+			match Uuid::parse_str(&s) {
+				Ok(uuid) => Ok(uuid),
+				Err(_) => Err(SerializingErr::UniqueFailure("Could not parse UUID".to_string()))
+			}
+		} else {
+			Err(SerializingErr::UniqueFailure("Not enough data to build UUID".to_string()))
+		}
 	}
 }
 

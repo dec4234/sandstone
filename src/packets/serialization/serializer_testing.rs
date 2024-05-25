@@ -78,7 +78,7 @@ impl McDeserialize for VarIntMix {
 			four: VarLong::mc_deserialize(deserializer)?,
 		};
 
-		if !deserializer.isAtEnd() {
+		if !deserializer.is_at_end() {
 			return Err(SerializingErr::LeftoverInput);
 		}
 
@@ -116,7 +116,7 @@ impl McDeserialize for StringMix {
 			fifth: String::mc_deserialize(deserializer)?,
 		};
 
-		if !deserializer.isAtEnd() {
+		if !deserializer.is_at_end() {
 			return Err(SerializingErr::LeftoverInput);
 		}
 
@@ -126,10 +126,11 @@ impl McDeserialize for StringMix {
 
 #[cfg(test)]
 mod tests {
-	use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use crate::packets::packet_definer::PacketState;
+	use crate::packets::packets::packet;
+	use crate::packets::packets::packet::HandshakingBody;
+	use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 	use crate::packets::serialization::serializer_testing::{Group, StringMix, VarIntMix};
-	use crate::packets::versions::v1_20;
-	use crate::packets::versions::v1_20::HandshakingBody;
 	use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
 	#[test]
@@ -204,29 +205,10 @@ mod tests {
 	}
 
 	#[test]
-	#[ignore]
-	fn serialize_handshake() {
-		let handshake = v1_20::HandshakingBody {
-			protocol_version: VarInt(758),
-			server_address: "localhost".to_string(),
-			port: 25565,
-			next_state: VarInt(1),
-		};
-
-		let mut serializer = McSerializer::new();
-
-		handshake.mc_serialize(&mut serializer).unwrap();
-		println!("{:?}", serializer.output);
-
-		// length, id      protocol      Address                                          port         next state
-		// [16, 0,         246, 5,       9, 108, 111, 99, 97, 108, 104, 111, 115, 116,    99, 221,     1]
-	}
-
-	#[test]
 	fn try_direct_deserialize() {
 		let mut serializer = McSerializer::new();
 
-		let p = v1_20::v1_20::Handshaking(HandshakingBody {
+		let p = packet::Packet::Handshaking(HandshakingBody {
 			protocol_version: VarInt(3),
 			server_address: "".to_string(),
 			port: 0,
@@ -236,7 +218,7 @@ mod tests {
 		p.mc_serialize(&mut serializer).unwrap();
 
 		let mut deserializer = McDeserializer::new(&serializer.output);
-		let out = v1_20::v1_20::mc_deserialize_id(&mut deserializer, 0).unwrap();
+		let out = packet::Packet::deserialize_state(&mut deserializer, &PacketState::HANDSHAKING).unwrap();
 
 		println!("{:?}", out);
 	}

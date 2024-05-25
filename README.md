@@ -22,7 +22,7 @@ fn main() {
 
 		let mut client = CraftClient::from_connection(socket).unwrap();
 
-		let mut response = UniversalStatusResponse::new(ProtocolVerison::v1_20, "&a&lThis is a test description &b§kttt");
+		let mut response = UniversalStatusResponse::new(ProtocolVerison::V1_20, "&a&lThis is a test description &b§kttt");
 		response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
 
 		let image = image::open("src/server-icon.png").unwrap();
@@ -42,7 +42,8 @@ More examples can be found in the [examples/](examples) folder.
 ## TODO
 The actual TODO list is massive, but here are the current focuses of the project. Main priorities are listed first.
 
-- [ ] Figure out what to do with packets and begin implementing a full version
+- [x] Figure out what to do with packets and begin implementing a full version
+  - [ ] Deserialize given standard info tests
 - [ ] Begin basic login procedure handler?
 - [ ] Compression support
 - [ ] Encryption support

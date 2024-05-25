@@ -13,11 +13,15 @@ use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
 /// Lists the methods required to handle a status request. Check [DefaultStatusHandler] for a default implementation.
+/// 
+/// The status procedure can be found [here](https://wiki.vg/Server_List_Ping)
 pub trait StatusHandler {
 	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: UniversalStatusResponse, ping_handler: P) -> Result<()>;
 }
 
 /// Lists the methods required to handle a ping request. Check [DefaultPingHandler] for a default implementation.
+/// 
+/// The ping procedure can be found [here](https://wiki.vg/Server_List_Ping)
 pub trait PingHandler {
 	async fn handle_ping(connection: &mut CraftClient) -> Result<()>;
 }
@@ -87,10 +91,15 @@ impl PingHandler for DefaultPingHandler {
 	}
 }
 
+/// The procedure required to handle a handshake. Check [DefaultHandshakeHandler] for a default implementation.
+/// 
+/// If you would like to implement it yourself then check [here](https://wiki.vg/Protocol#Handshake)
 pub trait HandshakeHandler {
 	async fn handle_handshake(client: &mut CraftClient) -> Result<()>;
 }
 
+
+/// The default handshake handler. Not sure why you wouldn't want to use it, but it's here.
 pub struct DefaultHandshakeHandler;
 
 impl HandshakeHandler for DefaultHandshakeHandler {

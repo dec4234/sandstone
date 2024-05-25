@@ -90,6 +90,18 @@ impl <'a> McDeserializer<'a> {
 		self.increment(slice.len());
 		slice
 	}
+	
+	/// Slice the internal buffer, starting at the current index and up to the 
+	/// bound provided, but only if it is within bounds
+	pub fn slice_option(&mut self, bound: usize) -> Option<&[u8]> {
+		if self.index + bound > self.data.len() {
+			return None;
+		}
+		
+		let slice = &self.data[self.index..(self.index + bound)];
+		self.increment(bound);
+		Some(slice)
+	}
 
 	pub fn pop(&mut self) -> Option<u8> {
 		if self.index < self.data.len() {
@@ -101,17 +113,20 @@ impl <'a> McDeserializer<'a> {
 		}
 	}
 
+	/// Increment the index of this McDeserializer by the amount specified
 	pub fn increment(&mut self, amount: usize) {
 		self.index += amount;
 	}
 
+	/// Increment the index of this McDeserializer by the difference between the current index 
+	/// and the provided index.
 	pub fn increment_by_diff(&mut self, other: usize) {
 		if other > self.index {
 			self.increment(other - self.index);
 		}
 	}
 
-	pub fn isAtEnd(&self) -> bool {
+	pub fn is_at_end(&self) -> bool {
 		self.index >= self.data.len()
 	}
 
@@ -125,6 +140,9 @@ impl <'a> McDeserializer<'a> {
 		McDeserializer::new(&self.data[self.index..])
 	}
 	
+	/// Create a new McDeserializer with a start at `index` and an end at `index + end`.
+	/// Basically reserves the number of bytes you specify for the sub-deserializer.
+	/// Also increments the parent McDeserializer's index by `end`
 	pub fn sub_deserializer_length(&mut self, end: usize) -> Result<McDeserializer> {
 		if self.index + end > self.data.len() {
 			return Err(anyhow!("Sub-deserializer length exceeds data length"));

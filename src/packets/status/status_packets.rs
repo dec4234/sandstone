@@ -1,8 +1,7 @@
 use std::io::Cursor;
 
-use base64::{alphabet, Engine};
-use base64::alphabet::Alphabet;
-use base64::engine::{general_purpose, GeneralPurpose, GeneralPurposeConfig};
+use base64::Engine;
+use base64::engine::general_purpose;
 use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -12,10 +11,6 @@ use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::protocol_details::protocol_verison::ProtocolVerison;
-
-const ALPHABET: Alphabet = alphabet::STANDARD;
-const CONFIG: GeneralPurposeConfig = GeneralPurposeConfig::new();
-const ENGINE: GeneralPurpose = GeneralPurpose::new(&ALPHABET, CONFIG);
 
 #[derive(Debug, Clone)]
 pub struct UniversalHandshakePacket {
@@ -103,7 +98,7 @@ impl PacketTrait for UniversalStatusRequest {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[allow(non_snake_case)]
 pub struct UniversalStatusResponse {
 	version: VersionInfo,
@@ -199,13 +194,13 @@ impl StateBasedDeserializer for UniversalStatusResponse {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct VersionInfo {
 	name: String,
 	protocol: i16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PlayerInfo {
 	max: i32,
 	online: i32,
@@ -222,12 +217,12 @@ impl PlayerInfo {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DescriptionInfo { // TODO: update to chat thing?
 	text: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PlayerSample {
 	name: String,
 	id: String,
