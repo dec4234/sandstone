@@ -4,7 +4,7 @@ pub enum PacketDirection {
 	BIDIRECTIONAL
 }
 
-/// Used to help discern the type of packet being received. Note that some states will have
+/// Used to help discern the type of packet being received. Note that different states could have
 /// packets with the same ids. 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PacketState {
@@ -161,6 +161,13 @@ pub mod macros {
                     return Err(SerializingErr::UniqueFailure("Could not find matching type.".to_string()));
                 }
             }
+        };
+    }
+    
+    #[macro_export]
+    macro_rules! packets {
+        () => {
+            
         };
     }
 }

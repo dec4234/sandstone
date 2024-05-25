@@ -84,7 +84,7 @@ impl McSerialize for UniversalStatusRequest {
 }
 
 impl StateBasedDeserializer for UniversalStatusRequest {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
+	fn deserialize_state<'a>(_deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
 		if state != &PacketState::STATUS {
 			return Err(SerializingErr::InvalidPacketState);
 		}
@@ -116,11 +116,11 @@ pub struct UniversalStatusResponse {
 }
 
 impl UniversalStatusResponse {
-	pub fn new<T: Into<String>>(protocol_verison: ProtocolVerison, description: T) -> Self {
+	pub fn new<T: Into<String>>(protocol_version: ProtocolVerison, description: T) -> Self {
 		Self {
 			version: VersionInfo {
-				name: protocol_verison.get_fancy_name(),
-				protocol: protocol_verison.get_version_number(),
+				name: protocol_version.get_fancy_name(),
+				protocol: protocol_version.get_version_number(),
 			},
 			players: PlayerInfo {
 				max: 0,

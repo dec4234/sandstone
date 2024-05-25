@@ -16,35 +16,46 @@ use crate::packets::serialization::serializer_handler::{McDeserialize, McDeseria
 use crate::packets::status::status_handler::StatusHandler;
 use crate::packets::status::status_packets::UniversalHandshakePacket;
 use crate::protocol_details::datatypes::var_types::VarInt;
+use crate::protocol_details::protocol_verison::ProtocolVerison;
+
+const BUFFER_SIZE: usize = 1024;
 
 pub struct CraftClient {
 	tcp_stream: TcpStream,
 	socket_addr: SocketAddr,
 	pub packet_state: PacketState,
 	compression_threshold: Option<i32>,
-	buffer: Vec<u8>
+	buffer: Vec<u8>,
+	client_version: Option<VarInt>
 }
 
 impl CraftClient {
 	pub fn from_connection(tcp_stream: TcpStream) -> Result<Self> {
-		tcp_stream.set_nodelay(true)?;
+		tcp_stream.set_nodelay(true)?; // disable Nagle's algorithm
 		
 		Ok(Self {
 			socket_addr: tcp_stream.peer_addr()?,
 			tcp_stream,
 			packet_state: PacketState::HANDSHAKING,
 			compression_threshold: None,
-			buffer: vec![]
+			buffer: vec![],
+			client_version: None
 		})
 	}
 	
 	pub async fn send_packet<P: McSerialize + StateBasedDeserializer>(&mut self, packet: PackagedPacket<P>) -> Result<()> {
 		let mut serializer = McSerializer::new();
 		packet.mc_serialize(&mut serializer)?;
-		self.tcp_stream.write_all(&serializer.output).await?;
+		let output = &serializer.output;
+		
+		// TODO: compress & encrypt here
+		
+		self.tcp_stream.write_all(output).await?;
 		Ok(())
 	}
 	
+	// TODO: could use a good optimization pass - reduce # of copies, ideally to 0
+	/// Receive a minecraft packet from the client. This will block until a packet is received.
 	pub async fn receive_packet<P: McSerialize + StateBasedDeserializer>(&mut self) -> Result<PackagedPacket<P>> {
 		if !self.buffer.is_empty() {
 			let mut deserializer = McDeserializer::new(&self.buffer);
@@ -53,12 +64,10 @@ impl CraftClient {
 			return Ok(packet);
 		}
 
-		/*
-		1. if n = buff.len then maybe continuously read until it != len? That should pull all data
-		 */
+		// TODO: test packets greater than buffer size - just make it really small
 		let mut aggregate = vec![];
 		let mut agg_length = 0;
-		let mut buffer = vec![0; 1024]; // TODO: what happens if this overflows?
+		let mut buffer = vec![0; BUFFER_SIZE];
 		let length = self.tcp_stream.read(&mut buffer).await;
 		
 		if let Err(e) = length {
@@ -75,7 +84,7 @@ impl CraftClient {
 		
 		aggregate.append(&mut buffer[0..length].to_vec());
 		
-		if length == 1024 {
+		if length == BUFFER_SIZE {
 			loop { // TODO: also break at max packet size
 				if let Ok(length) = self.tcp_stream.try_read(&mut buffer) {
 					if length == 0 {
@@ -85,7 +94,7 @@ impl CraftClient {
 					agg_length += length;
 					aggregate.append(&mut buffer[0..length].to_vec());
 					
-					if length < 1024 {
+					if length < BUFFER_SIZE {
 						break;
 					}
 				} else {
@@ -102,6 +111,8 @@ impl CraftClient {
 			self.close().await;
 			return Err(Error::from(NoDataReceivedError));
 		}
+		
+		// TODO: decompress & decrypt here
 		
 		let mut deserializer = McDeserializer::new(&aggregate[0..agg_length]);
 		let packet = PackagedPacket::deserialize_state(&mut deserializer, &self.packet_state)?;
@@ -124,7 +135,7 @@ impl CraftClient {
 			return Ok((length, packet_id));
 		}
 
-		let mut buffer = vec![0; 1024];
+		let mut buffer = vec![0; BUFFER_SIZE];
 		let length = self.tcp_stream.peek(&mut buffer).await?;
 		
 		if length == 0 {
@@ -145,6 +156,12 @@ impl CraftClient {
 		debug!("Closing connection to {}", self);
 		self.tcp_stream.shutdown().await.is_ok()
 	}
+	
+	/// Get the protocol version of this client as a `ProtocolVersion` enum. This will return 'None' if the 
+	/// handshake has not been performed or if the protocol version number is not known to the library
+	pub fn get_client_version(&self) -> Option<ProtocolVerison> {
+		Some(ProtocolVerison::from(self.client_version?.0 as i16)?)
+	}
 }
 
 impl Display for CraftClient {
@@ -156,31 +173,5 @@ impl Display for CraftClient {
 		};
 
 		write!(f, "{}", format!("CraftConnection: {}", s))
-	}
-}
-
-pub trait HandshakeHandler {
-	async fn handle_handshake(client: &mut CraftClient) -> Result<()>;
-}
-
-pub struct DefaultHandshakeHandler;
-
-impl HandshakeHandler for DefaultHandshakeHandler {
-	async fn handle_handshake(client: &mut CraftClient) -> Result<()> {
-		if client.packet_state != PacketState::HANDSHAKING {
-			return Err(Error::from(InvalidPacketState));
-		}
-		
-		let packet = client.receive_packet::<UniversalHandshakePacket>().await?;
-		
-		if packet.data.next_state == VarInt(1) {
-			client.change_state(PacketState::STATUS);
-		} else if packet.data.next_state == VarInt(2) {
-			client.change_state(PacketState::LOGIN);
-		} else {
-			return Err(anyhow::anyhow!("Invalid next state detected, got \"{}\"", packet.data.next_state.0));
-		}
-		
-		Ok(())
 	}
 }

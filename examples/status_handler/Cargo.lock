@@ -327,6 +327,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f54427cfd1c7829e2a139fcefea601bf088ebca651d2bf53ebc600eac295dae"
 dependencies = [
  "crc32fast",
+ "libz-sys",
  "miniz_oxide",
 ]
 
@@ -472,12 +473,12 @@ dependencies = [
 [[package]]
 name = "ironcraft"
 version = "0.1.0"
-source = "git+https://github.com/dec4234/ironcraft.git?rev=28d556b730cdadb27bbc047bc7155b99254ddd9b#28d556b730cdadb27bbc047bc7155b99254ddd9b"
 dependencies = [
  "anyhow",
  "base64",
  "bincode",
  "error",
+ "flate2",
  "image",
  "indexmap",
  "log",
@@ -548,6 +549,17 @@ dependencies = [
  "arbitrary",
  "cc",
  "once_cell",
+]
+
+[[package]]
+name = "libz-sys"
+version = "1.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d97137b25e321a73eef1418d1d5d2eda4d77e12813f8e6dead84bc52c5870a7b"
+dependencies = [
+ "cc",
+ "pkg-config",
+ "vcpkg",
 ]
 
 [[package]]
@@ -1325,6 +1337,9 @@ name = "uuid"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a183cf7feeba97b4dd1c0d46788634f6221d87fa961b305bed08c851829efcc0"
+dependencies = [
+ "getrandom",
+]
 
 [[package]]
 name = "v_frame"

@@ -4,25 +4,29 @@ use anyhow::{Error, Result};
 use log::{debug, trace};
 
 use crate::network::connection::CraftClient;
+use crate::network::network_error;
 use crate::packets::packet_definer::PacketState;
 use crate::packets::raw_packet::PackagedPacket;
 use crate::packets::serialization::serializer_error::SerializingErr::InvalidPacketState;
-use crate::packets::status::status_packets::{UniversalPingRequest, UniversalPingResponse, UniversalStatusRequest, UniversalStatusResponse};
+use crate::packets::status::status_packets::{UniversalHandshakePacket, UniversalPingRequest, UniversalPingResponse, UniversalStatusRequest, UniversalStatusResponse};
 use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
+/// Lists the methods required to handle a status request. Check [DefaultStatusHandler] for a default implementation.
 pub trait StatusHandler {
 	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: UniversalStatusResponse, ping_handler: P) -> Result<()>;
 }
 
+/// Lists the methods required to handle a ping request. Check [DefaultPingHandler] for a default implementation.
 pub trait PingHandler {
 	async fn handle_ping(connection: &mut CraftClient) -> Result<()>;
 }
 
+/// The default server-list status handler. Not sure why you wouldn't want to use it, but it's here.
 pub struct DefaultStatusHandler;
 
 impl StatusHandler for DefaultStatusHandler {
-	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: UniversalStatusResponse, ping_handler: P) -> Result<()> {
+	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: UniversalStatusResponse, _ping_handler: P) -> Result<()> {
 		if connection.packet_state != PacketState::STATUS {
 			return Err(Error::from(InvalidPacketState));
 		}
@@ -50,6 +54,7 @@ impl StatusHandler for DefaultStatusHandler {
 	}
 }
 
+/// The default ping handler. Not sure why you wouldn't want to use it, but it's here.
 pub struct DefaultPingHandler;
 
 impl PingHandler for DefaultPingHandler {
@@ -78,6 +83,32 @@ impl PingHandler for DefaultPingHandler {
 
 		connection.close().await;
 
+		Ok(())
+	}
+}
+
+pub trait HandshakeHandler {
+	async fn handle_handshake(client: &mut CraftClient) -> Result<()>;
+}
+
+pub struct DefaultHandshakeHandler;
+
+impl HandshakeHandler for DefaultHandshakeHandler {
+	async fn handle_handshake(client: &mut CraftClient) -> Result<()> {
+		if client.packet_state != PacketState::HANDSHAKING {
+			return Err(Error::from(network_error::InvalidPacketState));
+		}
+		
+		let packet = client.receive_packet::<UniversalHandshakePacket>().await?;
+		
+		if packet.data.next_state == VarInt(1) {
+			client.change_state(PacketState::STATUS);
+		} else if packet.data.next_state == VarInt(2) {
+			client.change_state(PacketState::LOGIN);
+		} else {
+			return Err(anyhow::anyhow!("Invalid next state detected, got \"{}\"", packet.data.next_state.0));
+		}
+		
 		Ok(())
 	}
 }

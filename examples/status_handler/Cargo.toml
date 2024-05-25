@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ironcraft = {git = "https://github.com/dec4234/ironcraft.git", rev = "28d556b730cdadb27bbc047bc7155b99254ddd9b"}
+ironcraft = {path = "../../../ironcraft"}
 tokio = {version = "1.37.0", features = ["full", "macros"]}
 simple_logger = "5.0.0"
 log = "0.4.21"

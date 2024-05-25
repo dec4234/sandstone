@@ -10,6 +10,15 @@ use crate::packets::serialization::serializer_handler::DeserializeResult;
 use crate::protocol;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
+/*
+Maybe its like
+Packet::Move().get_version(ProtocolVersion::V1_20).get_fields()
+
+Packet::get(ProtocolVersion::V1_20, 0x00).get_fields() -> "move"
+
+Might not be sustainable, obviously only support major versions
+ */
+
 // https://wiki.vg/Protocol
 protocol!(v1_20, 764 => {
 
@@ -34,13 +43,6 @@ protocol!(v1_20, 764 => {
         payload: u64
     }
 });
-
-#[derive(Debug)]
-pub struct RawPacket {
-	Length: VarInt,
-	Packet_ID: VarInt,
-	Data: Vec<u8>
-}
 
 #[cfg(test)]
 mod tests {

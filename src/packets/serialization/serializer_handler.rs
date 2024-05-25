@@ -138,14 +138,20 @@ impl <'a> McDeserializer<'a> {
 	}
 }
 
+/// The standard deserializer used for most regular deserialization operations. Converts
+/// byte data into rust structs and primitive data types
 pub trait McDeserialize {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized;
 }
 
+/// Deserialize data given the current packet state and the packet id. This is needed since
+/// the packet id is not enough to determine the packet type in some cases. 
+/// (ie. Both STATUS and HANDSHAKING states have a packet with ID 0)
 pub trait StateBasedDeserializer {
 	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> where Self: Sized;
 }
 
+/// Serialize a struct into a byte buffer to be sent over TCP
 pub trait McSerialize {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr>;
 }
