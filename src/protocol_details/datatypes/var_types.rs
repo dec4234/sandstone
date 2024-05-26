@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::{Display, Error, Formatter, Write};
+use std::fmt::{Display, Error, Formatter};
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
@@ -25,7 +25,7 @@ impl VarInt {
 	// Reading algorithm taken from https://wiki.vg/
 	// TODO: Optimize
 	pub fn from_slice(bytes: &[u8]) -> Result<Self> {
-		if(bytes.len() > 5) {
+		if bytes.len() > 5 {
 			return Err(anyhow!("Max bytes of byte array is 5. VarInts are i32"));
 		}
 
@@ -110,7 +110,7 @@ impl FromStr for VarInt {
 
 		match varInt {
 			Ok(varI) => {Ok(varI)}
-			Err(e) => {Err(Error)}
+			Err(_e) => {Err(Error)}
 		}
 	}
 }
@@ -184,7 +184,7 @@ impl VarLong {
 	// Reading algorithm taken from https://wiki.vg/
 	// TODO: Optimize
 	pub fn from_slice(bytes: &[u8]) -> Result<Self> {
-		if(bytes.len() > 10) {
+		if bytes.len() > 10 {
 			return Err(anyhow!("Max bytes of byte array is 10. VarLongs are i64"));
 		}
 
@@ -202,7 +202,7 @@ impl VarLong {
 
 			pos += 7;
 
-			if(pos >= 64) {
+			if pos >= 64 {
 				return Err(anyhow!("Bit length is too long"));
 			}
 		}
@@ -269,7 +269,7 @@ impl FromStr for VarLong {
 
 		match varInt {
 			Ok(varI) => {Ok(varI)}
-			Err(e) => {Err(Error)}
+			Err(_) => {Err(Error)}
 		}
 	}
 }
@@ -335,28 +335,7 @@ impl Into<i64> for VarLong {
 	}
 }
 
-// Other rust stuff
-impl<T: McSerialize> McSerialize for Vec<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> where T: McSerialize {
-		for item in self {
-			item.mc_serialize(serializer)?;
-		}
-
-		Ok(())
-	}
-}
-
-impl<T: McDeserialize> McDeserialize for Vec<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized, T: McDeserialize {
-		let mut vec = vec![];
-
-		while !deserializer.is_at_end() {
-			vec.push(T::mc_deserialize(deserializer)?);
-		}
-
-		Ok(vec)
-	}
-}
+// For rust stuff go to serializer_types.rs
 
 // 3rd party items
 

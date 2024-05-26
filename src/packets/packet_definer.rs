@@ -1,12 +1,14 @@
+/// Defines the DESTINATION of the packet. So a packet that is C -> S would be `PacketDirection::SERVER`
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum PacketDirection {
 	SERVER,
 	CLIENT,
-	BIDIRECTIONAL
+	BIDIRECTIONAL // are there any?
 }
 
 /// Used to help discern the type of packet being received. Note that different states could have
 /// packets with the same ids. 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum PacketState {
 	STATUS,
 	HANDSHAKING,
@@ -20,7 +22,7 @@ impl PacketState {
         match id {
             1 => Some(PacketState::STATUS),
             2 => Some(PacketState::LOGIN),
-            _ => None
+            _ => None // others are unknown at this time
         }
     }
     
@@ -39,20 +41,12 @@ pub trait PacketTrait {
 	fn state() -> PacketState;
 }
 
-pub trait PacketVersionDefinition {
-
-}
-
-pub trait PacketDirectionTrait {
-	fn get_direction() -> PacketDirection;
-}
-
 #[macro_use]
 mod macros {
     #[macro_export]
     macro_rules! packets {
         ($ref_ver: ident => {
-            $($name: ident, $name_body: ident, $packetID: literal, $state: ident => {
+            $($name: ident, $name_body: ident, $packetID: literal, $state: ident, $direction: ident => {
                 $($field: ident: $t: ty),*
             }),*
         }) => {
@@ -60,6 +54,14 @@ mod macros {
                 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                 pub struct $name_body { // The body struct of the packet
                     $(pub(crate) $field: $t),*
+                }
+                
+                impl $name_body {
+                    pub fn new($($field: $t),*) -> Self {
+                        Self {
+                            $($field),*
+                        }
+                    }
                 }
             
                 impl McDeserialize for $name_body {
@@ -86,9 +88,9 @@ mod macros {
                     }
                 }
             
-                impl Into<$name_body> for Packet {
-                    fn into(self) -> $name_body {
-                        match self {
+                impl From<Packet> for $name_body {
+                    fn from(p: Packet) -> Self {
+                        match p {
                             Packet::$name(p) => p,
                             _ => panic!("Invalid conversion")
                         }
@@ -97,29 +99,57 @@ mod macros {
             )*
             
             $crate::as_item!(
-                #[derive(Debug, Clone)]
+                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                 pub enum Packet {
                     $($name($name_body)),*
                 }
             );
             
+            impl Packet {
+                pub fn packet_id(&self) -> u8 {
+                    match self {
+                        $(Packet::$name(_) => $packetID),*
+                    }
+                }
+                
+                pub fn state(&self) -> PacketState {
+                    match self {
+                        $(Packet::$name(_) => PacketState::$state),*
+                    }
+                }
+                
+                pub fn direction(&self) -> PacketDirection {
+                    match self {
+                        $(Packet::$name(_) => PacketDirection::$direction),*
+                    }
+                }
+            }
+            
             impl McSerialize for Packet {
                 fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+                    let mut length_serializer = McSerializer::new();
                     match self {
-                        $(Packet::$name(b) => {b.mc_serialize(serializer)?}),*
+                        $(Packet::$name(b) => {b.mc_serialize(&mut length_serializer)?}),*
                     }
-
-                     Ok(())
+                    
+                    let packet_id = VarInt(self.packet_id() as i32);
+                    
+                    VarInt(length_serializer.output.len() as i32 + packet_id.to_bytes().len() as i32).mc_serialize(serializer)?;
+                    packet_id.mc_serialize(serializer)?;
+                    serializer.merge(length_serializer);
+                    
+            
+                    Ok(())
                 }
             }
             
             impl StateBasedDeserializer for Packet {
-                fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
+                fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
                     let length = VarInt::mc_deserialize(deserializer)?;
                     let packet_id = VarInt::mc_deserialize(deserializer)?;
                     
                     $(
-                    if(state == &PacketState::$state && packet_id.0 == $packetID) {
+                    if(packet_id.0 == $packetID && state == PacketState::$state && packet_direction == PacketDirection::$direction) {
                         let a = $name_body::mc_deserialize(deserializer);
 
                         if let Ok(a) = a {
@@ -133,9 +163,9 @@ mod macros {
             }
         };
     }
-    
+
     #[macro_export]
-    macro_rules! componenet_struct {
+    macro_rules! component_struct {
         ($name: ident => {
             $($field: ident: $t: ty),*
         }) => {
@@ -143,7 +173,7 @@ mod macros {
             pub struct $name { // The body struct of the packet
                 $($field: $t),*
             }
-        
+
             impl McDeserialize for $name {
                 fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
                     let s = Self {
@@ -153,7 +183,7 @@ mod macros {
                     Ok(s)
                 }
             }
-        
+
             impl McSerialize for $name {
                 fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
                     $(self.$field.mc_serialize(serializer)?;)*

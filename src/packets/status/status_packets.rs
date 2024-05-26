@@ -6,7 +6,7 @@ use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::packets::packet_definer::{PacketState, PacketTrait};
+use crate::packets::packet_definer::{PacketDirection, PacketState, PacketTrait};
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_details::datatypes::var_types::VarInt;
@@ -43,8 +43,8 @@ impl McSerialize for UniversalHandshakePacket {
 }
 
 impl StateBasedDeserializer for UniversalHandshakePacket {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
-		if state != &PacketState::HANDSHAKING {
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
+		if state != PacketState::HANDSHAKING {
 			return Err(SerializingErr::InvalidPacketState);
 		}
 
@@ -79,8 +79,8 @@ impl McSerialize for UniversalStatusRequest {
 }
 
 impl StateBasedDeserializer for UniversalStatusRequest {
-	fn deserialize_state<'a>(_deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
-		if state != &PacketState::STATUS {
+	fn deserialize_state<'a>(_deserializer: &'a mut McDeserializer, state: PacketState, _packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
+		if state != PacketState::STATUS {
 			return Err(SerializingErr::InvalidPacketState);
 		}
 
@@ -183,8 +183,8 @@ impl McSerialize for UniversalStatusResponse {
 }
 
 impl StateBasedDeserializer for UniversalStatusResponse {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
-		if state != &PacketState::STATUS {
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, _packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
+		if state != PacketState::STATUS {
 			return Err(SerializingErr::InvalidPacketState);
 		}
 
@@ -258,8 +258,8 @@ impl McSerialize for UniversalPingRequest {
 }
 
 impl StateBasedDeserializer for UniversalPingRequest {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
-		if state != &PacketState::STATUS {
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, _packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
+		if state != PacketState::STATUS {
 			return Err(SerializingErr::InvalidPacketState);
 		}
 
@@ -285,8 +285,8 @@ impl McSerialize for UniversalPingResponse {
 }
 
 impl StateBasedDeserializer for UniversalPingResponse {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> {
-		if state != &PacketState::STATUS {
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, _packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
+		if state != PacketState::STATUS {
 			return Err(SerializingErr::InvalidPacketState);
 		}
 

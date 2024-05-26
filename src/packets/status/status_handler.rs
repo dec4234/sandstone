@@ -1,4 +1,5 @@
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::cmp::PartialEq;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Error, Result};
 use log::{debug, trace};
@@ -6,21 +7,20 @@ use log::{debug, trace};
 use crate::network::connection::CraftClient;
 use crate::network::network_error;
 use crate::packets::packet_definer::PacketState;
-use crate::packets::raw_packet::PackagedPacket;
+use crate::packets::packets::packet::{Packet, PingResponseBody, StatusRequestBody, StatusResponseBody};
 use crate::packets::serialization::serializer_error::SerializingErr::InvalidPacketState;
 use crate::packets::status::status_packets::{UniversalHandshakePacket, UniversalPingRequest, UniversalPingResponse, UniversalStatusRequest, UniversalStatusResponse};
 use crate::protocol_details::datatypes::var_types::VarInt;
-use crate::protocol_details::protocol_verison::ProtocolVerison;
 
 /// Lists the methods required to handle a status request. Check [DefaultStatusHandler] for a default implementation.
-/// 
+///
 /// The status procedure can be found [here](https://wiki.vg/Server_List_Ping)
 pub trait StatusHandler {
-	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: UniversalStatusResponse, ping_handler: P) -> Result<()>;
+	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: StatusResponseBody, ping_handler: P) -> Result<()>;
 }
 
 /// Lists the methods required to handle a ping request. Check [DefaultPingHandler] for a default implementation.
-/// 
+///
 /// The ping procedure can be found [here](https://wiki.vg/Server_List_Ping)
 pub trait PingHandler {
 	async fn handle_ping(connection: &mut CraftClient) -> Result<()>;
@@ -30,11 +30,11 @@ pub trait PingHandler {
 pub struct DefaultStatusHandler;
 
 impl StatusHandler for DefaultStatusHandler {
-	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: UniversalStatusResponse, _ping_handler: P) -> Result<()> {
+	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: StatusResponseBody, _ping_handler: P) -> Result<()> {
 		if connection.packet_state != PacketState::STATUS {
 			return Err(Error::from(InvalidPacketState));
 		}
-		
+
 		debug!("Handling status for {}", connection);
 
 		if connection.peek_next_packet_details().await?.1.0 == 0x01 {
@@ -42,11 +42,13 @@ impl StatusHandler for DefaultStatusHandler {
 			return Ok(());
 		}
 
-		connection.receive_packet::<UniversalStatusRequest>().await?;
+		if connection.receive_packet().await? != Packet::StatusRequest(StatusRequestBody {}) {
+			return Err(anyhow::anyhow!("Expected Status Request"));
+		}
 
 		trace!("Received status request from {}", connection);
-		
-		let packed = PackagedPacket::new(VarInt(0x00), status_response);
+
+		let packed = Packet::StatusResponse(status_response);
 
 		connection.send_packet(packed).await?;
 
@@ -66,10 +68,10 @@ impl PingHandler for DefaultPingHandler {
 		if connection.packet_state != PacketState::STATUS {
 			return Err(Error::from(InvalidPacketState));
 		}
-		
+
 		debug!("Handling ping for {}", connection);
 
-		let ping_request = connection.receive_packet::<UniversalPingRequest>().await;
+		let ping_request = connection.receive_packet().await;
 
 		if let Err(e) = ping_request {
 			return Err(e); // pipe all other errors
@@ -77,8 +79,8 @@ impl PingHandler for DefaultPingHandler {
 
 		trace!("Received ping request from {}", connection);
 
-		let packed = PackagedPacket::new(VarInt(0x01), UniversalPingResponse {
-			payload: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64
+		let packed = Packet::PingResponse(PingResponseBody {
+			payload: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64
 		});
 
 		connection.send_packet(packed).await?;
@@ -92,7 +94,7 @@ impl PingHandler for DefaultPingHandler {
 }
 
 /// The procedure required to handle a handshake. Check [DefaultHandshakeHandler] for a default implementation.
-/// 
+///
 /// If you would like to implement it yourself then check [here](https://wiki.vg/Protocol#Handshake)
 pub trait HandshakeHandler {
 	async fn handle_handshake(client: &mut CraftClient) -> Result<()>;
@@ -107,17 +109,25 @@ impl HandshakeHandler for DefaultHandshakeHandler {
 		if client.packet_state != PacketState::HANDSHAKING {
 			return Err(Error::from(network_error::InvalidPacketState));
 		}
-		
-		let packet = client.receive_packet::<UniversalHandshakePacket>().await?;
-		
-		if packet.data.next_state == VarInt(1) {
-			client.change_state(PacketState::STATUS);
-		} else if packet.data.next_state == VarInt(2) {
-			client.change_state(PacketState::LOGIN);
-		} else {
-			return Err(anyhow::anyhow!("Invalid next state detected, got \"{}\"", packet.data.next_state.0));
+
+		let packet = client.receive_packet().await?;
+
+		match packet {
+			Packet::Handshaking(handshake) => {
+				if handshake.next_state == VarInt(1) {
+					client.change_state(PacketState::STATUS);
+				} else if handshake.next_state == VarInt(2) {
+					client.change_state(PacketState::LOGIN);
+				} else {
+					return Err(anyhow::anyhow!("Invalid next state detected, got \"{}\"", handshake.next_state.0));
+				}
+			}
+			_ => {
+				return Err(anyhow::anyhow!("Invalid packet received, expected handshake"));
+			}
 		}
-		
+
+
 		Ok(())
 	}
 }

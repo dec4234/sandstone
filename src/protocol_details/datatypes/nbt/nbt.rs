@@ -1,5 +1,4 @@
-use std::fmt::{Debug, Display};
-use std::hash::Hash;
+use std::fmt::Debug;
 use std::ops::Index;
 
 use anyhow::{anyhow, Result};
@@ -62,12 +61,12 @@ impl NbtTag {
 			NbtTag::Long(_) => Some(8),
 			NbtTag::Float(_) => Some(4),
 			NbtTag::Double(_) => Some(8),
-			NbtTag::ByteArray(b) => None,
-			NbtTag::String(s) => None,
-			NbtTag::List(l) => None,
-			NbtTag::Compound(c) => None,
-			NbtTag::IntArray(i) => None,
-			NbtTag::LongArray(l) => None,
+			NbtTag::ByteArray(_) => None,
+			NbtTag::String(_) => None,
+			NbtTag::List(_) => None,
+			NbtTag::Compound(_) => None,
+			NbtTag::IntArray(_) => None,
+			NbtTag::LongArray(_) => None,
 		}
 	}
 

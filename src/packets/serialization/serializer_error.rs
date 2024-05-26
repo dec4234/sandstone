@@ -1,6 +1,6 @@
 use std::array::TryFromSliceError;
 use std::error::Error;
-use std::fmt::{Debug, Display, Formatter, Write};
+use std::fmt::{Debug, Display, Formatter};
 use std::str::Utf8Error;
 
 pub enum SerializingErr {

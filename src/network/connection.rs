@@ -1,24 +1,20 @@
-use std::cmp::PartialEq;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
 use anyhow::{Error, Result};
 use log::{debug, trace};
-use serde::__private::ser::constrain;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-use crate::network::network_error::{ConnectionAbortedLocally, InvalidPacketState, NoDataReceivedError};
-use crate::network::network_structure::LoginHandler;
-use crate::packets::packet_definer::PacketState;
-use crate::packets::raw_packet::PackagedPacket;
+use crate::network::network_error::{ConnectionAbortedLocally, NoDataReceivedError};
+use crate::packets::packet_definer::{PacketDirection, PacketState};
+use crate::packets::packets::packet::Packet;
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
-use crate::packets::status::status_handler::StatusHandler;
-use crate::packets::status::status_packets::UniversalHandshakePacket;
 use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
 const BUFFER_SIZE: usize = 1024;
+const PACKET_MAX_SIZE: usize = 2097151; // max of 3 byte VarInt
 
 pub struct CraftClient {
 	tcp_stream: TcpStream,
@@ -43,7 +39,7 @@ impl CraftClient {
 		})
 	}
 	
-	pub async fn send_packet<P: McSerialize + StateBasedDeserializer>(&mut self, packet: PackagedPacket<P>) -> Result<()> {
+	pub async fn send_packet(&mut self, packet: Packet) -> Result<()> {
 		let mut serializer = McSerializer::new();
 		packet.mc_serialize(&mut serializer)?;
 		let output = &serializer.output;
@@ -56,10 +52,10 @@ impl CraftClient {
 	
 	// TODO: could use a good optimization pass - reduce # of copies, ideally to 0
 	/// Receive a minecraft packet from the client. This will block until a packet is received.
-	pub async fn receive_packet<P: McSerialize + StateBasedDeserializer>(&mut self) -> Result<PackagedPacket<P>> {
+	pub async fn receive_packet(&mut self) -> Result<Packet> {
 		if !self.buffer.is_empty() {
 			let mut deserializer = McDeserializer::new(&self.buffer);
-			let packet = PackagedPacket::deserialize_state(&mut deserializer, &self.packet_state)?;
+			let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
 			self.buffer = deserializer.collect_remaining().to_vec();
 			return Ok(packet);
 		}
@@ -110,12 +106,14 @@ impl CraftClient {
 		if length == 0 { // connection closed
 			self.close().await;
 			return Err(Error::from(NoDataReceivedError));
+		} else if length == PACKET_MAX_SIZE {
+			return Err(anyhow::anyhow!("Packet too large"));
 		}
 		
 		// TODO: decompress & decrypt here
 		
 		let mut deserializer = McDeserializer::new(&aggregate[0..agg_length]);
-		let packet = PackagedPacket::deserialize_state(&mut deserializer, &self.packet_state)?;
+		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
 
 		self.buffer.append(&mut deserializer.collect_remaining().to_vec()); // if the next packet was also collected
 

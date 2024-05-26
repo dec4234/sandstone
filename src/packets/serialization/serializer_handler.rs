@@ -1,9 +1,8 @@
 use std::cmp::min;
-use std::fmt::{Debug, Display};
 
 use anyhow::{anyhow, Result};
 
-use crate::packets::packet_definer::PacketState;
+use crate::packets::packet_definer::{PacketDirection, PacketState};
 use crate::packets::serialization::serializer_error::SerializingErr;
 
 /// The result of a deserialization operation
@@ -11,6 +10,7 @@ pub type DeserializeResult<'a, T> = Result<T, SerializingErr>;
 
 /// Handles the serialization of any types that `impl McSerialize`. Holds an
 /// internal buffer representing the serialized data.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct McSerializer {
 	pub output: Vec<u8>
 }
@@ -62,6 +62,7 @@ impl McSerializer {
 }
 
 /// Helper for deserializing byte data into types that `impl McDeserialize`
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct McDeserializer<'a> {
 	pub data: &'a [u8],
 	pub index: usize
@@ -166,7 +167,7 @@ pub trait McDeserialize {
 /// the packet id is not enough to determine the packet type in some cases. 
 /// (ie. Both STATUS and HANDSHAKING states have a packet with ID 0)
 pub trait StateBasedDeserializer {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: &PacketState) -> DeserializeResult<'a, Self> where Self: Sized;
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> where Self: Sized;
 }
 
 /// Serialize a struct into a byte buffer to be sent over TCP

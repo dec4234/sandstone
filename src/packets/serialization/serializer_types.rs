@@ -99,22 +99,47 @@ mod macros {
     }
 }
 
-impl<T> McSerialize for Option<T> where T: McSerialize + McDeserialize {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		if let Some(s) = self {
-			s.mc_serialize(serializer)?;
+impl<T: McSerialize> McSerialize for Vec<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> anyhow::Result<(), SerializingErr> where T: McSerialize {
+		for item in self {
+			item.mc_serialize(serializer)?;
 		}
 
 		Ok(())
 	}
 }
 
-impl<T> McDeserialize for Option<T>  where T: McSerialize + McDeserialize {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
-		if let Ok(t) = T::mc_deserialize(deserializer) {
-			Ok(Some(t))
-		} else {
-			Ok(None)
+impl<T: McDeserialize> McDeserialize for Vec<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized, T: McDeserialize {
+		let mut vec = vec![];
+
+		while !deserializer.is_at_end() {
+			vec.push(T::mc_deserialize(deserializer)?);
 		}
+
+		Ok(vec)
+	}
+}
+
+impl<T: McSerialize> McSerialize for Option<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> anyhow::Result<(), SerializingErr> where T: McSerialize {
+		match self {
+			Some(item) => {
+				item.mc_serialize(serializer)?;
+			}
+			None => {}
+		}
+
+		Ok(())
+	}
+}
+
+impl<T: McDeserialize> McDeserialize for Option<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized, T: McDeserialize {
+		if deserializer.is_at_end() {
+			return Ok(None);
+		}
+		
+		Ok(Some(T::mc_deserialize(deserializer)?))
 	}
 }

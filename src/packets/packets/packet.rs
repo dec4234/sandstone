@@ -1,8 +1,7 @@
-use serde::{Deserialize, Serialize};
-use tokio::io::AsyncWriteExt;
+use uuid::Uuid;
 
 use crate::packets;
-use crate::packets::packet_definer::{PacketState, PacketTrait, PacketVersionDefinition};
+use crate::packets::packet_definer::{PacketDirection, PacketState};
 use crate::packets::packets::packet_component::LoginPropertyElement;
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
@@ -13,7 +12,7 @@ use crate::protocol_details::datatypes::var_types::VarInt;
 // https://wiki.vg/Protocol
 packets!(V1_20 => {
 	// HANDSHAKE
-	Handshaking, HandshakingBody, 0x00, HANDSHAKING => {
+	Handshaking, HandshakingBody, 0x00, HANDSHAKING, SERVER => {
 		protocol_version: VarInt,
 		server_address: String,
 		port: u16,
@@ -25,31 +24,31 @@ packets!(V1_20 => {
 	// They are provided here for completeness, however it is not reccomended to use these ones
 	
 	// Client-bound
-	StatusResponse, StatusResponseBody, 0x00, STATUS => {
+	StatusResponse, StatusResponseBody, 0x00, STATUS, CLIENT => {
 		response: String
 	},
 
-	PingResponse, PingResponseBody, 0x01, STATUS => {
+	PingResponse, PingResponseBody, 0x01, STATUS, CLIENT => {
         payload: u64
     },
 	
 	// Server-bound
-	StatusRequest, StatusRequestBody, 0x00, STATUS => {
+	StatusRequest, StatusRequestBody, 0x00, STATUS, SERVER => {
 		// none
 	},
 	
-	PingRequest, PingRequestBody, 0x01, STATUS => {
+	PingRequest, PingRequestBody, 0x01, STATUS, SERVER => {
 		payload: i64
 	},
 	
 	// LOGIN
 	
 	// Client-bound
-	Disconnect, DisconnectBody, 0x00, LOGIN => {
+	Disconnect, DisconnectBody, 0x00, LOGIN, CLIENT => {
 		reason: String
 	},
 	
-	EncryptionRequest, EncryptionRequestBody, 0x01, LOGIN => {
+	EncryptionRequest, EncryptionRequestBody, 0x01, LOGIN, CLIENT => {
 		server_id: String,
 		public_key_length: VarInt,
 		public_key: Vec<u8>,
@@ -57,11 +56,40 @@ packets!(V1_20 => {
 		verify_token: Vec<u8>
 	},
 	
-	LoginSuccess, LoginSuccessBody, 0x02, LOGIN => {
+	LoginSuccess, LoginSuccessBody, 0x02, LOGIN, CLIENT => {
 		uuid: String,
 		username: String,
 		num_properties: VarInt,
 		array: Vec<LoginPropertyElement>
+	},
+	
+	SetCompression, SetCompressionBody, 0x03, LOGIN, CLIENT => {
+		threshold: VarInt
+	},
+	
+	LoginPluginRequest, LoginPluginRequestBody, 0x04, LOGIN, CLIENT => {
+		message_id: VarInt,
+		channel: String,
+		data: Vec<u8>
+	},
+	
+	// Server-bound
+	LoginStart, LoginStartBody, 0x00, LOGIN, SERVER => {
+		username: String,
+		uuid: Uuid
+	},
+	
+	EncryptionResponse, EncryptionResponseBody, 0x01, LOGIN, SERVER => {
+		shared_secret_length: VarInt,
+		shared_secret: Vec<u8>,
+		verify_token_length: VarInt,
+		verify_token: Vec<u8>
+	},
+	
+	LoginPluginResponse, LoginPluginResponseBody, 0x02, LOGIN, SERVER => {
+		message_id: VarInt,
+		success: bool,
+		data: Option<Vec<u8>>
 	}
 });
 

@@ -126,7 +126,7 @@ impl McDeserialize for StringMix {
 
 #[cfg(test)]
 mod tests {
-	use crate::packets::packet_definer::PacketState;
+	use crate::packets::packet_definer::{PacketDirection, PacketState};
 	use crate::packets::packets::packet;
 	use crate::packets::packets::packet::HandshakingBody;
 	use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
@@ -217,8 +217,9 @@ mod tests {
 
 		p.mc_serialize(&mut serializer).unwrap();
 
+		println!("{:?}", serializer.output);
 		let mut deserializer = McDeserializer::new(&serializer.output);
-		let out = packet::Packet::deserialize_state(&mut deserializer, &PacketState::HANDSHAKING).unwrap();
+		let out = packet::Packet::deserialize_state(&mut deserializer, PacketState::HANDSHAKING, PacketDirection::SERVER).unwrap();
 
 		println!("{:?}", out);
 	}

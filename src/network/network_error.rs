@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fmt::{Debug, Display, Formatter, Pointer, Write};
+use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct NoDataReceivedError;
