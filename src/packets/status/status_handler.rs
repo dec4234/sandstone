@@ -9,7 +9,6 @@ use crate::network::network_error;
 use crate::packets::packet_definer::PacketState;
 use crate::packets::packets::packet::{Packet, PingResponseBody, StatusRequestBody, StatusResponseBody};
 use crate::packets::serialization::serializer_error::SerializingErr::InvalidPacketState;
-use crate::packets::status::status_packets::{UniversalHandshakePacket, UniversalPingRequest, UniversalPingResponse, UniversalStatusRequest, UniversalStatusResponse};
 use crate::protocol_details::datatypes::var_types::VarInt;
 
 /// Lists the methods required to handle a status request. Check [DefaultStatusHandler] for a default implementation.

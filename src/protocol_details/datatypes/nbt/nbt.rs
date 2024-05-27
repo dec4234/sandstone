@@ -10,11 +10,6 @@ use crate::packets::serialization::serializer_handler::{DeserializeResult, McDes
 
 // https://wiki.vg/NBT
 
-pub trait SNBT { // TODO: need to implement all SNBT stuff
-	fn to_snbt(&self) -> String;
-	fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized;
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum NbtTag {
 	End,
@@ -213,8 +208,8 @@ list_nbtvalue!(
 /// Order is not needed according to NBT specification, but I do it anyways
 #[derive(Debug, Clone)]
 pub struct NbtCompound {
-	map: IndexMap<String, NbtTag>,
-	root_name: Option<String>,
+	pub(crate) map: IndexMap<String, NbtTag>,
+	pub(crate) root_name: Option<String>,
 }
 
 impl NbtCompound {
@@ -359,50 +354,6 @@ impl From<NbtTag> for NbtCompound {
 		}
 	}
 }
-
-/*impl SNBT for NbtCompound {
-	fn to_snbt(&self) -> String {
-		let mut s = String::new();
-		
-		let name = match &self.root_name {
-			Some(name) => name,
-			None => ""
-		};
-		
-		s.push_str(format!("TAG_Compound('{}'): {} entries", name, self.map.len()).as_str());
-		s.push_str("{");
-		
-		for (name, tag) in &self.map {
-			match tag { 
-				NbtTag::Compound(c) => {
-					s.push_str(c.to_snbt().as_str());
-				},
-				NbtTag::Byte(b) => {
-					s.push_str(format!("TAG_Byte('{}'): {}", name, b).as_str());
-				},
-				NbtTag::Short(b) => {
-					s.push_str(format!("TAG_Short('{}'): {}", name, b).as_str());
-				},
-				NbtTag::Int(i) => {
-					s.push_str(format!("TAG_Int('{}'): {}", name, i).as_str());
-				},
-				NbtTag::Long(i) => {
-					s.push_str(format!("TAG_Long('{}'): {}", name, i).as_str());
-				},
-				_ => {
-					
-				}
-			}
-		}
-		
-		s.push_str("}");
-		s
-	}
-
-	fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized {
-		todo!()
-	}
-}*/
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NbtList {

@@ -146,11 +146,20 @@ mod macros {
             impl StateBasedDeserializer for Packet {
                 fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
                     let length = VarInt::mc_deserialize(deserializer)?;
-                    let packet_id = VarInt::mc_deserialize(deserializer)?;
+                    
+                    let mut sub = deserializer.sub_deserializer_length(length.0 as usize);
+                    
+                    if let Err(e) = sub {
+                        return Err(SerializingErr::UniqueFailure("Could not create sub deserializer.".to_string()));
+                    }
+                    
+                    let mut sub = sub.unwrap();
+                    
+                    let packet_id = VarInt::mc_deserialize(&mut sub)?;
                     
                     $(
                     if(packet_id.0 == $packetID && state == PacketState::$state && packet_direction == PacketDirection::$direction) {
-                        let a = $name_body::mc_deserialize(deserializer);
+                        let a = $name_body::mc_deserialize(&mut sub);
 
                         if let Ok(a) = a {
                             return Ok(Packet::$name(a));

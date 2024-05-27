@@ -2,11 +2,14 @@ use uuid::Uuid;
 
 use crate::packets;
 use crate::packets::packet_definer::{PacketDirection, PacketState};
+use crate::packets::packets::packet_component::LoginPluginSpec;
 use crate::packets::packets::packet_component::LoginPropertyElement;
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::packets::serialization::serializer_handler::DeserializeResult;
 use crate::packets::serialization::serializer_handler::StateBasedDeserializer;
+use crate::packets::status::status_packets::StatusResponseSpec;
+use crate::protocol_details::datatypes::chat::TextComponent;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
 // https://wiki.vg/Protocol
@@ -25,7 +28,7 @@ packets!(V1_20 => {
 	
 	// Client-bound
 	StatusResponse, StatusResponseBody, 0x00, STATUS, CLIENT => {
-		response: String
+		response: StatusResponseSpec
 	},
 
 	PingResponse, PingResponseBody, 0x01, STATUS, CLIENT => {
@@ -45,7 +48,7 @@ packets!(V1_20 => {
 	
 	// Client-bound
 	Disconnect, DisconnectBody, 0x00, LOGIN, CLIENT => {
-		reason: String
+		reason: TextComponent
 	},
 	
 	EncryptionRequest, EncryptionRequestBody, 0x01, LOGIN, CLIENT => {
@@ -87,10 +90,16 @@ packets!(V1_20 => {
 	},
 	
 	LoginPluginResponse, LoginPluginResponseBody, 0x02, LOGIN, SERVER => {
-		message_id: VarInt,
-		success: bool,
-		data: Option<Vec<u8>>
+		response: LoginPluginSpec
+	},
+	
+	LoginAcknowledged, LoginAcknowledgedBody, 0x03, LOGIN, SERVER => {
+		// none
 	}
+	
+	// CONFIGURATION
+	
+	// Client-bound
 });
 
 #[cfg(test)]

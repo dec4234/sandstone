@@ -1,12 +1,14 @@
 pub mod nbt;
+pub mod snbt;
 mod nbt_testing;
+mod snbt_testing;
 pub mod nbt_error;
 
 #[macro_use]
 mod macros {
 	/// Used to generate the NbtValue trait for primitive types
 	#[macro_export]
-	macro_rules! primvalue_nbtvalue  {
+	macro_rules! primvalue_nbtvalue {
         ($(($t: ty, $name: ident)),*) => {
             $(
             impl Into<NbtTag> for $t {
@@ -104,6 +106,71 @@ mod macros {
                     }
                 }
             )*
+        };
+    }
+
+	#[macro_export]
+	macro_rules! primtype_snbt {
+        ($name: literal, $t: ty) => {
+            impl SNBT for $t {
+                fn to_snbt(&self, name: Option<String>) -> String {
+                    let mut s = String::new();
+                    
+                    s.push_str(format!("TAG_{}(", $name).as_str());
+                    
+                    if let Some(name) = name {
+                        s.push_str(format!("'{name}')").as_str());
+                    } else {
+                        s.push_str(format!("None)").as_str());
+                    }
+                    
+                    s.push_str(format!(": {}", *self).as_str());
+                    
+                    s
+                }
+            
+                fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized {
+                    todo!()
+                }
+            }
+        };
+    }
+
+	#[macro_export]
+	macro_rules! list_snbt {
+        ($name: literal, $t: ty) => {
+            impl SNBT for Vec<$t> {
+                fn to_snbt(&self, name: Option<String>) -> String {
+                    let mut s = String::new();
+                    
+                    s.push_str(format!("TAG_{}(", $name).as_str());
+                    
+                    if let Some(name) = name {
+                        s.push_str(format!("'{name}')").as_str());
+                    } else {
+                        s.push_str(format!("None)").as_str());
+                    }
+                    
+                    s.push_str(": [");
+                    
+                    for b in self {
+                        s.push_str(format!("{}, ", b).as_str());
+                    }
+                    
+                    if self.len() > 0 { // if the vec has any elements
+                        s.pop(); // remove final comman and space
+                        s.pop();
+                    }
+                    
+                    s.push_str("]");
+                    
+                    s
+                }
+            
+                fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized {
+                    todo!()
+                }
+            }
         };
     }
 }

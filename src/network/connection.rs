@@ -44,6 +44,8 @@ impl CraftClient {
 		packet.mc_serialize(&mut serializer)?;
 		let output = &serializer.output;
 		
+		trace!("Sending to {} : {:?}", self, output);
+		
 		// TODO: compress & encrypt here
 		
 		self.tcp_stream.write_all(output).await?;
@@ -101,7 +103,7 @@ impl CraftClient {
 			agg_length += length;
 		}
 		
-		trace!("Received {:?}", &buffer[0..length]);
+		trace!("Received from {} : {:?}", self, &buffer[0..length]);
 
 		if length == 0 { // connection closed
 			self.close().await;

@@ -6,101 +6,14 @@ use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::packets::packet_definer::{PacketDirection, PacketState, PacketTrait};
+use crate::packets::packets::packet::StatusResponseBody;
 use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
-use crate::protocol_details::datatypes::var_types::VarInt;
+use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
-#[derive(Debug, Clone)]
-pub struct UniversalHandshakePacket {
-	pub protocol_version: VarInt,
-	pub server_address: String,
-	pub server_port: u16,
-	pub next_state: VarInt,
-}
-
-impl UniversalHandshakePacket {
-	pub fn new(protocol_version: VarInt, server_address: String, server_port: u16, next_state: VarInt) -> Self {
-		Self {
-			protocol_version,
-			server_address,
-			server_port,
-			next_state,
-		}
-	}
-}
-
-impl McSerialize for UniversalHandshakePacket {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		self.protocol_version.mc_serialize(serializer)?;
-		self.server_address.mc_serialize(serializer)?;
-		self.server_port.mc_serialize(serializer)?;
-		self.next_state.mc_serialize(serializer)?;
-
-		Ok(())
-	}
-}
-
-impl StateBasedDeserializer for UniversalHandshakePacket {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
-		if state != PacketState::HANDSHAKING {
-			return Err(SerializingErr::InvalidPacketState);
-		}
-
-		let raw = UniversalHandshakePacket {
-			protocol_version: VarInt::mc_deserialize(deserializer)?,
-			server_address: String::mc_deserialize(deserializer)?,
-			server_port: u16::mc_deserialize(deserializer)?,
-			next_state: VarInt::mc_deserialize(deserializer)?,
-		};
-
-		Ok(raw)
-	}
-}
-
-impl PacketTrait for UniversalHandshakePacket {
-	fn packet_id() -> u8 {
-		0x00
-	}
-
-	fn state() -> PacketState {
-		PacketState::HANDSHAKING
-	}
-}
-
-#[derive(Debug, Clone)]
-pub struct UniversalStatusRequest;
-
-impl McSerialize for UniversalStatusRequest {
-	fn mc_serialize(&self, _serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		Ok(())
-	}
-}
-
-impl StateBasedDeserializer for UniversalStatusRequest {
-	fn deserialize_state<'a>(_deserializer: &'a mut McDeserializer, state: PacketState, _packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
-		if state != PacketState::STATUS {
-			return Err(SerializingErr::InvalidPacketState);
-		}
-
-		Ok(UniversalStatusRequest)
-	}
-}
-
-impl PacketTrait for UniversalStatusRequest {
-	fn packet_id() -> u8 {
-		0x00
-	}
-
-	fn state() -> PacketState {
-		PacketState::STATUS
-	}
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
-pub struct UniversalStatusResponse {
+pub struct StatusResponseSpec {
 	version: VersionInfo,
 	players: PlayerInfo,
 	description: DescriptionInfo,
@@ -110,7 +23,7 @@ pub struct UniversalStatusResponse {
 	previewsChat: bool,
 }
 
-impl UniversalStatusResponse {
+impl StatusResponseSpec {
 	pub fn new<T: Into<String>>(protocol_version: ProtocolVerison, description: T) -> Self {
 		Self {
 			version: VersionInfo {
@@ -172,7 +85,7 @@ impl UniversalStatusResponse {
 	}
 }
 
-impl McSerialize for UniversalStatusResponse {
+impl McSerialize for StatusResponseSpec {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		let serialized = serde_json::to_string(self).unwrap();
 
@@ -182,25 +95,35 @@ impl McSerialize for UniversalStatusResponse {
 	}
 }
 
-impl StateBasedDeserializer for UniversalStatusResponse {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, _packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
-		if state != PacketState::STATUS {
-			return Err(SerializingErr::InvalidPacketState);
-		}
-
+impl McDeserialize for StatusResponseSpec {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
 		let raw = serde_json::from_str(&String::mc_deserialize(deserializer)?).unwrap(); // TODO: test
 
 		Ok(raw)
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+impl From<StatusResponseBody> for StatusResponseSpec {
+	fn from(p: StatusResponseBody) -> Self {
+		p.response
+	}
+}
+
+impl From<StatusResponseSpec> for StatusResponseBody {
+	fn from(p: StatusResponseSpec) -> Self {
+		StatusResponseBody {
+			response: p
+		}
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VersionInfo {
 	name: String,
 	protocol: i16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerInfo {
 	max: i32,
 	online: i32,
@@ -217,12 +140,12 @@ impl PlayerInfo {
 	}
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DescriptionInfo { // TODO: update to chat thing?
 	text: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerSample {
 	name: String,
 	id: String,
@@ -241,60 +164,6 @@ impl PlayerSample {
 			name: name.into().replace("&", "§"),
 			id: Uuid::new_v4().to_string(), // TODO: no-std support?
 		}
-	}
-}
-
-#[derive(Debug, Clone)]
-pub struct UniversalPingRequest {
-	pub payload: i64,
-}
-
-impl McSerialize for UniversalPingRequest {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		self.payload.mc_serialize(serializer)?;
-
-		Ok(())
-	}
-}
-
-impl StateBasedDeserializer for UniversalPingRequest {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, _packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
-		if state != PacketState::STATUS {
-			return Err(SerializingErr::InvalidPacketState);
-		}
-
-		let raw = UniversalPingRequest {
-			payload: i64::mc_deserialize(deserializer)?,
-		};
-
-		Ok(raw)
-	}
-}
-
-#[derive(Debug, Clone)]
-pub struct UniversalPingResponse {
-	pub payload: i64,
-}
-
-impl McSerialize for UniversalPingResponse {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		self.payload.mc_serialize(serializer)?;
-
-		Ok(())
-	}
-}
-
-impl StateBasedDeserializer for UniversalPingResponse {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, _packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
-		if state != PacketState::STATUS {
-			return Err(SerializingErr::InvalidPacketState);
-		}
-
-		let raw = UniversalPingResponse {
-			payload: i64::mc_deserialize(deserializer)?,
-		};
-
-		Ok(raw)
 	}
 }
 
