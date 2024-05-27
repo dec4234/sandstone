@@ -129,7 +129,7 @@ mod macros {
                     s
                 }
             
-                fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized {
+                fn from_snbt(snbt: &str) -> Result<(Self, String)> where Self: Sized {
                     todo!()
                 }
             }
@@ -167,7 +167,7 @@ mod macros {
                     s
                 }
             
-                fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized {
+                fn from_snbt(snbt: &str) -> Result<(Self, String)> where Self: Sized {
                     todo!()
                 }
             }

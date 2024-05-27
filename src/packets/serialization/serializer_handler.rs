@@ -5,6 +5,14 @@ use anyhow::{anyhow, Result};
 use crate::packets::packet_definer::{PacketDirection, PacketState};
 use crate::packets::serialization::serializer_error::SerializingErr;
 
+/*
+This file defines the handlers for serialization and deserialization in the API.
+Information can be "serialized" from the original type into its raw bytes. This can then be
+sent in a packet over the network.
+Conversely, information can also be "deserialized" from raw bytes into the original type. This is useful
+for reading packets from the network.
+ */
+
 /// The result of a deserialization operation
 pub type DeserializeResult<'a, T> = Result<T, SerializingErr>;
 

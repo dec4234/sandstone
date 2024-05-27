@@ -26,6 +26,7 @@ indexmap = "2.2.6"
 log = "0.4.21"
 image = {version = "0.25.1", features = ["default", "png"]}
 flate2 = {version = "1.0.30", features = ["zlib"]}
+regex = "1.10.4"
 
 [dev-dependencies]
 quartz_nbt = "0.2.9" # used to compare NBT

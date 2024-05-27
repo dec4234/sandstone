@@ -12,6 +12,15 @@ use crate::packets::status::status_packets::StatusResponseSpec;
 use crate::protocol_details::datatypes::chat::TextComponent;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
+/*
+This file defines the packets for the most recent supported version of the Protocol
+
+It has a couple of key responsibilities:
+- Define the packets that are used in the protocol
+- Define the serialization and deserialization for each packet
+- Provide vital information about each packet such as the packet ID, the packet state, and the packet direction
+*/
+
 // https://wiki.vg/Protocol
 packets!(V1_20 => {
 	// HANDSHAKE

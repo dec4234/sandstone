@@ -2,6 +2,11 @@ use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_details::datatypes::var_types::VarInt;
 
+/*
+Defines a lot of random components of network packets. This is separate from packet.rs to reduce
+clutter.
+ */
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoginPropertyElement {
 	pub(crate) name: String,

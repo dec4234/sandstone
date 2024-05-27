@@ -1,3 +1,7 @@
+/*
+Defines key macros, traits and enums used to describe packets.
+ */
+
 /// Defines the DESTINATION of the packet. So a packet that is C -> S would be `PacketDirection::SERVER`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum PacketDirection {
@@ -98,7 +102,7 @@ mod macros {
                 }
             )*
             
-            $crate::as_item!(
+            $crate::as_item!( // weird workaround from mcproto-rs
                 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                 pub enum Packet {
                     $($name($name_body)),*
@@ -106,6 +110,7 @@ mod macros {
             );
             
             impl Packet {
+                // TODO: this needs to be a VARINT?
                 pub fn packet_id(&self) -> u8 {
                     match self {
                         $(Packet::$name(_) => $packetID),*

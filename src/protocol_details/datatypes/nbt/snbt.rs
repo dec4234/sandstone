@@ -3,7 +3,7 @@ use anyhow::Result;
 use crate::{list_snbt, primtype_snbt};
 use crate::protocol_details::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 
-/**
+/*
 This file handles SNBT (String NBT) and all serialization/deserialization involved.
 
 TODO: implement deserializer - chances are it has to be split from SNBT trait
@@ -17,7 +17,7 @@ Remaining Questions:
 // https://wiki.vg/NBT
 pub trait SNBT {
 	fn to_snbt(&self, name: Option<String>) -> String;
-	fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized;
+	fn from_snbt(snbt: &str) -> Result<(Self, String)> where Self: Sized;
 }
 
 impl SNBT for NbtCompound {
@@ -90,7 +90,7 @@ impl SNBT for NbtCompound {
 		s
 	}
 
-	fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized {
+	fn from_snbt(snbt: &str) -> Result<(Self, String)> where Self: Sized {
 		todo!()
 	}
 }
@@ -146,7 +146,7 @@ impl SNBT for NbtTag {
 		}
 	}
 
-	fn from_snbt(snbt: &str) -> Result<Self> where Self: Sized {
+	fn from_snbt(snbt: &str) -> Result<(Self, String)> where Self: Sized {
 		todo!()
 	}
 }

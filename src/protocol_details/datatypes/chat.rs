@@ -5,6 +5,11 @@ use crate::packets::serialization::serializer_handler::{McDeserialize, McDeseria
 use crate::protocol_details::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_details::datatypes::nbt::snbt::SNBT;
 
+/*
+This file defines the TextComponent type in the Minecraft network API.
+Seen in books, disconnect messages, chat messages, action bar, etc.
+ */
+
 // https://wiki.vg/Text_formatting#Text_components
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
