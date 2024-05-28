@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-use crate::protocol_details::datatypes::nbt::nbt::NbtCompound;
-use crate::protocol_details::datatypes::nbt::snbt::SNBT;
 
 /*
 This file defines the TextComponent type in the Minecraft network API.
@@ -159,10 +157,10 @@ impl HoverEvent {
 		Self::new("show_text", HoverComponent::String(text.into()))
 	}
 	
-	pub fn show_item<T: Into<String>>(id: String, count: i32, tag: Option<NbtCompound>) -> Self {
+	pub fn show_item<T: Into<String>>(id: String, count: i32, tag: Option<String>) -> Self {
 		let s = {
 			if let Some(compound) = tag {
-				compound.to_snbt(None)
+				compound
 			} else {
 				"".to_string()
 			}

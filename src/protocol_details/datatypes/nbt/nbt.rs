@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Index;
 
 use anyhow::{anyhow, Result};
-use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 use crate::packets::serialization::serializer_error::SerializingErr;
@@ -10,7 +11,7 @@ use crate::packets::serialization::serializer_handler::{DeserializeResult, McDes
 
 // https://wiki.vg/NBT
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum NbtTag {
 	End,
 	Byte(i8),
@@ -203,12 +204,12 @@ list_nbtvalue!(
     (i64, LongArray, NbtLongArray, 12)
 );
 
-/// Effectively a map of NbtTags
+/// Effectively a map of NbtTagLegacys
 ///
 /// Order is not needed according to NBT specification, but I do it anyways
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct NbtCompound {
-	pub(crate) map: IndexMap<String, NbtTag>,
+	pub(crate) map: HashMap<String, NbtTag>,
 	pub(crate) root_name: Option<String>,
 }
 
@@ -221,7 +222,7 @@ impl NbtCompound {
 		};
 		
 		Self {
-			map: IndexMap::new(),
+			map: HashMap::new(),
 			root_name: option
 		}
 	}
@@ -237,13 +238,7 @@ impl NbtCompound {
 
 	#[inline]
 	pub fn remove<T: Into<String>>(&mut self, name: T) {
-		self.map.shift_remove(&name.into());
-	}
-	
-	pub fn sort_and_return(mut self) -> Self {
-		self.map.sort_keys();
-		
-		self
+		self.map.remove(&name.into());
 	}
 	
 	pub fn from_network<'a>(deserializer: &mut McDeserializer) -> DeserializeResult<'a, NbtCompound> {
@@ -355,7 +350,7 @@ impl From<NbtTag> for NbtCompound {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct NbtList {
 	pub type_id: u8,
 	pub list: Vec<NbtTag>,
