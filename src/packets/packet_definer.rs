@@ -110,7 +110,7 @@ mod macros {
             );
             
             impl Packet {
-                // TODO: this needs to be a VARINT?
+                // TODO: this needs to be a VARINT
                 pub fn packet_id(&self) -> u8 {
                     match self {
                         $(Packet::$name(_) => $packetID),*
@@ -151,7 +151,7 @@ mod macros {
             impl StateBasedDeserializer for Packet {
                 fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
                     let length = VarInt::mc_deserialize(deserializer)?;
-                    
+
                     let mut sub = deserializer.sub_deserializer_length(length.0 as usize);
                     
                     if let Err(e) = sub {

@@ -13,8 +13,8 @@ use crate::packets::serialization::serializer_handler::{McDeserialize, McDeseria
 use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
-const BUFFER_SIZE: usize = 1024;
 const PACKET_MAX_SIZE: usize = 2097151; // max of 3 byte VarInt
+const CONTINUE_BIT: u8 = 0b10000000;
 
 pub struct CraftClient {
 	tcp_stream: TcpStream,
@@ -53,20 +53,47 @@ impl CraftClient {
 	}
 	
 	// TODO: could use a good optimization pass - reduce # of copies, ideally to 0
-	/// Receive a minecraft packet from the client. This will block until a packet is received.
+	/// Receive a minecraft packet from the client. This will block until a packet is received. This removes data from the TCP buffer
 	pub async fn receive_packet(&mut self) -> Result<Packet> {
-		if !self.buffer.is_empty() {
-			let mut deserializer = McDeserializer::new(&self.buffer);
-			let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
-			self.buffer = deserializer.collect_remaining().to_vec();
-			return Ok(packet);
+		let mut vec = vec![];
+		
+		// read varint for length
+		loop {
+			let b = self.tcp_stream.read_u8().await?;
+			
+			if b & CONTINUE_BIT == 0 {
+				vec.push(b);
+				break;
+			} else {
+				vec.push(b);
+				
+				if vec.len() > 3 {
+					return Err(anyhow::anyhow!("VarInt too long"));
+				}
+			}
 		}
-
-		// TODO: test packets greater than buffer size - just make it really small
-		let mut aggregate = vec![];
-		let mut agg_length = 0;
-		let mut buffer = vec![0; BUFFER_SIZE];
-		let length = self.tcp_stream.read(&mut buffer).await;
+		
+		let vari = VarInt::new_from_bytes(vec)?;
+		let varbytes = vari.to_bytes();
+		
+		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
+			return Err(anyhow::anyhow!("Packet too large"));
+		}
+		
+		let length = vari.0 as usize + varbytes.len();
+		
+		// TODO: analysis needed - does this minimize copying?
+		// could define &[u8] to max packet size but that seems like too much memory usage
+		let mut buffer = vec![0; length];
+		
+		let mut i = 0;
+		
+		for b in &varbytes {
+			buffer[i] = *b;
+			i += 1;
+		}
+		
+		let length = self.tcp_stream.read(&mut buffer[varbytes.len()..]).await;
 		
 		if let Err(e) = length {
 			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
@@ -80,30 +107,7 @@ impl CraftClient {
 		
 		let length = length.unwrap();
 		
-		aggregate.append(&mut buffer[0..length].to_vec());
-		
-		if length == BUFFER_SIZE {
-			loop { // TODO: also break at max packet size
-				if let Ok(length) = self.tcp_stream.try_read(&mut buffer) {
-					if length == 0 {
-						break;
-					}
-					
-					agg_length += length;
-					aggregate.append(&mut buffer[0..length].to_vec());
-					
-					if length < BUFFER_SIZE {
-						break;
-					}
-				} else {
-					break;
-				}
-			}
-		} else {
-			agg_length += length;
-		}
-		
-		trace!("Received from {} : {:?}", self, &buffer[0..length]);
+		trace!("Received from {} : {:?}", self, &buffer);
 
 		if length == 0 { // connection closed
 			self.close().await;
@@ -114,38 +118,89 @@ impl CraftClient {
 		
 		// TODO: decompress & decrypt here
 		
-		let mut deserializer = McDeserializer::new(&aggregate[0..agg_length]);
+		let mut deserializer = McDeserializer::new(&buffer);
 		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
+		
+		Ok(packet)
+	}
+	
+	pub async fn peek_packet(&mut self) -> Result<Packet> {
+		let mut vec = vec![];
+		
+		// read varint for length
+		loop {
+			let mut b = [0; 1];
+			if self.tcp_stream.peek(&mut b).await? == 0 {
+				return Err(Error::from(NoDataReceivedError));
+			}
+			
+			let b = b[0];
+			
+			if b & CONTINUE_BIT == 0 {
+				vec.push(b);
+				break;
+			} else {
+				vec.push(b);
+				
+				if vec.len() > 3 {
+					return Err(anyhow::anyhow!("VarInt too long"));
+				}
+			}
+		}
+		
+		let vari = VarInt::new_from_bytes(vec)?;
+		let varbytes = vari.to_bytes();
+		
+		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
+			return Err(anyhow::anyhow!("Packet too large"));
+		}
+		
+		let length = vari.0 as usize + varbytes.len();
+		
+		// TODO: analysis needed - does this minimize copying?
+		// could define &[u8] to max packet size but that seems like too much memory usage
+		let mut buffer = vec![0; length];
+		
+		let mut i = 0;
+		
+		for b in &varbytes {
+			buffer[i] = *b;
+			i += 1;
+		}
+		
+		let length = self.tcp_stream.peek(&mut buffer[varbytes.len()..]).await;
+		
+		if let Err(e) = length {
+			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
+				debug!("OS Error detected in packet receive, closing the connection: {}", e);
+				self.close().await;
+				return Err(Error::from(ConnectionAbortedLocally));
+			}
+			
+			return Err(Error::from(e));
+		}
+		
+		let length = length.unwrap();
+		
+		trace!("Peeked from {} : {:?}", self, &buffer);
 
-		self.buffer.append(&mut deserializer.collect_remaining().to_vec()); // if the next packet was also collected
-
+		if length == 0 { // connection closed
+			self.close().await;
+			return Err(Error::from(NoDataReceivedError));
+		} else if length == PACKET_MAX_SIZE {
+			return Err(anyhow::anyhow!("Packet too large"));
+		}
+		
+		// TODO: decompress & decrypt here
+		
+		let mut deserializer = McDeserializer::new(&buffer);
+		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
+		
 		Ok(packet)
 	}
 	
 	pub fn change_state(&mut self, state: PacketState) {
 		self.packet_state = state;
-	}
-	
-	// TODO: this won't work with compression, although I think we only use it for the length anyways
-	pub async fn peek_next_packet_details(&mut self) -> Result<(VarInt, VarInt)> {
-		if !self.buffer.is_empty() {
-			let mut deserializer = McDeserializer::new(&self.buffer);
-			let length = VarInt::mc_deserialize(&mut deserializer)?;
-			let packet_id = VarInt::mc_deserialize(&mut deserializer)?;
-			return Ok((length, packet_id));
-		}
-
-		let mut buffer = vec![0; BUFFER_SIZE];
-		let length = self.tcp_stream.peek(&mut buffer).await?;
-		
-		if length == 0 {
-			return Err(anyhow::anyhow!("No data received"));
-		}
-		
-		let mut deserializer = McDeserializer::new(&buffer[0..length]);
-		let length = VarInt::mc_deserialize(&mut deserializer)?;
-		let packet_id = VarInt::mc_deserialize(&mut deserializer)?;
-		Ok((length, packet_id))
 	}
 	
 	pub fn enable_compression(&mut self, threshold: Option<i32>) {

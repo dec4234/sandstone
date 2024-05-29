@@ -36,21 +36,30 @@ impl StatusHandler for DefaultStatusHandler {
 
 		debug!("Handling status for {}", connection);
 
-		if connection.peek_next_packet_details().await?.1.0 == 0x01 {
-			P::handle_ping(connection).await?;
-			return Ok(());
+		let packet = connection.receive_packet().await?;
+
+		match packet {
+			Packet::StatusRequest(s) => {
+				trace!("Received status request from {}", connection);
+
+				let packed = Packet::StatusResponse(status_response);
+
+				connection.send_packet(packed).await?;
+			}
+			Packet::PingRequest(b) => {
+				let packed = Packet::PingResponse(PingResponseBody {
+					payload: b.payload as u64
+				});
+
+				connection.send_packet(packed).await?;
+				connection.close().await;
+				return Ok(());
+			}
+			_ => {
+				return Err(anyhow::anyhow!("Invalid packet received, expected status request"));
+			}
 		}
-
-		if connection.receive_packet().await? != Packet::StatusRequest(StatusRequestBody {}) {
-			return Err(anyhow::anyhow!("Expected Status Request"));
-		}
-
-		trace!("Received status request from {}", connection);
-
-		let packed = Packet::StatusResponse(status_response);
-
-		connection.send_packet(packed).await?;
-
+		
 		trace!("Sent response to {}", connection);
 
 		P::handle_ping(connection).await?;
@@ -126,6 +135,7 @@ impl HandshakeHandler for DefaultHandshakeHandler {
 			}
 		}
 
+		debug!("Handshake complete for {}", client);
 
 		Ok(())
 	}

@@ -53,7 +53,7 @@ impl ApiClient {
     pub async fn get_params(&self, url: String, map: HashMap<&str, &str>) -> Result<String> {
         let client = Client::new();
         let resp = client
-            .get(url.clone())
+            .get(&url)
             .query(&map)
             .send()
             .await?;
@@ -100,15 +100,19 @@ impl ApiClient {
         Ok(serde_json::from_str::<T>(text.as_str())?)
     }
 
-    pub async fn post(&self, url: String, body: String) -> Result<String> {
+    pub async fn post<S: Into<String>>(&self, url: S, body: S) -> Result<String> {
         self.post_params(url, body, HashMap::new()).await
     }
 
-    pub async fn post_params(&self, url: String, body: String, map: HashMap<&str, &str>) -> Result<String> {
+    pub async fn post_params<S: Into<String>>(&self, url: S, body: S, map: HashMap<&str, &str>) -> Result<String> {
+        let url = url.into();
+        let body = body.into();
+        
         let client = Client::new();
         let resp = client
-            .post(url.clone())
+            .post(&url)
             .body(body.clone())
+            .header("Content-Type", "application/json")
             .query(&map)
             .send()
             .await?;
@@ -129,28 +133,28 @@ impl ApiClient {
         Ok(text)
     }
 
-    pub async fn post_parse<T: DeserializeOwned>(&self, url: String, body: String, dewrap: bool) -> Result<T> {
+    pub async fn post_parse<T: DeserializeOwned, S: Into<String>>(&self, url: S, body: S, dewrap: bool) -> Result<T> {
         if dewrap {
-            let val = serde_json::from_str::<Value>(self.post(url, body).await?.as_str())?;
+            let val = serde_json::from_str::<Value>(self.post(url.into(), body.into()).await?.as_str())?;
 
             return Ok(serde_json::from_value::<T>(val)?)
         }
 
-        let text = self.post(url, body).await?;
+        let text = self.post(url.into(), body.into()).await?;
 
         let r = serde_json::from_str::<T>(text.as_str())?;
 
         Ok(r)
     }
 
-    pub async fn post_parse_params<T: DeserializeOwned>(&self, url: String, body: String, map: HashMap<&str, &str>, dewrap: bool) -> Result<T> {
+    pub async fn post_parse_params<T: DeserializeOwned, S: Into<String>>(&self, url: S, body: S, map: HashMap<&str, &str>, dewrap: bool) -> Result<T> {
         if dewrap {
-            let val = serde_json::from_str::<Value>(self.post_params(url, body, map).await?.as_str())?;
+            let val = serde_json::from_str::<Value>(self.post_params(url.into(), body.into(), map).await?.as_str())?;
 
             return Ok(serde_json::from_value::<T>(val)?)
         }
 
-        let text = self.post_params(url, body, map).await?;
+        let text = self.post_params(url.into(), body.into(), map).await?;
 
         Ok(serde_json::from_str::<T>(text.as_str())?)
     }
