@@ -1,4 +1,4 @@
-use crate::util::mojang::mojang_api::{get_uuid_from_username, get_uuids_from_usernames};
+use crate::util::mojang::mojang_api::{get_player_details, get_uuid_from_username, get_uuids_from_usernames};
 
 #[ignore]
 #[tokio::test]
@@ -59,4 +59,19 @@ pub async fn test_bulk_usernames() {
 	
 	assert_eq!(resp[3].id, "069a79f444e94726a5befca90e38aaf5");
 	assert_eq!(resp[3].name, "Notch");
+}
+
+#[ignore]
+#[tokio::test]
+pub async fn test_get_player_details() {
+	let response = get_player_details("ef39c1973c3d4776a22622096378a966".to_string()).await.unwrap();
+	assert_eq!(response.id, "ef39c1973c3d4776a22622096378a966");
+	assert_eq!(response.name, "dec4234");
+	assert_eq!(response.legacy, None);
+	assert_eq!(response.profileActions.len(), 0);
+	
+	assert_eq!(response.properties.len(), 1);
+	assert_eq!(response.properties[0].name, "textures");
+	
+	let texture = response.properties[0].get_skin_details().unwrap();
 }
