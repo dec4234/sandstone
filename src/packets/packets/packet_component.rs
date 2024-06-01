@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_details::datatypes::var_types::VarInt;
@@ -81,6 +83,84 @@ impl McDeserialize for LoginPluginSpec {
 			message_id,
 			success,
 			data
+		})
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RemoveResourcePackSpec {
+	pub(crate) has_uuid: bool,
+	pub(crate) uuid: Option<Uuid>
+}
+
+impl McSerialize for RemoveResourcePackSpec {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		self.has_uuid.mc_serialize(serializer)?;
+		self.uuid.mc_serialize(serializer)?;
+
+		Ok(())
+	}
+}
+
+impl McDeserialize for RemoveResourcePackSpec {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+		let has_uuid = bool::mc_deserialize(deserializer)?;
+		let uuid = if has_uuid {
+			Some(Uuid::mc_deserialize(deserializer)?)
+		} else {
+			None
+		};
+
+		Ok(Self {
+			has_uuid,
+			uuid
+		})
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AddResourcePackSpec {
+	pub(crate) uuid: Uuid,
+	pub(crate) url: String,
+	pub(crate) hash: String,
+	pub(crate) forced: bool,
+	pub(crate) has_prompt_message: bool,
+	pub(crate) prompt_message: Option<String>
+}
+
+impl McSerialize for AddResourcePackSpec {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		self.uuid.mc_serialize(serializer)?;
+		self.url.mc_serialize(serializer)?;
+		self.hash.mc_serialize(serializer)?;
+		self.forced.mc_serialize(serializer)?;
+		self.has_prompt_message.mc_serialize(serializer)?;
+		self.prompt_message.mc_serialize(serializer)?;
+
+		Ok(())
+	}
+}
+
+impl McDeserialize for AddResourcePackSpec {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+		let uuid = Uuid::mc_deserialize(deserializer)?;
+		let url = String::mc_deserialize(deserializer)?;
+		let hash = String::mc_deserialize(deserializer)?;
+		let forced = bool::mc_deserialize(deserializer)?;
+		let has_prompt_message = bool::mc_deserialize(deserializer)?;
+		let prompt_message = if has_prompt_message {
+			Some(String::mc_deserialize(deserializer)?)
+		} else {
+			None
+		};
+
+		Ok(Self {
+			uuid,
+			url,
+			hash,
+			forced,
+			has_prompt_message,
+			prompt_message
 		})
 	}
 }

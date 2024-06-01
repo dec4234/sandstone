@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::packets;
 use crate::packets::packet_definer::{PacketDirection, PacketState};
-use crate::packets::packets::packet_component::LoginPluginSpec;
+use crate::packets::packets::packet_component::{AddResourcePackSpec, LoginPluginSpec, RemoveResourcePackSpec};
 use crate::packets::packets::packet_component::LoginPropertyElement;
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
@@ -10,6 +10,7 @@ use crate::packets::serialization::serializer_handler::DeserializeResult;
 use crate::packets::serialization::serializer_handler::StateBasedDeserializer;
 use crate::packets::status::status_packets::StatusResponseSpec;
 use crate::protocol_details::datatypes::chat::TextComponent;
+use crate::protocol_details::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
 /*
@@ -104,11 +105,50 @@ packets!(V1_20 => {
 	
 	LoginAcknowledged, LoginAcknowledgedBody, 0x03, LOGIN, SERVER => {
 		// none
-	}
+	},
 	
 	// CONFIGURATION
 	
 	// Client-bound
+	PluginMessage, PluginMessageBody, 0x00, LOGIN, CLIENT => {
+		channel: String,
+		data: Vec<u8>
+	},
+
+	ConfigDisconnect, ConfigDisconnectBody, 0x01, LOGIN, CLIENT => {
+		reason: TextComponent
+	},
+
+	FinishConfiguration, FinishConfigurationBody, 0x02, LOGIN, CLIENT => {
+		// none
+	},
+
+	KeepAlive, KeepAliveBody, 0x03, LOGIN, CLIENT => {
+		keep_alive_id: i64
+	},
+
+	ConfigurationPing, ConfigurationPingBody, 0x04, LOGIN, CLIENT => {
+		payload: i32
+	},
+
+	RegistryData, RegistryDataBody, 0x05, LOGIN, CLIENT => {
+		registry_codec: NbtCompound
+	},
+
+	RemoveResourcePack, RemoveResourcePackBody, 0x06, LOGIN, CLIENT => {
+		spec: RemoveResourcePackSpec
+	},
+
+	AddResourcePack, AddResourcePackBody, 0x07, LOGIN, CLIENT => {
+		spec: AddResourcePackSpec
+	},
+
+	FeatureFlags, FeatureFlagsBody, 0x08, LOGIN, CLIENT => {
+		total: VarInt,
+		flags: Vec<String>
+	},
+
+
 });
 
 #[cfg(test)]

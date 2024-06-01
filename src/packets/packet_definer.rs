@@ -55,7 +55,7 @@ mod macros {
             }),*
         }) => {
             $(
-                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                #[derive(Debug, Clone, PartialEq, Eq)]
                 pub struct $name_body { // The body struct of the packet
                     $(pub(crate) $field: $t),*
                 }
@@ -103,7 +103,7 @@ mod macros {
             )*
             
             $crate::as_item!( // weird workaround from mcproto-rs
-                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                #[derive(Debug, Clone, PartialEq, Eq)]
                 pub enum Packet {
                     $($name($name_body)),*
                 }
@@ -183,7 +183,7 @@ mod macros {
         ($name: ident => {
             $($field: ident: $t: ty),*
         }) => {
-            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            #[derive(Debug, Clone, PartialEq, Eq)]
             pub struct $name { // The body struct of the packet
                 $($field: $t),*
             }

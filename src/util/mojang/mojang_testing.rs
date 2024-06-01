@@ -1,5 +1,9 @@
 use crate::util::mojang::mojang_api::{get_player_details, get_uuid_from_username, get_uuids_from_usernames};
 
+/*
+These tests are ignored due to rate limit issues
+ */
+
 #[ignore]
 #[tokio::test]
 pub async fn test_get_uuid_from_name() {

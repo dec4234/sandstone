@@ -287,12 +287,6 @@ impl Index<&str> for NbtCompound {
 	}
 }
 
-impl PartialEq for NbtCompound {
-	fn eq(&self, other: &Self) -> bool {
-		return self.map == other.map && self.root_name == other.root_name
-	}
-}
-
 impl McSerialize for NbtCompound {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		if serializer.get_last().is_none() { // only serialize tag type if its the main compound
@@ -349,6 +343,14 @@ impl From<NbtTag> for NbtCompound {
 		}
 	}
 }
+
+impl PartialEq for NbtCompound {
+	fn eq(&self, other: &Self) -> bool {
+		return self.map == other.map && self.root_name == other.root_name
+	}
+}
+
+impl Eq for NbtCompound {}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct NbtList {

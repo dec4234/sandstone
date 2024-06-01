@@ -1,3 +1,7 @@
+/*
+Useful utilities for the library such as macro helpers and enum builders
+ */
+
 #[macro_use]
 pub mod macros {
     /// Create A Hashmap

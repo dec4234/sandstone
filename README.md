@@ -46,7 +46,7 @@ The actual TODO list is massive, but here are the current priorities for the pro
 
 - [x] Figure out what to do with packets and begin implementing a full version
   - [ ] Deserialize given standard info tests
-  - [ ] How to handle optional fields
+  - [x] How to handle optional fields ... See Packet::LoginPluginResponse
 - [ ] Begin basic login procedure handler?
 - [ ] Compression support
 - [ ] Encryption support
@@ -54,6 +54,7 @@ The actual TODO list is massive, but here are the current priorities for the pro
 - [ ] Documentation
   - [ ] Give explainer line for every file
   - [ ] Document all public functions
+  - [ ] Copyright notices
 
 ## Disclaimer
 Please note that this project is under heavy development and functions might not be heavily optimized yet.<br>
