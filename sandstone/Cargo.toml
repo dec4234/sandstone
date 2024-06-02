@@ -14,7 +14,6 @@ exclude = ["src/sandstone-derive"]
 
 [dependencies]
 simple_logger = "5.0.0"
-anyhow = "1.0.86"
 tokio = {features = ["full"], version = "1.37.0"}
 rayon = "1.10.0"
 openssl = {version = "0.10.64", features = ["vendored"]}
@@ -33,6 +32,7 @@ regex = "1.10.4"
 fastsnbt = "0.2.0"
 reqwest = "0.12.4"
 sandstone-derive = "0.1.0"
+thiserror = "1.0.61"
 
 [dev-dependencies]
 #craftio-rs = "0.1.0"

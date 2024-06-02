@@ -1,9 +1,8 @@
-use anyhow::Result;
 use base64::Engine;
 use base64::engine::general_purpose;
 use serde::{Deserialize, Serialize};
 
-use crate::util::mojang::http::ApiClient;
+use crate::util::mojang::http::{ApiClient, HttpError};
 
 /*
 This file defines the Mojang API - used to get information about users, servers and encryption validation
@@ -13,7 +12,7 @@ Reference = https://wiki.vg/Mojang_API
 
 /// Get the UUID of a username
 /// This will return an error if it exceeds the rate limit or if no user with the given username exists
-pub async fn get_uuid_from_username(name: String) -> Result<UuidRequestResponse> {
+pub async fn get_uuid_from_username(name: String) -> Result<UuidRequestResponse, HttpError> {
 	let url = format!("https://api.mojang.com/users/profiles/minecraft/{}", name);
 	
 	Ok(ApiClient::new().enable_debug_mode().await.get_parse(url, false).await?)
@@ -31,7 +30,7 @@ pub struct UuidRequestResponse {
 
 /// Get the UUIDs of multiple usernames at once, in alphabetical order
 /// This will return an error if it exceeds the rate limit
-pub async fn get_uuids_from_usernames(names: Vec<String>) -> Result<Vec<UuidRequestResponse>> {
+pub async fn get_uuids_from_usernames(names: Vec<String>) -> Result<Vec<UuidRequestResponse>, HttpError> {
 	let body = serde_json::to_string(&names)?;
 	
 	let responses = ApiClient::new().enable_debug_mode().await.post_parse("https://api.minecraftservices.com/minecraft/profile/lookup/bulk/byname", body.as_str(), false).await?;
@@ -41,7 +40,7 @@ pub async fn get_uuids_from_usernames(names: Vec<String>) -> Result<Vec<UuidRequ
 
 /// Get details about a given UUID such as the name of the user, a list of moderation actions against their account
 /// and most importantly, their skin base64 encoded
-pub async fn get_player_details(uuid: String) -> Result<PlayerDetailsResponse> {
+pub async fn get_player_details(uuid: String) -> Result<PlayerDetailsResponse, HttpError> {
 	let url = format!("https://sessionserver.mojang.com/session/minecraft/profile/{}?unsigned=false", uuid);
 
 	Ok(ApiClient::new().enable_debug_mode().await.get_parse(url, false).await?)
@@ -66,7 +65,7 @@ pub struct SkinPropertyWrapper {
 }
 
 impl SkinPropertyWrapper {
-	pub fn get_skin_details(&self) -> Result<SkinProperty> {
+	pub fn get_skin_details(&self) -> Result<SkinProperty, HttpError> {
 		let decoded = general_purpose::STANDARD.decode(&self.value)?;
 		let decoded = String::from_utf8(decoded)?;
 

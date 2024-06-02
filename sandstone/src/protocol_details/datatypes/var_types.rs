@@ -2,7 +2,6 @@ use std::fmt;
 use std::fmt::{Display, Error, Formatter};
 use std::str::FromStr;
 
-use anyhow::{anyhow, Result};
 use uuid::Uuid;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
@@ -24,9 +23,9 @@ impl VarInt {
 
 	// Reading algorithm taken from https://wiki.vg/
 	// TODO: Optimize
-	pub fn from_slice(bytes: &[u8]) -> Result<Self> {
+	pub fn from_slice(bytes: &[u8]) -> Result<Self, SerializingErr> {
 		if bytes.len() > 5 {
-			return Err(anyhow!("Max bytes of byte array is 5. VarInts are i32"));
+			return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
 		}
 
 		let mut i: i32 = 0;
@@ -44,14 +43,14 @@ impl VarInt {
 			pos += 7;
 
 			if pos >= 32 {
-				return Err(anyhow!("Bit length is too long"));
+				return Err(SerializingErr::UniqueFailure("Bit length is too long".to_string()));
 			}
 		}
 
 		return Ok(VarInt(i));
 	}
 
-	pub fn new_from_bytes(bytes: Vec<u8>) -> Result<Self> {
+	pub fn new_from_bytes(bytes: Vec<u8>) -> Result<Self, SerializingErr> {
 		return VarInt::from_slice(bytes.as_slice());
 	}
 
@@ -183,9 +182,9 @@ pub struct VarLong(pub i64);
 impl VarLong {
 	// Reading algorithm taken from https://wiki.vg/
 	// TODO: Optimize
-	pub fn from_slice(bytes: &[u8]) -> Result<Self> {
+	pub fn from_slice(bytes: &[u8]) -> Result<Self, SerializingErr> {
 		if bytes.len() > 10 {
-			return Err(anyhow!("Max bytes of byte array is 10. VarLongs are i64"));
+			return Err(SerializingErr::UniqueFailure("VarLong must be a max of 10 bytes.".to_string()));
 		}
 
 		let mut i: i64 = 0;
@@ -203,14 +202,14 @@ impl VarLong {
 			pos += 7;
 
 			if pos >= 64 {
-				return Err(anyhow!("Bit length is too long"));
+				return Err(SerializingErr::UniqueFailure("Bit length is too long".to_string()));
 			}
 		}
 
 		return Ok(VarLong(i));
 	}
 
-	pub fn new_from_bytes(bytes: Vec<u8>) -> Result<Self> {
+	pub fn new_from_bytes(bytes: Vec<u8>) -> Result<Self, SerializingErr> {
 		return VarLong::from_slice(bytes.as_slice());
 	}
 

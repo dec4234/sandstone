@@ -1,7 +1,5 @@
 use std::cmp::min;
 
-use anyhow::{anyhow, Result};
-
 use crate::packets::packet_definer::{PacketDirection, PacketState};
 use crate::packets::serialization::serializer_error::SerializingErr;
 
@@ -152,9 +150,9 @@ impl <'a> McDeserializer<'a> {
 	/// Create a new McDeserializer with a start at `index` and an end at `index + end`.
 	/// Basically reserves the number of bytes you specify for the sub-deserializer.
 	/// Also increments the parent McDeserializer's index by `end`
-	pub fn sub_deserializer_length(&mut self, end: usize) -> Result<McDeserializer> {
+	pub fn sub_deserializer_length(&mut self, end: usize) -> Result<McDeserializer, SerializingErr> {
 		if self.index + end > self.data.len() {
-			return Err(anyhow!("Sub-deserializer length exceeds data length"));
+			return Err(SerializingErr::UniqueFailure("Sub-deserializer length exceeds data length".to_string()));
 		}
 		
 		let ret = Ok(McDeserializer::new(&self.data[self.index..(self.index + end)]));

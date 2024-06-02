@@ -1,78 +1,31 @@
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display};
+use std::io;
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct NoDataReceivedError;
+use thiserror::Error;
 
-impl Debug for NoDataReceivedError {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str("No data received")
-	}
-}
+use crate::packets::serialization::serializer_error::SerializingErr;
 
-impl Display for NoDataReceivedError {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str("No data received")
-	}
-}
-
-impl Error for NoDataReceivedError {
+#[derive(Error, Debug)]
+pub enum NetworkError {
+	#[error("No data received from stream")]
+	NoDataReceived,
+	#[error("Connection aborted locally")]
+	ConnectionAbortedLocally,
+	#[error("Connection aborted remotely")]
+	ConnectionAbortedRemotely,
+	#[error("Invalid packet state")]
+	InvalidPacketState,
+	#[error("{0}")]
+	InvalidNextState(String),
+	#[error("Invalid packet direction")]
+	InvalidPacketDirection,
+	#[error("Packet too large")]
+	PacketTooLarge,
+	#[error("Expected different packet: {0}")]
+	ExpectedDifferentPacket(String),
 	
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct ConnectionAbortedLocally;
-
-impl Debug for ConnectionAbortedLocally {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str("The connection was aborted by the local machine")
-	}
-}
-
-impl Display for ConnectionAbortedLocally {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str("The connection was aborted by the local machine")
-	}
-}
-
-impl Error for ConnectionAbortedLocally {
-	
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct ConnectionAbortedRemotely;
-
-impl Debug for ConnectionAbortedRemotely {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str("The connection was aborted by the remote machine")
-	}
-}
-
-impl Display for ConnectionAbortedRemotely {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str("The connection was aborted by the remote machine")
-	}
-}
-
-impl Error for ConnectionAbortedRemotely {
-	
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct InvalidPacketState;
-
-impl Debug for InvalidPacketState {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str("Invalid packet state")
-	}
-}
-
-impl Display for InvalidPacketState {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str("Invalid packet state")
-	}
-}
-
-impl Error for InvalidPacketState {
-	
+	#[error(transparent)]
+	SerializingErr(#[from] SerializingErr),
+	#[error(transparent)]
+	Other(#[from] io::Error),
 }

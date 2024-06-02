@@ -1,28 +1,21 @@
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display};
 
-#[derive(Clone, Hash, PartialEq, Eq)]
-pub enum NbtParseError {
+use thiserror::Error;
+
+#[derive(Error, Debug, Clone, Hash, PartialEq, Eq)]
+pub enum NbtError {
+	#[error("Input ended prematurely")]
 	InputEndedPrematurely,
+	#[error("Unknown type number")]
 	UnknownTypeNumber,
+	#[error("Unexpected byte")]
 	UnexpectedByte,
+	#[error("Missing End Tag")]
 	MissingEndTag,
-	MismatchedTypes
+	#[error("Mismatched types")]
+	MismatchedTypes,
+	#[error("End tag not allowed in list")]
+	EndTagNotAllowedInList,
+	#[error("Incompatible types")]
+	IncompatibleTypes,
 }
-
-impl Debug for NbtParseError {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str(&self.to_string())?;
-		Ok(())
-	}
-}
-
-impl Display for NbtParseError {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		match self {
-			_ => f.write_str("Unknown Error"),
-		}
-	}
-}
-
-impl Error for NbtParseError {}

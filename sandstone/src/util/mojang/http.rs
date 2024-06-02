@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 
-use anyhow::Result;
 use log::debug;
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use thiserror::Error;
 use tokio::sync::Mutex;
 
 /*
@@ -46,11 +46,11 @@ impl ApiClient {
         }
     }
 
-    pub async fn get(&self, url: String) -> Result<String> {
+    pub async fn get(&self, url: String) -> Result<String, HttpError> {
         self.get_params(url, HashMap::new()).await
     }
 
-    pub async fn get_params(&self, url: String, map: HashMap<&str, &str>) -> Result<String> {
+    pub async fn get_params(&self, url: String, map: HashMap<&str, &str>) -> Result<String, HttpError> {
         let client = Client::new();
         let resp = client
             .get(&url)
@@ -60,7 +60,7 @@ impl ApiClient {
 
         if !resp.status().is_success() {
             debug!("Failed to get from url: {}", url);
-            return Err(anyhow::anyhow!("Failed to get from url, code {}: {}", resp.status().as_str(), url));
+            return Err(HttpError::StatusCode(format!("Failed to get from url, code {}: {}", resp.status().as_str(), url)));
         }
         
         let text = resp.text().await?;
@@ -74,7 +74,7 @@ impl ApiClient {
         Ok(text)
     }
 
-    pub async fn get_parse<T: DeserializeOwned>(&self, url: String, dewrap: bool) -> Result<T> {
+    pub async fn get_parse<T: DeserializeOwned>(&self, url: String, dewrap: bool) -> Result<T, HttpError> {
         if dewrap {
             let val = serde_json::from_str::<Value>(self.get(url.clone()).await?.as_str())?;
 
@@ -88,7 +88,7 @@ impl ApiClient {
         Ok(r)
     }
 
-    pub async fn get_parse_params<T: DeserializeOwned>(&self, url: String, dewrap: bool, map: HashMap<&str, &str>) -> Result<T> {
+    pub async fn get_parse_params<T: DeserializeOwned>(&self, url: String, dewrap: bool, map: HashMap<&str, &str>) -> Result<T, HttpError> {
         if dewrap {
             let val = serde_json::from_str::<Value>(self.get_params(url.clone(), map).await?.as_str())?;
 
@@ -100,11 +100,11 @@ impl ApiClient {
         Ok(serde_json::from_str::<T>(text.as_str())?)
     }
 
-    pub async fn post<S: Into<String>>(&self, url: S, body: S) -> Result<String> {
+    pub async fn post<S: Into<String>>(&self, url: S, body: S) -> Result<String, HttpError> {
         self.post_params(url, body, HashMap::new()).await
     }
 
-    pub async fn post_params<S: Into<String>>(&self, url: S, body: S, map: HashMap<&str, &str>) -> Result<String> {
+    pub async fn post_params<S: Into<String>>(&self, url: S, body: S, map: HashMap<&str, &str>) -> Result<String, HttpError> {
         let url = url.into();
         let body = body.into();
         
@@ -119,7 +119,7 @@ impl ApiClient {
 
         if !resp.status().is_success() {
             debug!("Failed to get from url: {}", url);
-            return Err(anyhow::anyhow!("Failed to post from url, code {}: {}", resp.status().as_str(), url));
+            return Err(HttpError::StatusCode(format!("Failed to post from url, code {}: {}", resp.status().as_str(), url)));
         }
         
         let text = resp.text().await?;
@@ -133,7 +133,7 @@ impl ApiClient {
         Ok(text)
     }
 
-    pub async fn post_parse<T: DeserializeOwned, S: Into<String>>(&self, url: S, body: S, dewrap: bool) -> Result<T> {
+    pub async fn post_parse<T: DeserializeOwned, S: Into<String>>(&self, url: S, body: S, dewrap: bool) -> Result<T, HttpError> {
         if dewrap {
             let val = serde_json::from_str::<Value>(self.post(url.into(), body.into()).await?.as_str())?;
 
@@ -147,7 +147,7 @@ impl ApiClient {
         Ok(r)
     }
 
-    pub async fn post_parse_params<T: DeserializeOwned, S: Into<String>>(&self, url: S, body: S, map: HashMap<&str, &str>, dewrap: bool) -> Result<T> {
+    pub async fn post_parse_params<T: DeserializeOwned, S: Into<String>>(&self, url: S, body: S, map: HashMap<&str, &str>, dewrap: bool) -> Result<T, HttpError> {
         if dewrap {
             let val = serde_json::from_str::<Value>(self.post_params(url.into(), body.into(), map).await?.as_str())?;
 
@@ -158,4 +158,18 @@ impl ApiClient {
 
         Ok(serde_json::from_str::<T>(text.as_str())?)
     }
+}
+
+#[derive(Error, Debug)]
+pub enum HttpError {
+    #[error(transparent)]
+    SerdeError(#[from] serde_json::Error),
+    #[error(transparent)]
+    ReqwestError(#[from] reqwest::Error),
+    #[error(transparent)]
+    Base64Error(#[from] base64::DecodeError),
+    #[error(transparent)]
+    Utf8Error(#[from] std::string::FromUtf8Error),
+    #[error("Received error code: {0}")]
+    StatusCode(String),
 }

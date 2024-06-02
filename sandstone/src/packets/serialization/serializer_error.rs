@@ -1,45 +1,28 @@
 use std::array::TryFromSliceError;
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display};
 use std::str::Utf8Error;
 
+use thiserror::Error;
+
+#[derive(Error, Debug)]
 pub enum SerializingErr {
+	#[error("VarInt ended prematurely")]
 	InvalidEndOfVarInt,
+	#[error("The VarType did not end when it should have. {0}")]
 	VarTypeTooLong(String),
+	#[error("Could not deserialize String")]
 	CouldNotDeserializeString,
+	#[error("Input ended prematurely")]
 	InputEnded,
+	#[error("There is unused input data left")]
 	LeftoverInput,
+	#[error("Unknown deserialization failure")]
 	UnknownFailure,
+	#[error("{0}")]
 	UniqueFailure(String),
+	#[error("The current packet state does not match what is needed to deserialize this packet")]
 	InvalidPacketState,
 }
-
-impl Debug for SerializingErr {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		f.write_str(&self.to_string())?;
-		Ok(())
-	}
-}
-
-impl Display for SerializingErr {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		match self {
-			SerializingErr::InvalidEndOfVarInt => {f.write_str("VarInt ended prematurely")},
-			SerializingErr::VarTypeTooLong(s) => {
-				f.write_str("The VarType did not end when it should have. ")?;
-				f.write_str(s)
-			},
-			SerializingErr::UnknownFailure => {f.write_str("Unknown deserialization failure")},
-			SerializingErr::CouldNotDeserializeString => {f.write_str("Could not deserialize String")},
-			SerializingErr::InputEnded => {f.write_str("Input ended prematurely")},
-			SerializingErr::UniqueFailure(s) => {f.write_str(s)},
-			SerializingErr::LeftoverInput => {f.write_str("There is unused input data left")},
-			SerializingErr::InvalidPacketState => {f.write_str("The current packet state does not match what is needed to deserialize this packet")}
-		}
-	}
-}
-
-impl Error for SerializingErr {}
 
 impl From<Utf8Error> for SerializingErr {
 	fn from(value: Utf8Error) -> Self {

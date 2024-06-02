@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Index;
 
-use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol_details::datatypes::nbt::nbt_error::NbtError;
 
 // https://wiki.vg/NBT
 
@@ -368,7 +368,7 @@ impl NbtList {
 		}
 	}
 	
-	pub fn from_vec(vec: Vec<NbtTag>) -> Result<Self> {
+	pub fn from_vec(vec: Vec<NbtTag>) -> Result<Self, NbtError> {
 		let mut list = NbtList::new();
 		
 		for tag in vec {
@@ -379,17 +379,17 @@ impl NbtList {
 	}
 
 	#[inline]
-	pub fn add<T: Into<NbtTag>>(&mut self, tag: T) -> Result<()> {
+	pub fn add<T: Into<NbtTag>>(&mut self, tag: T) -> Result<(), NbtError> {
 		let tag = tag.into();
 
 		if tag.get_type_id() == 0 {
-			return Err(anyhow!("END Tag not allowed in NbtList"));
+			return Err(NbtError::EndTagNotAllowedInList);
 		}
 
 		if self.type_id == 0 {
 			self.type_id = tag.get_type_id();
 		} else if self.type_id != tag.get_type_id() {
-			return Err(anyhow!("Type mismatch in NbtList"));
+			return Err(NbtError::MismatchedTypes);
 		}
 
 		self.list.push(tag);
@@ -398,11 +398,11 @@ impl NbtList {
 	}
 
 	#[inline]
-	pub fn add_tag(&mut self, tag: NbtTag) -> Result<()> {
+	pub fn add_tag(&mut self, tag: NbtTag) -> Result<(), NbtError> {
 		if self.type_id == 0 {
 			self.type_id = tag.get_type_id();
 		} else if tag.get_type_id() != self.type_id {
-			return Err(anyhow!("Incompatible types"));
+			return Err(NbtError::IncompatibleTypes);
 		}
 
 		self.list.push(tag);

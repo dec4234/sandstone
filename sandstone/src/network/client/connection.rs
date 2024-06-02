@@ -1,14 +1,14 @@
 use std::fmt::Display;
 use std::net::SocketAddr;
 
-use anyhow::{Error, Result};
 use log::{debug, trace};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-use crate::network::network_error::{ConnectionAbortedLocally, NoDataReceivedError};
+use crate::network::network_error::NetworkError;
 use crate::packets::packet_definer::{PacketDirection, PacketState};
 use crate::packets::packets::packet::Packet;
+use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::protocol_details::protocol_verison::ProtocolVerison;
@@ -26,7 +26,7 @@ pub struct CraftClient {
 }
 
 impl CraftClient {
-	pub fn from_connection(tcp_stream: TcpStream) -> Result<Self> {
+	pub fn from_connection(tcp_stream: TcpStream) -> Result<Self, NetworkError> {
 		tcp_stream.set_nodelay(true)?; // disable Nagle's algorithm
 
 		Ok(Self {
@@ -39,7 +39,7 @@ impl CraftClient {
 		})
 	}
 
-	pub async fn send_packet(&mut self, packet: Packet) -> Result<()> {
+	pub async fn send_packet(&mut self, packet: Packet) -> Result<(), NetworkError> {
 		let mut serializer = McSerializer::new();
 		packet.mc_serialize(&mut serializer)?;
 		let output = &serializer.output;
@@ -54,7 +54,7 @@ impl CraftClient {
 
 	// TODO: could use a good optimization pass - reduce # of copies, ideally to 0
 	/// Receive a minecraft packet from the client. This will block until a packet is received. This removes data from the TCP buffer
-	pub async fn receive_packet(&mut self) -> Result<Packet> {
+	pub async fn receive_packet(&mut self) -> Result<Packet, NetworkError> {
 		let mut vec = vec![];
 
 		// read varint for length
@@ -68,7 +68,7 @@ impl CraftClient {
 				vec.push(b);
 
 				if vec.len() > 3 {
-					return Err(anyhow::anyhow!("VarInt too long"));
+					return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
 				}
 			}
 		}
@@ -77,7 +77,7 @@ impl CraftClient {
 		let varbytes = vari.to_bytes();
 
 		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
-			return Err(anyhow::anyhow!("Packet too large"));
+			return Err(NetworkError::PacketTooLarge);
 		}
 
 		let length = vari.0 as usize + varbytes.len();
@@ -99,10 +99,10 @@ impl CraftClient {
 			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
 				debug!("OS Error detected in packet receive, closing the connection: {}", e);
 				self.close().await;
-				return Err(Error::from(ConnectionAbortedLocally));
+				return Err(NetworkError::ConnectionAbortedLocally);
 			}
 
-			return Err(Error::from(e));
+			return Err(NetworkError::Other(e));
 		}
 
 		let length = length.unwrap();
@@ -111,9 +111,9 @@ impl CraftClient {
 
 		if length == 0 { // connection closed
 			self.close().await;
-			return Err(Error::from(NoDataReceivedError));
+			return Err(NetworkError::NoDataReceived);
 		} else if length == PACKET_MAX_SIZE {
-			return Err(anyhow::anyhow!("Packet too large"));
+			return Err(NetworkError::PacketTooLarge);
 		}
 
 		// TODO: decompress & decrypt here
@@ -124,7 +124,7 @@ impl CraftClient {
 		Ok(packet)
 	}
 
-	pub async fn peek_packet(&mut self) -> Result<Packet> {
+	pub async fn peek_packet(&mut self) -> Result<Packet, NetworkError> {
 		// read varint for length
 		let mut i = 1 as usize;
 		let vari: VarInt;
@@ -135,7 +135,7 @@ impl CraftClient {
 		loop {
 			let mut b = vec![0; i];
 			if self.tcp_stream.peek(&mut b).await? == 0 {
-				return Err(Error::from(NoDataReceivedError));
+				return Err(NetworkError::NoDataReceived);
 			}
 			
 			// this indicates if the varint has ended
@@ -144,7 +144,7 @@ impl CraftClient {
 				break;
 			} else {
 				if i > 3 { // any varint over 3 bytes is either broken or too big for a packet
-					return Err(anyhow::anyhow!("VarInt too long"));
+					return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
 				}
 			}
 			
@@ -154,7 +154,7 @@ impl CraftClient {
 		let varbytes = vari.to_bytes();
 
 		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
-			return Err(anyhow::anyhow!("Packet too large"));
+			return Err(NetworkError::PacketTooLarge);
 		}
 
 		let length = vari.0 as usize + varbytes.len();
@@ -176,10 +176,10 @@ impl CraftClient {
 			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
 				debug!("OS Error detected in packet receive, closing the connection: {}", e);
 				self.close().await;
-				return Err(Error::from(ConnectionAbortedLocally));
+				return Err(NetworkError::ConnectionAbortedLocally);
 			}
 
-			return Err(Error::from(e));
+			return Err(NetworkError::Other(e));
 		}
 
 		let length = length.unwrap();
@@ -188,9 +188,9 @@ impl CraftClient {
 
 		if length == 0 { // connection closed
 			self.close().await;
-			return Err(Error::from(NoDataReceivedError));
+			return Err(NetworkError::NoDataReceived);
 		} else if length == PACKET_MAX_SIZE {
-			return Err(anyhow::anyhow!("Packet too large"));
+			return Err(NetworkError::PacketTooLarge);
 		}
 
 		// TODO: decompress & decrypt here

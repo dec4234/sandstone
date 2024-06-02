@@ -1,6 +1,10 @@
 [workspace]
-default-members = ["sandstone"]
-members = ["examples/status_handler", "sandstone/src/sandstone-derive"]
+members = [
+    "sandstone",
+    "examples/status_handler",
+    "sandstone/src/sandstone-derive",
+]
+default-members = ["sandstone/", "examples/status_handler", "sandstone/src/sandstone-derive"]
 
 [build.env]
 passthrough = [

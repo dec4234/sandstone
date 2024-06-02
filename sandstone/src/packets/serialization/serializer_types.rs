@@ -100,7 +100,7 @@ mod macros {
 }
 
 impl<T: McSerialize> McSerialize for Vec<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> anyhow::Result<(), SerializingErr> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> where T: McSerialize {
 		for item in self {
 			item.mc_serialize(serializer)?;
 		}
@@ -122,7 +122,7 @@ impl<T: McDeserialize> McDeserialize for Vec<T> {
 }
 
 impl<T: McSerialize> McSerialize for Option<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> anyhow::Result<(), SerializingErr> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> where T: McSerialize {
 		match self {
 			Some(item) => {
 				item.mc_serialize(serializer)?;
