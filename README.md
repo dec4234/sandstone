@@ -1,5 +1,9 @@
-# ironcraft
-ironcraft is a **Minecraft: Java Edition** networking library. It is not a server implementation, but rather a library that can be used to create your own server-sided software.
+# sandstone
+[![Crates.io](https://img.shields.io/crates/v/sandstone)](https://crates.io/crates/sandstone)
+[![Docs.rs](https://docs.rs/sandstone/badge.svg)](https://docs.rs/sandstone)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ironcraft/sandstone/CI)
+
+sandstone is a **Minecraft: Java Edition** networking library. It is not a server implementation, but rather a library that can be used to create your own server-sided software.
 The ultimate goal is to use this library in a future implementation of a Minecraft: Java Edition server
 in Rust. 
 

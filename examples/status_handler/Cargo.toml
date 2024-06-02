@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ironcraft = {path = "../../../ironcraft"}
+sandstone = {path = "../../../ironcraft/sandstone"}
 tokio = {version = "1.37.0", features = ["full", "macros"]}
 simple_logger = "5.0.0"
 log = "0.4.21"

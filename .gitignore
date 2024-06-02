@@ -1,2 +1,3 @@
 /examples/status_handler/target/
-/sandstone-derive/target/
+/src/sandstone-derive/target/
+/sandstone/src/sandstone-derive/target/

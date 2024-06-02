@@ -1,0 +1,2 @@
+# sandstone-derive
+This is a support package for my other project, [sandstone](github.com/dec4234/sandstone). It provides a procedural macro for deriving the necessary traits for the sandstone library.

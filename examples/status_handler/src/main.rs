@@ -2,11 +2,11 @@ use log::debug;
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
 
-use ironcraft::network::connection::CraftClient;
-use ironcraft::packets::packets::packet::StatusResponseBody;
-use ironcraft::packets::status::status_handler::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler, HandshakeHandler, StatusHandler};
-use ironcraft::packets::status::status_packets::{PlayerSample, StatusResponseSpec};
-use ironcraft::protocol_details::protocol_verison::ProtocolVerison;
+use sandstone::network::connection::CraftClient;
+use sandstone::packets::packets::packet::StatusResponseBody;
+use sandstone::packets::status::status_handler::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler, HandshakeHandler, StatusHandler};
+use sandstone::packets::status::status_packets::{PlayerSample, StatusResponseSpec};
+use sandstone::protocol_details::protocol_verison::ProtocolVerison;
 
 /// This demonstrates how to respond to a status request from a client.
 /// This returns information used to display the server on the client's server list
