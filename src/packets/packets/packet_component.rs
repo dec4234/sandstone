@@ -1,3 +1,4 @@
+use sandstone_derive::McSerialize;
 use uuid::Uuid;
 
 use crate::packets::serialization::serializer_error::SerializingErr;
@@ -9,24 +10,12 @@ Defines a lot of random components of network packets. This is separate from pac
 clutter.
  */
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McSerialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoginPropertyElement {
 	pub(crate) name: String,
 	pub(crate) value: String,
 	pub(crate) is_signed: bool,
 	pub(crate) signature: Option<String>
-}
-
-// https://docs.rs/syn/0.15.18/syn/#example-of-a-custom-derive
-impl McSerialize for LoginPropertyElement { // TODO: possibly create derive macros for McSerialize / McDeserialize
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		self.name.mc_serialize(serializer)?;
-		self.value.mc_serialize(serializer)?;
-		self.is_signed.mc_serialize(serializer)?;
-		self.signature.mc_serialize(serializer)?;
-		
-		Ok(())
-	}
 }
 
 impl McDeserialize for LoginPropertyElement {
@@ -51,21 +40,11 @@ impl McDeserialize for LoginPropertyElement {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McSerialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoginPluginSpec {
 	pub(crate) message_id: VarInt,
 	pub(crate) success: bool,
 	pub(crate) data: Option<Vec<u8>>
-}
-
-impl McSerialize for LoginPluginSpec {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		self.message_id.mc_serialize(serializer)?;
-		self.success.mc_serialize(serializer)?;
-		self.data.mc_serialize(serializer)?;
-		
-		Ok(())
-	}
 }
 
 impl McDeserialize for LoginPluginSpec {
@@ -87,19 +66,10 @@ impl McDeserialize for LoginPluginSpec {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McSerialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemoveResourcePackSpec {
 	pub(crate) has_uuid: bool,
 	pub(crate) uuid: Option<Uuid>
-}
-
-impl McSerialize for RemoveResourcePackSpec {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		self.has_uuid.mc_serialize(serializer)?;
-		self.uuid.mc_serialize(serializer)?;
-
-		Ok(())
-	}
 }
 
 impl McDeserialize for RemoveResourcePackSpec {
@@ -118,7 +88,7 @@ impl McDeserialize for RemoveResourcePackSpec {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McSerialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AddResourcePackSpec {
 	pub(crate) uuid: Uuid,
 	pub(crate) url: String,
@@ -126,19 +96,6 @@ pub struct AddResourcePackSpec {
 	pub(crate) forced: bool,
 	pub(crate) has_prompt_message: bool,
 	pub(crate) prompt_message: Option<String>
-}
-
-impl McSerialize for AddResourcePackSpec {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-		self.uuid.mc_serialize(serializer)?;
-		self.url.mc_serialize(serializer)?;
-		self.hash.mc_serialize(serializer)?;
-		self.forced.mc_serialize(serializer)?;
-		self.has_prompt_message.mc_serialize(serializer)?;
-		self.prompt_message.mc_serialize(serializer)?;
-
-		Ok(())
-	}
 }
 
 impl McDeserialize for AddResourcePackSpec {

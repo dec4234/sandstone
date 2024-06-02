@@ -146,30 +146,5 @@ packets!(V1_20 => {
 	FeatureFlags, FeatureFlagsBody, 0x08, LOGIN, CLIENT => {
 		total: VarInt,
 		flags: Vec<String>
-	},
-
-
-});
-
-#[cfg(test)]
-mod tests {
-	use crate::packets::serialization::serializer_handler::McDeserializer;
-
-	#[test]
-	fn try_deserialize() {
-		// vari       string                                            u16         vari
-		// 251, 5,    9, 108, 111, 99, 97, 108, 104, 111, 115, 116,     99, 221,    1
-
-		let vec: &[u8] = &[16, 0, 251, 5, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116, 99, 221, 1];
-
-		let mut deserializer = McDeserializer::new(vec);
-
-		/*let p: raw_packet::PackagedPacket<v1_20> = raw_packet::PackagedPacket::mc_deserialize(&mut deserializer).unwrap();
-
-		match p.data {
-			v1_20::StatusRequest(_) => {}
-			v1_20::Handshaking(b) => {println!("Address: {}", b.server_address)}
-			v1_20::PingResponse(_) => {}
-		}*/
 	}
-}
+});
