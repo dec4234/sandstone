@@ -16,6 +16,10 @@ use crate::protocol_details::protocol_verison::ProtocolVerison;
 const PACKET_MAX_SIZE: usize = 2097151; // max of 3 byte VarInt
 const CONTINUE_BIT: u8 = 0b10000000;
 
+/// This represents an active connection to a Minecraft client, from the server's perspective.
+/// In other words, this is only created and held from a server context, and does NOT support clients
+/// making connections to servers.
+#[derive(Debug)]
 pub struct CraftClient {
 	tcp_stream: TcpStream,
 	socket_addr: SocketAddr,
@@ -26,6 +30,7 @@ pub struct CraftClient {
 }
 
 impl CraftClient {
+	/// Create a new `CraftClient` from a `TcpStream`. This will set the `TcpStream` to use `nodelay` and return an error if it fails to do so.
 	pub fn from_connection(tcp_stream: TcpStream) -> Result<Self, NetworkError> {
 		tcp_stream.set_nodelay(true)?; // disable Nagle's algorithm
 
@@ -39,6 +44,7 @@ impl CraftClient {
 		})
 	}
 
+	/// Send a minecraft packet to the client. This will block until the packet is sent.
 	pub async fn send_packet(&mut self, packet: Packet) -> Result<(), NetworkError> {
 		let mut serializer = McSerializer::new();
 		packet.mc_serialize(&mut serializer)?;
@@ -124,6 +130,7 @@ impl CraftClient {
 		Ok(packet)
 	}
 
+	/// Peek the next packet in the queue without removing it. This will block until a packet is received.
 	pub async fn peek_packet(&mut self) -> Result<Packet, NetworkError> {
 		// read varint for length
 		let mut i = 1 as usize;
@@ -201,14 +208,18 @@ impl CraftClient {
 		Ok(packet)
 	}
 
+	/// Change the internal Packet State. This is used to categorize what kind of packets are being sent/received.
+	/// See [PacketState] for more information.
 	pub fn change_state(&mut self, state: PacketState) {
 		self.packet_state = state;
 	}
 
+	/// Enable compression on the connection. This will compress packets that are larger than the threshold.
 	pub fn enable_compression(&mut self, threshold: Option<i32>) {
 		self.compression_threshold = threshold;
 	}
 
+	/// Shutdown the connection as soon as possible
 	pub async fn close(&mut self) -> bool {
 		debug!("Closing connection to {}", self);
 		self.tcp_stream.shutdown().await.is_ok()

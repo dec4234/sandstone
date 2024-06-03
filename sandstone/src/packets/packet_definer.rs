@@ -47,6 +47,9 @@ pub trait PacketTrait {
 
 #[macro_use]
 mod macros {
+    
+    /// Used to define the minecraft packet protocol. This includes, the name, packet ID, state and
+    /// the respective fields for the packet.
     #[macro_export]
     macro_rules! packets {
         ($ref_ver: ident => {
@@ -68,6 +71,7 @@ mod macros {
                     }
                 }
             
+                #[allow(unused)] // incase there's an empty packet
                 impl McDeserialize for $name_body {
                     fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
                         let s = Self {
@@ -78,6 +82,7 @@ mod macros {
                     }
                 }
             
+                #[allow(unused)] // incase there's an empty packet
                 impl McSerialize for $name_body {
                     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
                         $(self.$field.mc_serialize(serializer)?;)*
@@ -152,10 +157,10 @@ mod macros {
                 fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
                     let length = VarInt::mc_deserialize(deserializer)?;
 
-                    let mut sub = deserializer.sub_deserializer_length(length.0 as usize);
+                    let sub = deserializer.sub_deserializer_length(length.0 as usize);
                     
                     if let Err(e) = sub {
-                        return Err(SerializingErr::UniqueFailure("Could not create sub deserializer.".to_string()));
+                        return Err(e);
                     }
                     
                     let mut sub = sub.unwrap();

@@ -33,8 +33,6 @@ packets!(V1_20 => {
 	},
 	
 	// STATUS
-	// Please note that the STATUS packets are defined elsewhere in status_packets.rs
-	// They are provided here for completeness, however it is not reccomended to use these ones
 	
 	// Client-bound
 	StatusResponse, StatusResponseBody, 0x00, STATUS, CLIENT => {

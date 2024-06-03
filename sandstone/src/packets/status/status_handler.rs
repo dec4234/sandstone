@@ -1,15 +1,12 @@
-use std::cmp::PartialEq;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::{debug, trace};
 
 use crate::network::client::client_handlers::{HandshakeHandler, PingHandler, StatusHandler};
 use crate::network::client::connection::CraftClient;
-use crate::network::network_error;
 use crate::network::network_error::NetworkError;
 use crate::packets::packet_definer::PacketState;
-use crate::packets::packets::packet::{Packet, PingResponseBody, StatusRequestBody, StatusResponseBody};
-use crate::packets::serialization::serializer_error::SerializingErr::InvalidPacketState;
+use crate::packets::packets::packet::{Packet, PingResponseBody, StatusResponseBody};
 use crate::protocol_details::datatypes::var_types::VarInt;
 
 /// The default server-list status handler. Not sure why you wouldn't want to use it, but it's here.

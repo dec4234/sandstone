@@ -4,7 +4,9 @@ members = [
     "examples/status_handler",
     "sandstone/src/sandstone-derive",
 ]
-default-members = ["sandstone/", "examples/status_handler", "sandstone/src/sandstone-derive"]
+default-members = ["sandstone", "examples/status_handler", "sandstone/src/sandstone-derive"]
+
+resolver = "2"
 
 [build.env]
 passthrough = [

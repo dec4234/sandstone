@@ -13,13 +13,13 @@ This file is taken from my previous project, Rustiny: https://github.com/dec4234
  */
 
 pub struct ApiClient {
-    DEBUG_MODE: Mutex<AtomicBool>,
+    debug_mode: Mutex<AtomicBool>,
 }
 
 impl ApiClient {
     pub fn new() -> Self {
         Self {
-            DEBUG_MODE: Mutex::new(AtomicBool::new(false)),
+            debug_mode: Mutex::new(AtomicBool::new(false)),
         }
     }
 
@@ -29,20 +29,20 @@ impl ApiClient {
     /// usually only needed for development of the API but may be useful
     /// to someone wanting to learn the inner-workings of the system.
     pub async fn enable_debug_mode(self) -> Self {
-        let mut temp = self.DEBUG_MODE.lock().await;
+        let mut temp = self.debug_mode.lock().await;
         *temp = AtomicBool::new(true);
         drop(temp);
         self
     }
 
     pub async fn is_debug_enabled(&self) -> bool {
-        *self.DEBUG_MODE.lock().await.get_mut()
+        *self.debug_mode.lock().await.get_mut()
     }
 
     /// Clones the ApiClient
     pub async fn clone(&self) -> Self {
         Self {
-            DEBUG_MODE: Mutex::new(AtomicBool::new(self.is_debug_enabled().await)),
+            debug_mode: Mutex::new(AtomicBool::new(self.is_debug_enabled().await)),
         }
     }
 

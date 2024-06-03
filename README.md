@@ -51,6 +51,11 @@ The actual TODO list is massive, but here are the current priorities for the pro
 - [x] Figure out what to do with packets and begin implementing a full version
   - [ ] Deserialize given standard info tests
   - [x] How to handle optional fields ... See Packet::LoginPluginResponse
+- [x] Utilities
+  - [ ] Thread pool for new connections
+  - [ ] Auto generate serialization/deserialization tests for all packets?
+    - [ ] Macro
+    - [ ] Default field trait? Derive?
 - [ ] Begin basic login procedure handler?
 - [ ] Compression support
 - [ ] Encryption support
