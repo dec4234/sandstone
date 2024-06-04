@@ -2,6 +2,10 @@ use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
+/*
+The purpose of this file is to test random nesting of enums and structs for serialization and deserialization
+ */
+
 enum Group {
 	VarI(VarIntMix),
 	StrM(StringMix),

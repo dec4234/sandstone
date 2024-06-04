@@ -23,6 +23,7 @@ It has a couple of key responsibilities:
 */
 
 // https://wiki.vg/Protocol
+// TODO: https://stackoverflow.com/questions/33999341/generating-documentation-in-macros
 packets!(V1_20 => {
 	// HANDSHAKE
 	Handshaking, HandshakingBody, 0x00, HANDSHAKING, SERVER => {
@@ -38,7 +39,7 @@ packets!(V1_20 => {
 	StatusResponse, StatusResponseBody, 0x00, STATUS, CLIENT => {
 		response: StatusResponseSpec
 	},
-
+	
 	PingResponse, PingResponseBody, 0x01, STATUS, CLIENT => {
         payload: u64
     },

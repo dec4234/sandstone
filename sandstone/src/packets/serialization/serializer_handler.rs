@@ -12,6 +12,7 @@ for reading packets from the network.
  */
 
 /// The result of a deserialization operation
+// TODO: change this to a general serialization/deserialization error - replace everywhere
 pub type DeserializeResult<'a, T> = Result<T, SerializingErr>;
 
 /// Handles the serialization of any types that `impl McSerialize`. Holds an

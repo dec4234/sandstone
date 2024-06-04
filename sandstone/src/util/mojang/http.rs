@@ -12,6 +12,8 @@ use tokio::sync::Mutex;
 This file is taken from my previous project, Rustiny: https://github.com/dec4234/Rustiny/blob/master/src/api/ApiClient.rs
  */
 
+/// An HTTP client used to interact with Mojang's API
+// TODO: probaby can remove the struct functionality and make everything static?
 pub struct ApiClient {
     debug_mode: Mutex<AtomicBool>,
 }
@@ -160,6 +162,7 @@ impl ApiClient {
     }
 }
 
+/// Any sort of error that could occur while performing or processing the response of an HTTP request.
 #[derive(Error, Debug)]
 pub enum HttpError {
     #[error(transparent)]

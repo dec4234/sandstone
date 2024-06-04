@@ -1,11 +1,12 @@
 # sandstone
 [![Crates.io](https://img.shields.io/crates/v/sandstone)](https://crates.io/crates/sandstone)
 [![Docs.rs](https://docs.rs/sandstone/badge.svg)](https://docs.rs/sandstone)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dec4234/sandstone/rust.yml?branch=main)
 
 sandstone is a **Minecraft: Java Edition** networking library. It is not a server implementation, but rather a library that can be used to create your own server-sided software.
 The ultimate goal is to use this library in a future implementation of a Minecraft: Java Edition server
 in Rust. 
+
+**This project will be a continuous work in progress, and may see months of no activity.**
 
 This library is provided as a structured baseline and as an open source software solution for anyone looking
 to create specialized **Minecraft: Java Edition** servers. It is built with convenient optimizations and abstractions in mind. 
@@ -13,8 +14,6 @@ to create specialized **Minecraft: Java Edition** servers. It is built with conv
 The library currently has a fully custom packet serializer and deserializer, as well as a client connection handler.
 
 Here is a current example of handling the server list status.
-
-This project will be a continuous work in progress, and may see periods of no activity.
 
 ```rust
 fn main() {
@@ -51,6 +50,8 @@ The actual TODO list is massive, but here are the current priorities for the pro
 - [x] Figure out what to do with packets and begin implementing a full version
   - [ ] Deserialize given standard info tests
   - [x] How to handle optional fields ... See Packet::LoginPluginResponse
+  - [ ] Implement Java's [bitset](https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html) for bit fields
+  - [ ] Maybe implement an Identifier struct? - See minecraft api types
 - [x] Utilities
   - [ ] Thread pool for new connections
   - [ ] Auto generate serialization/deserialization tests for all packets?
@@ -63,8 +64,26 @@ The actual TODO list is massive, but here are the current priorities for the pro
 - [ ] Documentation
   - [ ] Give explainer line for every file
   - [ ] Document all public functions
+    - [ ] Better examples and documentation for packet reading
   - [ ] Copyright notices
 
 ## Disclaimer
 Please note that this project is under heavy development and functions might not be heavily optimized yet.<br>
 Please also note that encryption has not been rigorously tested for security, so please use online features with caution.
+
+## References
+- [wiki.vg](https://wiki.vg) = The main resource for implementing new functions for the library. This wiki has extensive documentation
+on everything relating to the Minecraft protocol, both Bedrock and Java Edition. It also has a lot of articles relating to encryption,
+the Mojang protocol, and other hidden details about the game. 
+
+Some other projects were consulted for general design and handling for the minecraft protocol.
+
+- [feather](https://github.com/feather-rs/feather)
+- [valence](https://github.com/valence-rs/valence)
+- [MCHPSRS](https://github.com/MCHPR/MCHPRS)
+
+The following projects were significantly useful for understanding some quirks with the Minecraft protocol. It also guided
+me on early version of McSerializer and McDeserializer (instead of using serde).
+
+- [mcproto-rs](https://github.com/Twister915/mcproto-rs)
+- [craftio-rs](https://github.com/Twister915/craftio-rs)

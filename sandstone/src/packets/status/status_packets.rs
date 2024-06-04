@@ -11,6 +11,8 @@ use crate::packets::serialization::serializer_error::SerializingErr;
 use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
+/// A prepared response to a status request from a client. This provides useful functions for building
+/// the complicated nested structure of the status response.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 pub struct StatusResponseSpec {
@@ -24,6 +26,8 @@ pub struct StatusResponseSpec {
 }
 
 impl StatusResponseSpec {
+	/// Create a new status response with the given protocol version and description. The description
+	/// will have its color codes translated from the symbol '&' to the symbol '§'.
 	pub fn new<T: Into<String>>(protocol_version: ProtocolVerison, description: T) -> Self {
 		Self {
 			version: VersionInfo {
@@ -44,6 +48,8 @@ impl StatusResponseSpec {
 		}
 	}
 
+	/// Set the image returned to the user as the server logo.
+	/// This must be a 64x64 PNG image.
 	pub fn set_favicon_image(&mut self, image: DynamicImage) {
 		let mut image_data: Vec<u8> = Vec::new();
 		image.write_to(&mut Cursor::new(&mut image_data), ImageFormat::Png)
@@ -54,20 +60,25 @@ impl StatusResponseSpec {
 		self.favicon = Some(s);
 	}
 
+	/// Unknown purpose. Might be related to post 1.18 chat security.
 	pub fn set_secure_chat(&mut self, secure: bool) {
 		self.enforcesSecureChat = secure;
 	}
 
+	/// Unknown purpose. Might be related to post 1.18 chat security.
 	pub fn set_preview_chat(&mut self, preview: bool) {
 		self.previewsChat = preview;
 	}
 
+	/// Set the description/MOTD of the server, which is displayed in the server list.
+	/// The description will have its color codes translated from the symbol '&' to the symbol '§'.
 	pub fn set_description(&mut self, description: String) {
 		self.description = DescriptionInfo {
 			text: description
 		};
 	}
 
+	/// Set the player list preview response, seen when the user hovers over the player count.
 	pub fn set_player_info(&mut self, max: i32, online: i32, sample: Vec<PlayerSample>) {
 		self.players = PlayerInfo {
 			max,
@@ -76,7 +87,7 @@ impl StatusResponseSpec {
 		};
 	}
 
-	/// *version* can really be anything you want, but *protocol_version* must be a valid protocol version number
+	/// `version` can really be anything you want, but `protocol_version` must be a valid protocol version number
 	pub fn set_protocol_version(&mut self, version: String, protocol_version: i16) {
 		self.version = VersionInfo {
 			name: version,
@@ -117,6 +128,9 @@ impl From<StatusResponseSpec> for StatusResponseBody {
 	}
 }
 
+/// Represents the version information for the server. The `name` of the version can be anything you want.
+/// The `protocol` must be a valid protocol version number, and must match the protocol version of the
+/// connecting client.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VersionInfo {
 	name: String,
@@ -140,11 +154,13 @@ impl PlayerInfo {
 	}
 }
 
+/// Represents the description/MOTD of the server, which is displayed in the server list.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DescriptionInfo { // TODO: update to chat thing?
 	text: String,
 }
 
+/// Represents a single entry in the player list sample response, seen when the user hovers over the player count.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerSample {
 	name: String,
@@ -152,6 +168,8 @@ pub struct PlayerSample {
 }
 
 impl PlayerSample {
+	/// Create a new player sample with the given name and UUID.
+	/// The name will have its color codes translated from the symbol '&' to the symbol '§'.
 	pub fn new<S: Into<String>>(name: S, id: Uuid) -> Self {
 		Self {
 			name: name.into().replace("&", "§"),
@@ -159,6 +177,8 @@ impl PlayerSample {
 		}
 	}
 
+	/// Create a new player sample with the given name and a random UUID.
+	/// The name will have its color codes translated from the symbol '&' to the symbol '§'.
 	pub fn new_random<S: Into<String>>(name: S) -> Self {
 		Self {
 			name: name.into().replace("&", "§"),

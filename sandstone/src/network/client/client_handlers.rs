@@ -29,6 +29,7 @@ pub trait PingHandler {
 	async fn handle_ping(connection: &mut CraftClient) -> Result<(), NetworkError>;
 }
 
+/// Lists the methods required to handle a login request. Check [DefaultLoginHandler] for a default implementation.
 pub trait LoginHandler {
 	fn handle_login(connection: &mut CraftClient) -> Result<(), NetworkError>;
 }

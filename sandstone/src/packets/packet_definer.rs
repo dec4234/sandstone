@@ -39,12 +39,6 @@ impl PacketState {
     }
 }
 
-pub trait PacketTrait {
-	fn packet_id() -> u8;
-
-	fn state() -> PacketState;
-}
-
 #[macro_use]
 mod macros {
     
@@ -183,6 +177,8 @@ mod macros {
         };
     }
 
+    /// Defines the structs for some fields for packets. This is most frequently used for nested
+    /// fields without the use of Optional<T>
     #[macro_export]
     macro_rules! component_struct {
         ($name: ident => {

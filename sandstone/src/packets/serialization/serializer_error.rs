@@ -10,8 +10,10 @@ pub enum SerializingErr {
 	InvalidEndOfVarInt,
 	#[error("The VarType did not end when it should have. {0}")]
 	VarTypeTooLong(String),
-	#[error("Could not deserialize String")]
-	CouldNotDeserializeString,
+	#[error(transparent)]
+	CouldNotDeserializeString(#[from] Utf8Error),
+	#[error(transparent)]
+	StringFromSliceError(#[from] TryFromSliceError),
 	#[error("Input ended prematurely")]
 	InputEnded,
 	#[error("There is unused input data left")]
@@ -22,16 +24,4 @@ pub enum SerializingErr {
 	UniqueFailure(String),
 	#[error("The current packet state does not match what is needed to deserialize this packet")]
 	InvalidPacketState,
-}
-
-impl From<Utf8Error> for SerializingErr {
-	fn from(value: Utf8Error) -> Self {
-		Self::CouldNotDeserializeString
-	}
-}
-
-impl From<TryFromSliceError> for SerializingErr {
-	fn from(value: TryFromSliceError) -> Self {
-		Self::UniqueFailure("Something went wrong when converting from bytes to primitive".to_string())
-	}
 }

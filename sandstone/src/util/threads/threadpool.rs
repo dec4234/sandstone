@@ -7,4 +7,5 @@ The idea of this thread pool came from the rust book guide on a multithreaded we
 
 References:
 
+//TODO: is there an open source project that achieves the same goals?
 */

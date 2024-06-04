@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::packets::serialization::serializer_error::SerializingErr;
 
+/// Any sort of error that could occur while performing or processing a network request.
 #[derive(Error, Debug)]
 pub enum NetworkError {
 	#[error("No data received from stream")]
@@ -27,5 +28,5 @@ pub enum NetworkError {
 	#[error(transparent)]
 	SerializingErr(#[from] SerializingErr),
 	#[error(transparent)]
-	Other(#[from] io::Error),
+	IOError(#[from] io::Error),
 }

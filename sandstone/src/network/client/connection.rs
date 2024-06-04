@@ -13,7 +13,15 @@ use crate::packets::serialization::serializer_handler::{McDeserialize, McDeseria
 use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
+/*
+The purpose of this file is to define everything relating to a client connection. 
+This includes the connection itself, the ability to send and receive packets, and the ability to 
+change the packet state of the connection. 
+ */
+
+/// The max size of any incoming (compressed or uncompressed) packet.
 const PACKET_MAX_SIZE: usize = 2097151; // max of 3 byte VarInt
+/// The bit that indicates if a VarInt is continuing into another byte.
 const CONTINUE_BIT: u8 = 0b10000000;
 
 /// This represents an active connection to a Minecraft client, from the server's perspective.
@@ -21,25 +29,23 @@ const CONTINUE_BIT: u8 = 0b10000000;
 /// making connections to servers.
 #[derive(Debug)]
 pub struct CraftClient {
-	tcp_stream: TcpStream,
-	socket_addr: SocketAddr,
+	pub(crate) tcp_stream: TcpStream,
+	pub(crate) socket_addr: SocketAddr,
 	pub packet_state: PacketState,
-	compression_threshold: Option<i32>,
-	buffer: Vec<u8>,
-	client_version: Option<VarInt>
+	pub compression_threshold: Option<i32>,
+	pub client_version: Option<VarInt>
 }
 
 impl CraftClient {
 	/// Create a new `CraftClient` from a `TcpStream`. This will set the `TcpStream` to use `nodelay` and return an error if it fails to do so.
 	pub fn from_connection(tcp_stream: TcpStream) -> Result<Self, NetworkError> {
-		tcp_stream.set_nodelay(true)?; // disable Nagle's algorithm
+		tcp_stream.set_nodelay(true)?; // disable Nagle's algorithm - according to WIKI specs
 
 		Ok(Self {
 			socket_addr: tcp_stream.peer_addr()?,
 			tcp_stream,
 			packet_state: PacketState::HANDSHAKING,
 			compression_threshold: None,
-			buffer: vec![],
 			client_version: None
 		})
 	}
@@ -108,7 +114,7 @@ impl CraftClient {
 				return Err(NetworkError::ConnectionAbortedLocally);
 			}
 
-			return Err(NetworkError::Other(e));
+			return Err(NetworkError::IOError(e));
 		}
 
 		let length = length.unwrap();
@@ -186,7 +192,7 @@ impl CraftClient {
 				return Err(NetworkError::ConnectionAbortedLocally);
 			}
 
-			return Err(NetworkError::Other(e));
+			return Err(NetworkError::IOError(e));
 		}
 
 		let length = length.unwrap();

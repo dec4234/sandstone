@@ -9,6 +9,12 @@ use crate::packets::packet_definer::PacketState;
 use crate::packets::packets::packet::{Packet, PingResponseBody, StatusResponseBody};
 use crate::protocol_details::datatypes::var_types::VarInt;
 
+/*
+The purpose of this file is to provide default implementations for the status and ping handlers.
+There is no conceivable reason why you would want to override these, but if you do, you can implement
+them yourself and use them.
+ */
+
 /// The default server-list status handler. Not sure why you wouldn't want to use it, but it's here.
 pub struct DefaultStatusHandler;
 

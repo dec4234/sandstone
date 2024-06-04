@@ -16,6 +16,8 @@ pub mod macros {
         }
     }
 
+    /// Some neat trick to convert a block of code into an item for macros?
+    /// Source is [mcproto-rs](https://github.com/Twister915/mcproto-rs)
     #[macro_export]
     macro_rules! as_item {
         ($i:item) => {
@@ -23,6 +25,9 @@ pub mod macros {
         };
     }
 
+    /// Create an enum that provides a getter for the value associated with each variant.
+    /// Perhaps this is not meant to be done with the Rust enum system, but it's a useful abstraction
+    /// from the Java enums.
     #[macro_export]
     macro_rules! enumize {
         ($name: ident, $y: ty => {
@@ -60,7 +65,8 @@ pub mod macros {
         };
     }
     
-    // Should only be used in protocol_version.rs
+    /// Internal Only. Creates an enum of Minecraft versions with their protocol numbers and fancy names.
+    /// Provides convenient access methods much like [enumize!]
     #[macro_export]
     macro_rules! versions {
         ($name: ident, $y: ty => {
