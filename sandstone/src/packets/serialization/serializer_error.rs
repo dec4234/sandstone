@@ -1,6 +1,6 @@
 use std::array::TryFromSliceError;
 use std::fmt::{Debug, Display};
-use std::str::Utf8Error;
+use std::string::FromUtf8Error;
 
 use thiserror::Error;
 
@@ -11,11 +11,13 @@ pub enum SerializingErr {
 	#[error("The VarType did not end when it should have. {0}")]
 	VarTypeTooLong(String),
 	#[error(transparent)]
-	CouldNotDeserializeString(#[from] Utf8Error),
+	CouldNotDeserializeString(#[from] FromUtf8Error),
 	#[error(transparent)]
 	StringFromSliceError(#[from] TryFromSliceError),
 	#[error("Input ended prematurely")]
 	InputEnded,
+	#[error("Out of bounds")]
+	OutOfBounds,
 	#[error("There is unused input data left")]
 	LeftoverInput,
 	#[error("Unknown deserialization failure")]

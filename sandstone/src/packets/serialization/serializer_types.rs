@@ -18,18 +18,14 @@ impl McDeserialize for String {
 		let bounds: (usize, usize) = (deserializer.index, deserializer.index + var_output.0 as usize);
 
 		if bounds.1 > deserializer.data.len() {
-			return Err(SerializingErr::CouldNotDeserializeString);
+			return Err(SerializingErr::OutOfBounds);
 		}
 
-		let s = String::from_utf8(deserializer.data[bounds.0..bounds.1].to_vec());
+		let s = String::from_utf8(deserializer.data[bounds.0..bounds.1].to_vec())?;
 
 		deserializer.increment(var_output.0 as usize); // length of string
-
-		if let Ok(s) = s {
-			Ok(s)
-		} else {
-			Err(SerializingErr::CouldNotDeserializeString)
-		}
+		
+		Ok(s)
 	}
 }
 
