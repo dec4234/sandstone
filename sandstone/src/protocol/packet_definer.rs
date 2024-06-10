@@ -41,7 +41,6 @@ impl PacketState {
 
 #[macro_use]
 mod macros {
-    
     /// Used to define the minecraft packet protocol. This includes, the name, packet ID, state and
     /// the respective fields for the packet.
     #[macro_export]
@@ -67,7 +66,7 @@ mod macros {
             
                 #[allow(unused)] // incase there's an empty packet
                 impl McDeserialize for $name_body {
-                    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+                    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
                         let s = Self {
                             $($field: <$t>::mc_deserialize(deserializer)?,)*
                         };
@@ -78,7 +77,7 @@ mod macros {
             
                 #[allow(unused)] // incase there's an empty packet
                 impl McSerialize for $name_body {
-                    fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+                    fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
                         $(self.$field.mc_serialize(serializer)?;)*
 
                         Ok(())
@@ -130,7 +129,7 @@ mod macros {
             }
             
             impl McSerialize for Packet {
-                fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+                fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
                     let mut length_serializer = McSerializer::new();
                     match self {
                         $(Packet::$name(b) => {b.mc_serialize(&mut length_serializer)?}),*
@@ -148,7 +147,7 @@ mod macros {
             }
             
             impl StateBasedDeserializer for Packet {
-                fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> {
+                fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> SerializingResult<'a, Self> {
                     let length = VarInt::mc_deserialize(deserializer)?;
 
                     let sub = deserializer.sub_deserializer_length(length.0 as usize);
@@ -190,7 +189,7 @@ mod macros {
             }
 
             impl McDeserialize for $name {
-                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
                     let s = Self {
                         $($field: <$t>::mc_deserialize(deserializer)?,)*
                     };
@@ -200,7 +199,7 @@ mod macros {
             }
 
             impl McSerialize for $name {
-                fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+                fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
                     $(self.$field.mc_serialize(serializer)?;)*
 
                     Ok(())

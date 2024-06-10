@@ -1,7 +1,7 @@
-use crate::packets::packet_definer::{PacketDirection, PacketState};
-use crate::packets::packets::packet::{LoginPluginResponseBody, Packet};
-use crate::packets::packets::packet_component::LoginPluginSpec;
-use crate::packets::serialization::serializer_handler::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
+use crate::protocol::packet_definer::{PacketDirection, PacketState};
+use crate::protocol::packets::Packet;
+use crate::protocol::packets::packet_component::LoginPluginSpec;
+use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 
 #[test]
 pub fn test_basic_deserialization() {

@@ -1,17 +1,20 @@
 use uuid::Uuid;
 
 use crate::packets;
-use crate::packets::packet_definer::{PacketDirection, PacketState};
-use crate::packets::packets::packet_component::{AddResourcePackSpec, LoginPluginSpec, RemoveResourcePackSpec};
-use crate::packets::packets::packet_component::LoginPropertyElement;
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-use crate::packets::serialization::serializer_handler::DeserializeResult;
-use crate::packets::serialization::serializer_handler::StateBasedDeserializer;
-use crate::packets::status::status_packets::StatusResponseSpec;
+use crate::protocol::packet_definer::{PacketDirection, PacketState};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginPluginSpec, RemoveResourcePackSpec};
+use crate::protocol::packets::packet_component::LoginPropertyElement;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::StateBasedDeserializer;
+use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol_details::datatypes::chat::TextComponent;
 use crate::protocol_details::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_details::datatypes::var_types::VarInt;
+
+pub mod packet_component;
+mod packet_testing;
 
 /*
 This file defines the packets for the most recent supported version of the Protocol
@@ -24,6 +27,7 @@ It has a couple of key responsibilities:
 
 // https://wiki.vg/Protocol
 // TODO: https://stackoverflow.com/questions/33999341/generating-documentation-in-macros
+// TODO: naming it v1_20 would not be forwards compatible 
 packets!(V1_20 => {
 	// HANDSHAKE
 	Handshaking, HandshakingBody, 0x00, HANDSHAKING, SERVER => {

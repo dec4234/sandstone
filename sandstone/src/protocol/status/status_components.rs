@@ -6,9 +6,9 @@ use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::packets::packets::packet::StatusResponseBody;
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::packets::StatusResponseBody;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_details::protocol_verison::ProtocolVerison;
 
 /// A prepared response to a status request from a client. This provides useful functions for building
@@ -107,7 +107,7 @@ impl McSerialize for StatusResponseSpec {
 }
 
 impl McDeserialize for StatusResponseSpec {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let raw = serde_json::from_str(&String::mc_deserialize(deserializer)?).unwrap(); // TODO: test
 
 		Ok(raw)

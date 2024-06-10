@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::serializer_error::SerializingErr;
 
 /*
 This file defines the TextComponent type in the Minecraft network API.

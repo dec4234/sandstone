@@ -1,7 +1,6 @@
-use crate::network::client::connection::CraftClient;
+use crate::network::client::CraftClient;
 use crate::network::network_error::NetworkError;
-use crate::packets::packets::packet::StatusResponseBody;
-use crate::packets::status::status_handler::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
+use crate::protocol::packets::StatusResponseBody;
 
 /*
 Lists the traits used to handle packet sequences from the client. These are included so that you can

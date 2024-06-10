@@ -1,6 +1,6 @@
 pub mod protocol_details;
 pub mod util;
-pub mod packets;
+pub mod protocol;
 pub mod network;
 
 #[cfg(test)]

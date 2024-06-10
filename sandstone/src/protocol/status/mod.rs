@@ -3,11 +3,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use log::{debug, trace};
 
 use crate::network::client::client_handlers::{HandshakeHandler, PingHandler, StatusHandler};
-use crate::network::client::connection::CraftClient;
+use crate::network::client::CraftClient;
 use crate::network::network_error::NetworkError;
-use crate::packets::packet_definer::PacketState;
-use crate::packets::packets::packet::{Packet, PingResponseBody, StatusResponseBody};
+use crate::protocol::packet_definer::PacketState;
+use crate::protocol::packets::{Packet, PingResponseBody, StatusResponseBody};
 use crate::protocol_details::datatypes::var_types::VarInt;
+
+pub mod status_components;
 
 /*
 The purpose of this file is to provide default implementations for the status and ping handlers.

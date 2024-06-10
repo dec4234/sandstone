@@ -6,7 +6,7 @@ pub mod nbt_reader;
 
 #[macro_use]
 mod macros {
-	/// Used to generate the NbtValue trait for primitive types
+    /// Used to generate the NbtValue trait for primitive types
 	#[macro_export]
 	macro_rules! primvalue_nbtvalue {
         ($(($t: ty, $name: ident)),*) => {
@@ -73,7 +73,7 @@ mod macros {
                 }
                 
                 impl McDeserialize for $fancyname {
-                    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, $fancyname> {
+                    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, $fancyname> {
                         let length = i32::mc_deserialize(deserializer)?;
                         let mut bytes = vec![];
                         

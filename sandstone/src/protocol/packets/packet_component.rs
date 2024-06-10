@@ -1,8 +1,8 @@
 use sandstone_derive::McSerialize;
 use uuid::Uuid;
 
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_details::datatypes::var_types::VarInt;
 
 /*
@@ -19,7 +19,7 @@ pub struct LoginPropertyElement {
 }
 
 impl McDeserialize for LoginPropertyElement {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 		let name = String::mc_deserialize(deserializer)?;
 		let value = String::mc_deserialize(deserializer)?;
 		let is_signed = bool::mc_deserialize(deserializer)?;
@@ -48,7 +48,7 @@ pub struct LoginPluginSpec {
 }
 
 impl McDeserialize for LoginPluginSpec {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 		let message_id = VarInt::mc_deserialize(deserializer)?;
 		let success = bool::mc_deserialize(deserializer)?;
 		
@@ -73,7 +73,7 @@ pub struct RemoveResourcePackSpec {
 }
 
 impl McDeserialize for RemoveResourcePackSpec {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 		let has_uuid = bool::mc_deserialize(deserializer)?;
 		let uuid = if has_uuid {
 			Some(Uuid::mc_deserialize(deserializer)?)
@@ -99,7 +99,7 @@ pub struct AddResourcePackSpec {
 }
 
 impl McDeserialize for AddResourcePackSpec {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 		let uuid = Uuid::mc_deserialize(deserializer)?;
 		let url = String::mc_deserialize(deserializer)?;
 		let hash = String::mc_deserialize(deserializer)?;

@@ -1,5 +1,5 @@
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
 /*
@@ -32,7 +32,7 @@ impl McSerialize for Group {
 }
 
 impl McDeserialize for Group {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let a = StringMix::mc_deserialize(deserializer);
 
 		if let Ok(a) = a {
@@ -74,7 +74,7 @@ impl McSerialize for VarIntMix {
 }
 
 impl McDeserialize for VarIntMix {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let varmix = Self {
 			one: VarInt::mc_deserialize(deserializer)?,
 			two: String::mc_deserialize(deserializer)?,
@@ -111,7 +111,7 @@ impl McSerialize for StringMix {
 }
 
 impl McDeserialize for StringMix {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let testing = Self {
 			first: u8::mc_deserialize(deserializer)?,
 			second: String::mc_deserialize(deserializer)?,
@@ -130,11 +130,11 @@ impl McDeserialize for StringMix {
 
 #[cfg(test)]
 mod tests {
-	use crate::packets::packet_definer::{PacketDirection, PacketState};
-	use crate::packets::packets::packet;
-	use crate::packets::packets::packet::HandshakingBody;
-	use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
-	use crate::packets::serialization::serializer_testing::{Group, StringMix, VarIntMix};
+	use crate::protocol::packet_definer::{PacketDirection, PacketState};
+	use crate::protocol::packets::packet;
+	use crate::protocol::packets::packet::HandshakingBody;
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
+	use crate::protocol::serialization::serializer_testing::{Group, StringMix, VarIntMix};
 	use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
 	#[test]

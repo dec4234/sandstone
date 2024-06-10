@@ -4,6 +4,8 @@ use quote::quote;
 use syn::{Data, DeriveInput, Fields, Ident, parse_macro_input};
 use syn::__private::Span;
 
+/// Derive the `McSerialize` trait for a struct. This implies that all fields of the struct also
+/// implement `McSerialize`.
 #[proc_macro_derive(McSerialize)]
 pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
@@ -16,7 +18,7 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
 					self.#field_name.mc_serialize(serializer)?;
 				}
 			}).collect(),
-			Fields::Unnamed(fields) => fields.unnamed.iter().enumerate().map(|(i, field)| {
+			Fields::Unnamed(fields) => fields.unnamed.iter().enumerate().map(|(i, _field)| {
 				let field_name = Ident::new(&format!("__{}", i), Span::call_site());
 				quote! {
 					self.#field_name.mc_serialize(serializer)?;
@@ -65,7 +67,7 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 	};
 	let expanded = quote! {
 		impl McDeserialize for #name {
-			fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+			fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 				#(#fields)*
 				Ok(Self {
 					#(

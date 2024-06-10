@@ -5,8 +5,8 @@ use std::ops::Index;
 use serde::{Deserialize, Serialize};
 
 use crate::{list_nbtvalue, primvalue_nbtvalue};
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_details::datatypes::nbt::nbt_error::NbtError;
 
 // https://wiki.vg/NBT
@@ -84,7 +84,7 @@ impl NbtTag {
 		}
 	}
 	
-	pub fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> DeserializeResult<'a, Self> {
+	pub fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
 		match ty {
 			// Primitives
 			0 => Ok(NbtTag::End),
@@ -176,7 +176,7 @@ impl McSerialize for NbtTag {
 }
 
 impl McDeserialize for NbtTag {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, NbtTag> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, NbtTag> {
 		let ty = u8::mc_deserialize(deserializer)?;
 
 		NbtTag::deserialize_specific(deserializer, ty)
@@ -241,7 +241,7 @@ impl NbtCompound {
 		self.map.remove(&name.into());
 	}
 	
-	pub fn from_network<'a>(deserializer: &mut McDeserializer) -> DeserializeResult<'a, NbtCompound> {
+	pub fn from_network<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, NbtCompound> {
 		let t = u8::mc_deserialize(deserializer)?;
 		
 		if t != 10 {
@@ -305,7 +305,7 @@ impl McSerialize for NbtCompound {
 }
 
 impl McDeserialize for NbtCompound {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let name_length = u16::mc_deserialize(deserializer)?;
 		let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
 		let mut compound = NbtCompound::new(Some(name));
@@ -437,7 +437,7 @@ impl McSerialize for NbtList {
 }
 
 impl McDeserialize for NbtList {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, NbtList> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, NbtList> {
 		let t = u8::mc_deserialize(deserializer)?;
 		let length = i32::mc_deserialize(deserializer)?;
 

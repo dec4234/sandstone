@@ -5,16 +5,22 @@ use std::str::FromStr;
 use uuid::Uuid;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::serialization::serializer_error::SerializingErr;
 
-// https://wiki.vg/Protocol#VarInt_and_VarLong
+/*
+The purpose of this file is to define the custom integer types for the Minecraft protocol, VarInt and VarLong.
+See more details here: https://wiki.vg/Protocol#VarInt_and_VarLong
+*/
 const SEGMENT_INT: i32 = 0x7F;
 const SEGMENT_LONG: i64 = 0x7F;
 const CONTINUE_INT: i32 = 0x80;
 const CONTINUE_LONG: i64 = 0x80;
 pub(crate) const CONTINUE_BYTE: u8 = 0x80; // 10000000
 
+/// A VarInt is a packaged i32. It is represented in a more compressed (on average) byte format than
+/// a typical i32. The most significant bit of each byte is used to indicate if there are more bytes
+/// to be read, up to a max of 5.
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
 #[repr(C)]
 pub struct VarInt(pub i32);
@@ -105,10 +111,10 @@ impl FromStr for VarInt {
 			return Err(Error);
 		}
 
-		let varInt = VarInt::from_slice(bytes);
+		let var_int = VarInt::from_slice(bytes);
 
-		match varInt {
-			Ok(varI) => {Ok(varI)}
+		match var_int {
+			Ok(var) => {Ok(var)}
 			Err(_e) => {Err(Error)}
 		}
 	}
@@ -123,7 +129,7 @@ impl McSerialize for VarInt {
 }
 
 impl McDeserialize for VarInt {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, VarInt> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, VarInt> {
 		let mut bytes = vec![];
 
 		if deserializer.data.len() == 0 {
@@ -175,6 +181,9 @@ impl Into<i32> for VarInt {
 	}
 }
 
+/// A VarLong is a packaged i64. It is represented in a more compressed (on average) byte format than
+/// a typical i64. The most significant bit of each byte is used to indicate if there are more bytes
+/// to be read, up to a max of 10.
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
 #[repr(C)]
 pub struct VarLong(pub i64);
@@ -182,7 +191,7 @@ pub struct VarLong(pub i64);
 impl VarLong {
 	// Reading algorithm taken from https://wiki.vg/
 	// TODO: Optimize
-	pub fn from_slice(bytes: &[u8]) -> Result<Self, SerializingErr> {
+	pub fn from_slice(bytes: &[u8]) -> SerializingResult<Self> {
 		if bytes.len() > 10 {
 			return Err(SerializingErr::UniqueFailure("VarLong must be a max of 10 bytes.".to_string()));
 		}
@@ -209,7 +218,7 @@ impl VarLong {
 		return Ok(VarLong(i));
 	}
 
-	pub fn new_from_bytes(bytes: Vec<u8>) -> Result<Self, SerializingErr> {
+	pub fn new_from_bytes(bytes: Vec<u8>) -> Result<Self, SerializingErr> { // cannot use SerializingResult
 		return VarLong::from_slice(bytes.as_slice());
 	}
 
@@ -257,24 +266,24 @@ impl Display for VarLong {
 impl FromStr for VarLong {
 	type Err = Error;
 
-	fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let bytes = s.as_bytes();
 
 		if bytes.len() <= 0 || bytes.len() > 5 {
 			return Err(Error);
 		}
 
-		let varInt = VarLong::from_slice(bytes);
+		let var_int = VarLong::from_slice(bytes);
 
-		match varInt {
-			Ok(varI) => {Ok(varI)}
+		match var_int {
+			Ok(var) => {Ok(var)}
 			Err(_) => {Err(Error)}
 		}
 	}
 }
 
 impl McSerialize for VarLong {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> std::result::Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		serializer.serialize_vec(self.to_bytes());
 
 		Ok(())
@@ -282,7 +291,7 @@ impl McSerialize for VarLong {
 }
 
 impl McDeserialize for VarLong {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, VarLong> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, VarLong> {
 		let mut bytes = vec![];
 
 		if deserializer.data.len() == 0 {
@@ -339,7 +348,7 @@ impl Into<i64> for VarLong {
 // 3rd party items
 
 impl McSerialize for Uuid {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		self.as_u128().mc_serialize(serializer)?;
 
 		Ok(())
@@ -347,14 +356,14 @@ impl McSerialize for Uuid {
 }
 
 impl McDeserialize for Uuid {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		Ok(Uuid::from_u128(u128::mc_deserialize(deserializer)?))
 	}
 }
 
 #[cfg(test)]
 mod tests {
-	use crate::packets::serialization::serializer_handler::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 	use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
 
 	#[test]

@@ -1,4 +1,4 @@
-use crate::util::mojang::mojang_api::{get_player_details, get_uuid_from_username, get_uuids_from_usernames};
+use crate::util::mojang::{get_player_details, get_uuid_from_username, get_uuids_from_usernames};
 
 /*
 These tests are ignored due to rate limit issues

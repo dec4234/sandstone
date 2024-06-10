@@ -3,7 +3,7 @@ use std::io;
 
 use thiserror::Error;
 
-use crate::packets::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::serializer_error::SerializingErr;
 
 /// Any sort of error that could occur while performing or processing a network request.
 #[derive(Error, Debug)]

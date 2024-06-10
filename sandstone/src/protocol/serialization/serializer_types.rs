@@ -1,5 +1,5 @@
-use crate::packets::serialization::serializer_error::SerializingErr;
-use crate::packets::serialization::serializer_handler::{DeserializeResult, McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_details::datatypes::var_types::VarInt;
 use crate::serialize_primitives;
 
@@ -13,7 +13,7 @@ impl McSerialize for String {
 }
 
 impl McDeserialize for String {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 		let var_output = VarInt::mc_deserialize(deserializer)?;
 		let bounds: (usize, usize) = (deserializer.index, deserializer.index + var_output.0 as usize);
 
@@ -41,7 +41,7 @@ impl McSerialize for bool {
 }
 
 impl McDeserialize for bool {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, bool> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, bool> {
 		let b = u8::mc_deserialize(deserializer)?;
 
 		match b {
@@ -71,7 +71,7 @@ mod macros {
             }
 
             impl McDeserialize for $t {
-                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> {
+                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
                     if deserializer.data.len() == 0 {
                         return Err(SerializingErr::InputEnded);
                     }
@@ -106,7 +106,7 @@ impl<T: McSerialize> McSerialize for Vec<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Vec<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized, T: McDeserialize {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
 		let mut vec = vec![];
 
 		while !deserializer.is_at_end() {
@@ -131,7 +131,7 @@ impl<T: McSerialize> McSerialize for Option<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Option<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized, T: McDeserialize {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
 		if deserializer.is_at_end() {
 			return Ok(None);
 		}

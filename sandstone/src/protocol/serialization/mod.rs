@@ -1,7 +1,11 @@
 use std::cmp::min;
 
-use crate::packets::packet_definer::{PacketDirection, PacketState};
-use crate::packets::serialization::serializer_error::SerializingErr;
+use crate::protocol::packet_definer::{PacketDirection, PacketState};
+use crate::protocol::serialization::serializer_error::SerializingErr;
+
+mod serializer_types;
+pub mod serializer_error;
+mod serializer_testing;
 
 /*
 This file defines the handlers for serialization and deserialization in the API.
@@ -11,9 +15,8 @@ Conversely, information can also be "deserialized" from raw bytes into the origi
 for reading packets from the network.
  */
 
-/// The result of a deserialization operation
-// TODO: change this to a general serialization/deserialization error - replace everywhere
-pub type DeserializeResult<'a, T> = Result<T, SerializingErr>;
+/// The result of a serialization/deserialization operation
+pub type SerializingResult<'a, T> = Result<T, SerializingErr>;
 
 /// Handles the serialization of any types that `impl McSerialize`. Holds an
 /// internal buffer representing the serialized data.
@@ -58,11 +61,11 @@ impl McSerializer {
 	pub fn serialize_str_no_length_prefix(&mut self, s: &str) {
 		self.serialize_bytes(s.as_bytes());
 	}
-	
+
 	pub fn get_last(&self) -> Option<&u8> {
 		self.output.last()
 	}
-	
+
 	pub fn merge(&mut self, serializer: McSerializer) {
 		self.serialize_bytes(&serializer.output);
 	}
@@ -98,14 +101,14 @@ impl <'a> McDeserializer<'a> {
 		self.increment(slice.len());
 		slice
 	}
-	
-	/// Slice the internal buffer, starting at the current index and up to the 
+
+	/// Slice the internal buffer, starting at the current index and up to the
 	/// bound provided, but only if it is within bounds
 	pub fn slice_option(&mut self, bound: usize) -> Option<&[u8]> {
 		if self.index + bound > self.data.len() {
 			return None;
 		}
-		
+
 		let slice = &self.data[self.index..(self.index + bound)];
 		self.increment(bound);
 		Some(slice)
@@ -126,7 +129,7 @@ impl <'a> McDeserializer<'a> {
 		self.index += amount;
 	}
 
-	/// Increment the index of this McDeserializer by the difference between the current index 
+	/// Increment the index of this McDeserializer by the difference between the current index
 	/// and the provided index.
 	pub fn increment_by_diff(&mut self, other: usize) {
 		if other > self.index {
@@ -147,19 +150,19 @@ impl <'a> McDeserializer<'a> {
 	pub fn create_sub_deserializer(&self) -> McDeserializer {
 		McDeserializer::new(&self.data[self.index..])
 	}
-	
+
 	/// Create a new McDeserializer with a start at `index` and an end at `index + end`.
 	/// Basically reserves the number of bytes you specify for the sub-deserializer.
 	/// Also increments the parent McDeserializer's index by `end`
-	pub fn sub_deserializer_length(&mut self, end: usize) -> Result<McDeserializer, SerializingErr> {
+	pub fn sub_deserializer_length(&mut self, end: usize) -> SerializingResult<McDeserializer> {
 		if self.index + end > self.data.len() {
 			return Err(SerializingErr::UniqueFailure("Sub-deserializer length exceeds data length".to_string()));
 		}
-		
+
 		let ret = Ok(McDeserializer::new(&self.data[self.index..(self.index + end)]));
-		
+
 		self.index += end;
-		
+
 		ret
 	}
 }
@@ -167,14 +170,14 @@ impl <'a> McDeserializer<'a> {
 /// The standard deserializer used for most regular deserialization operations. Converts
 /// byte data into rust structs and primitive data types
 pub trait McDeserialize {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> DeserializeResult<'a, Self> where Self: Sized;
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized;
 }
 
 /// Deserialize data given the current packet state and the packet id. This is needed since
-/// the packet id is not enough to determine the packet type in some cases. 
+/// the packet id is not enough to determine the packet type in some cases.
 /// (ie. Both STATUS and HANDSHAKING states have a packet with ID 0)
 pub trait StateBasedDeserializer {
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> DeserializeResult<'a, Self> where Self: Sized;
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> SerializingResult<'a, Self> where Self: Sized;
 }
 
 /// Serialize a struct into a byte buffer to be sent over TCP
