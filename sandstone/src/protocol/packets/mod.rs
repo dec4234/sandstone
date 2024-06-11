@@ -9,9 +9,9 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::status::status_components::StatusResponseSpec;
-use crate::protocol_details::datatypes::chat::TextComponent;
-use crate::protocol_details::datatypes::nbt::nbt::NbtCompound;
-use crate::protocol_details::datatypes::var_types::VarInt;
+use crate::protocol_types::datatypes::chat::TextComponent;
+use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::protocol_types::datatypes::var_types::VarInt;
 
 pub mod packet_component;
 mod packet_testing;
@@ -27,7 +27,7 @@ It has a couple of key responsibilities:
 
 // https://wiki.vg/Protocol
 // TODO: https://stackoverflow.com/questions/33999341/generating-documentation-in-macros
-// TODO: naming it v1_20 would not be forwards compatible 
+// TODO: naming it v1_20 would not be forwards compatible? 
 packets!(V1_20 => {
 	// HANDSHAKE
 	Handshaking, HandshakingBody, 0x00, HANDSHAKING, SERVER => {

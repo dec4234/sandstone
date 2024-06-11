@@ -1,6 +1,6 @@
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
+use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 
 /*
 The purpose of this file is to test random nesting of enums and structs for serialization and deserialization
@@ -21,7 +21,7 @@ impl Group {
 }
 
 impl McSerialize for Group {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match self {
 			Group::VarI(b) => {b.mc_serialize(serializer)?}
 			Group::StrM(b) => {b.mc_serialize(serializer)?}
@@ -63,7 +63,7 @@ struct VarIntMix {
 }
 
 impl McSerialize for VarIntMix {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		self.one.mc_serialize(serializer)?;
 		self.two.mc_serialize(serializer)?;
 		self.three.mc_serialize(serializer)?;
@@ -99,7 +99,7 @@ struct StringMix {
 }
 
 impl McSerialize for StringMix {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		self.first.mc_serialize(serializer).unwrap();
 		self.second.mc_serialize(serializer).unwrap();
 		self.third.mc_serialize(serializer).unwrap();
@@ -131,11 +131,10 @@ impl McDeserialize for StringMix {
 #[cfg(test)]
 mod tests {
 	use crate::protocol::packet_definer::{PacketDirection, PacketState};
-	use crate::protocol::packets::packet;
-	use crate::protocol::packets::packet::HandshakingBody;
+	use crate::protocol::packets::{HandshakingBody, Packet};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 	use crate::protocol::serialization::serializer_testing::{Group, StringMix, VarIntMix};
-	use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
+	use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 
 	#[test]
 	fn struct_serialization() {
@@ -212,7 +211,7 @@ mod tests {
 	fn try_direct_deserialize() {
 		let mut serializer = McSerializer::new();
 
-		let p = packet::Packet::Handshaking(HandshakingBody {
+		let p = Packet::Handshaking(HandshakingBody {
 			protocol_version: VarInt(3),
 			server_address: "".to_string(),
 			port: 0,
@@ -223,7 +222,7 @@ mod tests {
 
 		println!("{:?}", serializer.output);
 		let mut deserializer = McDeserializer::new(&serializer.output);
-		let out = packet::Packet::deserialize_state(&mut deserializer, PacketState::HANDSHAKING, PacketDirection::SERVER).unwrap();
+		let out = Packet::deserialize_state(&mut deserializer, PacketState::HANDSHAKING, PacketDirection::SERVER).unwrap();
 
 		println!("{:?}", out);
 	}

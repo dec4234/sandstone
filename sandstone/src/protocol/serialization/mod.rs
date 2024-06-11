@@ -16,6 +16,7 @@ for reading packets from the network.
  */
 
 /// The result of a serialization/deserialization operation
+/// See [SerializingErr] for more information on the error types
 pub type SerializingResult<'a, T> = Result<T, SerializingErr>;
 
 /// Handles the serialization of any types that `impl McSerialize`. Holds an
@@ -170,6 +171,9 @@ impl <'a> McDeserializer<'a> {
 /// The standard deserializer used for most regular deserialization operations. Converts
 /// byte data into rust structs and primitive data types
 pub trait McDeserialize {
+	/// Deserialize the byte buffer into the type that implements this trait.
+	/// Note that if the byte buffer does not match the type you are trying to deserialize, or it does not
+	/// contain enough data then this will return an error.
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized;
 }
 
@@ -177,10 +181,15 @@ pub trait McDeserialize {
 /// the packet id is not enough to determine the packet type in some cases.
 /// (ie. Both STATUS and HANDSHAKING states have a packet with ID 0)
 pub trait StateBasedDeserializer {
+	/// Deserialize the byte buffer into a 'Packet'. This takes 2 extra arguments, the packet state and the 
+	/// direction of the packet to narrow down the exact packet that should be deserialized.
 	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> SerializingResult<'a, Self> where Self: Sized;
 }
 
-/// Serialize a struct into a byte buffer to be sent over TCP
+/// Implement this on a type to enable serializing it into a byte buffer. All types that will be sent
+/// or received from the network must implement this type.
 pub trait McSerialize {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr>;
+	/// Serialize the type that implements this trait into a byte buffer. This enables the struct
+	/// to be sent over the Minecraft network.
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()>;
 }

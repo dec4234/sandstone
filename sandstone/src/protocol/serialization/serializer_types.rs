@@ -1,10 +1,10 @@
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol_details::datatypes::var_types::VarInt;
+use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::serialize_primitives;
 
 impl McSerialize for String {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		VarInt(self.len() as i32).mc_serialize(serializer)?;
 		serializer.serialize_bytes(self.as_bytes());
 
@@ -30,7 +30,7 @@ impl McDeserialize for String {
 }
 
 impl McSerialize for bool {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match *self {
 			true => {serializer.serialize_u8(1)}
 			false => {serializer.serialize_u8(0)}
@@ -56,6 +56,8 @@ serialize_primitives!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64
 
 #[macro_use]
 mod macros {
+	/// Used to implement McSerialize and McDeserialize for primitive types. These are ultimately
+	/// the basis for all other types used in Rust.
 	#[macro_export]
 	macro_rules! serialize_primitives {
         ($($t: ty),*) => {
@@ -96,7 +98,7 @@ mod macros {
 }
 
 impl<T: McSerialize> McSerialize for Vec<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
 		for item in self {
 			item.mc_serialize(serializer)?;
 		}
@@ -117,8 +119,9 @@ impl<T: McDeserialize> McDeserialize for Vec<T> {
 	}
 }
 
+
 impl<T: McSerialize> McSerialize for Option<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
 		match self {
 			Some(item) => {
 				item.mc_serialize(serializer)?;
@@ -131,6 +134,10 @@ impl<T: McSerialize> McSerialize for Option<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Option<T> {
+	/// Special Deserialization note for Options: The protocol uses Options in some places, usually preceeded
+	/// by a boolean indicating if the option is present. In order to handle these cases in a packet,
+	/// you must make a custom struct for at least the Option field and the accompanying boolean field, and
+	/// place them in the correct order in the packet. See [crate::protocol::packets::LoginPropertyElement] as an example.
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
 		if deserializer.is_at_end() {
 			return Ok(None);

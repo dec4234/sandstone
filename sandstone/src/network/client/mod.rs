@@ -10,8 +10,8 @@ use crate::protocol::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::Packet;
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol_details::datatypes::var_types::VarInt;
-use crate::protocol_details::protocol_verison::ProtocolVerison;
+use crate::protocol_types::datatypes::var_types::VarInt;
+use crate::protocol_types::protocol_verison::ProtocolVerison;
 
 pub mod client_handlers;
 

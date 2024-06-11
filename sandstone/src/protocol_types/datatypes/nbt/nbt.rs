@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol_details::datatypes::nbt::nbt_error::NbtError;
+use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 
 // https://wiki.vg/NBT
 
@@ -126,7 +126,7 @@ impl NbtTag {
 }
 
 impl McSerialize for NbtTag {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> std::result::Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		// do not include type id here - list and compound tags will include it themselves
 		match self {
 			// stuff with special cases
@@ -288,7 +288,7 @@ impl Index<&str> for NbtCompound {
 }
 
 impl McSerialize for NbtCompound {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		if serializer.get_last().is_none() { // only serialize tag type if its the main compound
 			10u8.mc_serialize(serializer)?; // TODO: needs more investigation
 		}
@@ -426,7 +426,7 @@ impl Iterator for NbtList {
 }
 
 impl McSerialize for NbtList {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		self.type_id.mc_serialize(serializer)?;
 		(self.list.len() as i32).mc_serialize(serializer)?;
 		for tag in &self.list {

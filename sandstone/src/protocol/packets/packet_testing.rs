@@ -1,5 +1,5 @@
 use crate::protocol::packet_definer::{PacketDirection, PacketState};
-use crate::protocol::packets::Packet;
+use crate::protocol::packets::{LoginPluginResponseBody, Packet};
 use crate::protocol::packets::packet_component::LoginPluginSpec;
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 

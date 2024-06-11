@@ -121,7 +121,7 @@ impl FromStr for VarInt {
 }
 
 impl McSerialize for VarInt {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> std::result::Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		serializer.serialize_vec(self.to_bytes());
 
 		Ok(())
@@ -364,7 +364,7 @@ impl McDeserialize for Uuid {
 #[cfg(test)]
 mod tests {
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_details::datatypes::var_types::{VarInt, VarLong};
+	use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 
 	#[test]
 	fn basic_varint_from_slice() {

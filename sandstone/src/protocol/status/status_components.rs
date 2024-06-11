@@ -8,8 +8,7 @@ use uuid::Uuid;
 
 use crate::protocol::packets::StatusResponseBody;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
-use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol_details::protocol_verison::ProtocolVerison;
+use crate::protocol_types::protocol_verison::ProtocolVerison;
 
 /// A prepared response to a status request from a client. This provides useful functions for building
 /// the complicated nested structure of the status response.
@@ -97,7 +96,7 @@ impl StatusResponseSpec {
 }
 
 impl McSerialize for StatusResponseSpec {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		let serialized = serde_json::to_string(self).unwrap();
 
 		serialized.mc_serialize(serializer)?;

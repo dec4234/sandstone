@@ -7,7 +7,7 @@ use sandstone::network::client::CraftClient;
 use sandstone::protocol::packets::StatusResponseBody;
 use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
-use sandstone::protocol_details::protocol_verison::ProtocolVerison;
+use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 
 /// This demonstrates how to respond to a status request from a client.
 /// This returns information used to display the server on the client's server list

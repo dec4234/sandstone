@@ -3,13 +3,15 @@ use uuid::Uuid;
 
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol_details::datatypes::var_types::VarInt;
+use crate::protocol_types::datatypes::var_types::VarInt;
 
 /*
 Defines a lot of random components of network packets. This is separate from packet.rs to reduce
 clutter.
  */
 
+// TODO: maybe we can make a derive tag for options? At the very least only the option section needs to
+// be in a special body struct.
 #[derive(McSerialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoginPropertyElement {
 	pub(crate) name: String,

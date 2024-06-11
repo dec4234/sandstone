@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 
 /*
@@ -66,7 +66,7 @@ impl TextComponent {
 }
 
 impl McSerialize for TextComponent {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		serde_json::to_string(self).map_err(|e| SerializingErr::UniqueFailure(format!("Failed to serialize JSON: {}", e)))?.mc_serialize(serializer)?;
 		
 		Ok(())
@@ -123,7 +123,7 @@ impl ClickEvent {
 }
 
 impl McSerialize for ClickEvent {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		serde_json::to_string(self).map_err(|e| SerializingErr::UniqueFailure(format!("Failed to serialize JSON: {}", e)))?.mc_serialize(serializer)?;
 		
 		Ok(())
@@ -189,7 +189,7 @@ impl HoverEvent {
 }
 
 impl McSerialize for HoverEvent {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		serde_json::to_string(self).map_err(|e| SerializingErr::UniqueFailure(format!("Failed to serialize JSON: {}", e)))?.mc_serialize(serializer)?;
 		
 		Ok(())

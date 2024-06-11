@@ -1,5 +1,5 @@
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-use crate::protocol_details::datatypes::nbt::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
+use crate::protocol_types::datatypes::nbt::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
 
 #[test]
 fn test_compound_serialization() {

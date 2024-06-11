@@ -1,4 +1,4 @@
-pub mod protocol_details;
+pub mod protocol_types;
 pub mod util;
 pub mod protocol;
 pub mod network;

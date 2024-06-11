@@ -7,7 +7,7 @@ use crate::network::client::CraftClient;
 use crate::network::network_error::NetworkError;
 use crate::protocol::packet_definer::PacketState;
 use crate::protocol::packets::{Packet, PingResponseBody, StatusResponseBody};
-use crate::protocol_details::datatypes::var_types::VarInt;
+use crate::protocol_types::datatypes::var_types::VarInt;
 
 pub mod status_components;
 
