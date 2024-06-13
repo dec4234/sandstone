@@ -26,7 +26,7 @@ async fn main() {
 	let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
 	loop {
-		let (socket, _a) = server.accept().await.unwrap();
+		let (socket, _) = server.accept().await.unwrap();
 		
 		let mut client = CraftClient::from_connection(socket).unwrap();
 		

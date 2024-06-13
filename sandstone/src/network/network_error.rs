@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::io;
 
 use thiserror::Error;
@@ -6,6 +6,7 @@ use thiserror::Error;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 
 /// Any sort of error that could occur while performing or processing a network request.
+// TODO: add more derives
 #[derive(Error, Debug)]
 pub enum NetworkError {
 	#[error("No data received from stream")]

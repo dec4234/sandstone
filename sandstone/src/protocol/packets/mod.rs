@@ -14,7 +14,6 @@ use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 
 pub mod packet_component;
-mod packet_testing;
 
 /*
 This file defines the packets for the most recent supported version of the Protocol

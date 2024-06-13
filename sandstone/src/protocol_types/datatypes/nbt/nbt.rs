@@ -168,7 +168,6 @@ impl McSerialize for NbtTag {
 			NbtTag::Compound(c) => {
 				c.mc_serialize(serializer)?
 			}
-			b => {b.mc_serialize(serializer)?} // everything else
 		}
 
 		Ok(())
@@ -454,7 +453,7 @@ impl McDeserialize for NbtList {
 				return Err(SerializingErr::UniqueFailure("Type must be the same as the type for the list".to_string()))
 			}
 
-			if let Err(e) = list.add_tag(tag) {
+			if let Err(_) = list.add_tag(tag) {
 				return Err(SerializingErr::UniqueFailure("Could not push tag to list".to_string()));
 			}
 		}

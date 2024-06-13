@@ -82,6 +82,12 @@ impl McDeserialize for TextComponent {
 	}
 }
 
+impl From<String> for TextComponent {
+	fn from(s: String) -> Self {
+		Self::new(s)
+	}
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ClickEvent {
 	pub action: String,
@@ -92,7 +98,7 @@ impl ClickEvent {
 	fn new<T: Into<String>>(action: T, value: String) -> Self {
 		Self {
 			action: action.into(),
-			value: value,
+			value,
 		}
 	}
 	

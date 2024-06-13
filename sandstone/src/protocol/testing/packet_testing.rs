@@ -1,7 +1,8 @@
 use crate::protocol::packet_definer::{PacketDirection, PacketState};
-use crate::protocol::packets::{LoginPluginResponseBody, Packet};
+use crate::protocol::packets::{DisconnectBody, LoginPluginResponseBody, Packet};
 use crate::protocol::packets::packet_component::LoginPluginSpec;
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
+use crate::protocol_types::datatypes::chat::TextComponent;
 
 #[test]
 pub fn test_basic_deserialization() {
@@ -12,7 +13,7 @@ pub fn test_basic_deserialization() {
 	
 	match packet {
 		Packet::Handshaking(_) => {}
-		_ => panic!("Invalid packet")
+		_ => panic!("Invalid packet {:?}", packet)
 	}
 	
 	let vec: Vec<u8> = vec![9, 1, 0, 0, 0, 0, 0, 26, 36, 46]; // PingRequest
@@ -63,4 +64,23 @@ pub fn test_optional_vec_serialization() {
 	let mut deserializer = McDeserializer::new(output);
 	let out = Packet::deserialize_state(&mut deserializer, PacketState::LOGIN, PacketDirection::SERVER).unwrap();
 	assert_eq!(packet, out);
+}
+
+#[test]
+pub fn test_cross_serialization() {
+	let mut serializer = McSerializer::new();
+	
+	let packet = Packet::Disconnect(DisconnectBody {
+		reason: TextComponent::from("Hello, world!".to_string())
+	});
+	
+	packet.mc_serialize(&mut serializer).unwrap();
+	
+	let mut deserializer = McDeserializer::new(&serializer.output);
+	
+	let out = Packet::deserialize_state(&mut deserializer, PacketState::LOGIN, PacketDirection::CLIENT).unwrap();
+	
+	assert_eq!(packet, out);
+	
+	serializer.clear();
 }

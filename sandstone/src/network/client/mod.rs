@@ -136,6 +136,79 @@ impl CraftClient {
 
 		Ok(packet)
 	}
+	
+	/// Try to receive a packet from the buffer without blocking. This will return 'NoDataReceived' 
+	/// if no data is available.
+	pub fn try_receive_packet(&mut self) -> Result<Packet, NetworkError> {
+		let mut vec = vec![];
+
+		// read varint for length
+		loop {
+			let var_buffer = &mut [0u8; 1];
+			let len = self.tcp_stream.try_read(var_buffer)?;
+			
+			if len == 0 {
+				return Err(NetworkError::NoDataReceived);
+			}
+			
+			let b = var_buffer[0];
+
+			if b & CONTINUE_BIT == 0 {
+				vec.push(b);
+				break;
+			} else {
+				vec.push(b);
+
+				if vec.len() > 3 {
+					return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
+				}
+			}
+		}
+
+		let vari = VarInt::new_from_bytes(vec)?;
+		let varbytes = vari.to_bytes();
+
+		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
+			return Err(NetworkError::PacketTooLarge);
+		}
+
+		let length = vari.0 as usize + varbytes.len();
+
+		// TODO: analysis needed - does this minimize copying?
+		// could define &[u8] to max packet size but that seems like too much memory usage
+		let mut buffer = vec![0; length];
+
+		let mut i = 0;
+
+		for b in &varbytes {
+			buffer[i] = *b;
+			i += 1;
+		}
+
+		let length = self.tcp_stream.try_read(&mut buffer[varbytes.len()..]);
+
+		if let Err(e) = length {
+			return Err(NetworkError::IOError(e));
+		}
+
+		let length = length.unwrap();
+
+		trace!("Received from {} : {:?}", self, &buffer);
+
+		if length == 0 { // connection closed
+			return Err(NetworkError::NoDataReceived);
+		} else if length == PACKET_MAX_SIZE {
+			return Err(NetworkError::PacketTooLarge);
+		}
+
+		// TODO: decompress & decrypt here
+
+		let mut deserializer = McDeserializer::new(&buffer);
+		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
+
+		Ok(packet)
+		
+	}
 
 	/// Peek the next packet in the queue without removing it. This will block until a packet is received.
 	pub async fn peek_packet(&mut self) -> Result<Packet, NetworkError> {

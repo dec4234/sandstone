@@ -1,3 +1,6 @@
+//! The purpose of this file is to define the custom integer types for the Minecraft protocol, VarInt and VarLong.
+//! See more details here: https://wiki.vg/Protocol#VarInt_and_VarLong
+
 use std::fmt;
 use std::fmt::{Display, Error, Formatter};
 use std::str::FromStr;
@@ -8,10 +11,6 @@ use zerocopy::{AsBytes, FromBytes, FromZeroes};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 
-/*
-The purpose of this file is to define the custom integer types for the Minecraft protocol, VarInt and VarLong.
-See more details here: https://wiki.vg/Protocol#VarInt_and_VarLong
-*/
 const SEGMENT_INT: i32 = 0x7F;
 const SEGMENT_LONG: i64 = 0x7F;
 const CONTINUE_INT: i32 = 0x80;

@@ -31,7 +31,7 @@ impl StatusHandler for DefaultStatusHandler {
 		let packet = connection.receive_packet().await?;
 
 		match packet {
-			Packet::StatusRequest(s) => {
+			Packet::StatusRequest(_) => {
 				trace!("Received status request from {}", connection);
 
 				let packed = Packet::StatusResponse(status_response);

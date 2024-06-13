@@ -16,18 +16,19 @@ The library currently has a fully custom packet serializer and deserializer, as 
 Here is a current example of handling the server list status.
 
 ```rust
-fn main() {
+#[tokio::main]
+async fn main() {
     SimpleLogger::new().init().unwrap();
 	debug!("Starting server");
 
 	let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
 	loop {
-		let (socket, a) = server.accept().await.unwrap();
+		let (socket, _) = server.accept().await.unwrap();
 		
 		let mut client = CraftClient::from_connection(socket).unwrap();
 		
-		let mut response = UniversalStatusResponse::new(ProtocolVerison::V1_20, "&a&lThis is a test description &b§kttt");
+		let mut response = StatusResponseSpec::new(ProtocolVerison::V1_20, "&a&lThis is a test description &b§kttt");
 		response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
 		
 		let image = image::open("src/server-icon.png").unwrap();
