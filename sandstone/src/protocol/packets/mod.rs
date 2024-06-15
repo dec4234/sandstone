@@ -1,3 +1,10 @@
+//! This file defines the packets for the most recent supported version of the Protocol
+//! <br>
+//! It has a couple of key responsibilities:
+//! - Define the packets that are used in the protocol
+//! - Define the serialization and deserialization for each packet
+//! - Provide vital information about each packet such as the packet ID, the packet state, and the packet direction
+
 use uuid::Uuid;
 
 use crate::packets;
@@ -15,18 +22,8 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 
 pub mod packet_component;
 
-/*
-This file defines the packets for the most recent supported version of the Protocol
-
-It has a couple of key responsibilities:
-- Define the packets that are used in the protocol
-- Define the serialization and deserialization for each packet
-- Provide vital information about each packet such as the packet ID, the packet state, and the packet direction
-*/
-
 // https://wiki.vg/Protocol
 // TODO: https://stackoverflow.com/questions/33999341/generating-documentation-in-macros
-// TODO: naming it v1_20 would not be forwards compatible? 
 packets!(V1_20 => {
 	// HANDSHAKE
 	Handshaking, HandshakingBody, 0x00, HANDSHAKING, SERVER => {

@@ -1,21 +1,24 @@
+//! This file defines the TextComponent type in the Minecraft network API.
+//! Seen in books, disconnect messages, chat messages, action bar, etc.
+
 use serde::{Deserialize, Serialize};
 
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 
-/*
-This file defines the TextComponent type in the Minecraft network API.
-Seen in books, disconnect messages, chat messages, action bar, etc.
- */
-
-// https://wiki.vg/Text_formatting#Text_components
+/// A TextComponent is a fancy way to display text inside the game. This is most commonly seen
+/// in chat messages and book messages. The only thing that is required to be included is a String
+/// representing the text to be displayed. Everything else is an optional modifier.
+///
+/// See [https://wiki.vg/Text_formatting#Text_components](https://wiki.vg/Text_formatting#Text_components)
+/// for more information.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 pub struct TextComponent {
 	pub text: String,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	#[serde(rename = "type")]
-	pub typ: Option<String>,
+	pub typ: Option<String>, // TODO: replace with ComponentType enum
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub extra: Option<Vec<TextComponent>>,
 	
@@ -86,6 +89,23 @@ impl From<String> for TextComponent {
 	fn from(s: String) -> Self {
 		Self::new(s)
 	}
+}
+
+// TODO: continue writing component type
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ComponentType {
+	#[serde(rename = "text")]
+	Text,
+	#[serde(rename = "translatable")]
+	Translatable,
+	#[serde(rename = "keybind")]
+	Keybind,
+	#[serde(rename = "score")]
+	Score,
+	#[serde(rename = "selector")]
+	Selector,
+	#[serde(rename = "nbt")]
+	Nbt,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]

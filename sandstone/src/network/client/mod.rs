@@ -1,3 +1,7 @@
+//! This file is used to define everything relating to a client connection.
+//! This includes the connection itself, the ability to send and receive packets, and the ability to
+//! change the packet state of the connection.
+
 use std::fmt::Display;
 use std::net::SocketAddr;
 
@@ -14,12 +18,6 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
 
 pub mod client_handlers;
-
-/*
-The purpose of this file is to define everything relating to a client connection.
-This includes the connection itself, the ability to send and receive packets, and the ability to
-change the packet state of the connection.
- */
 
 const PACKET_MAX_SIZE: usize = 2097151;  // max of 3 byte VarInt
 /// The bit that indicates if a VarInt is continuing into another byte.

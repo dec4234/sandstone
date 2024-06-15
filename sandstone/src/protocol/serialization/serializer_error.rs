@@ -1,13 +1,11 @@
+//! This file describes the SerializingError type, which is used to represent errors
+//! for serialization and deserialization operations. This is useful for debugging and error handling.
+
 use std::array::TryFromSliceError;
 use std::fmt::Debug;
 use std::string::FromUtf8Error;
 
 use thiserror::Error;
-
-/*
-The purpose of this file is to describe the SerializingError type, which is used to represent errors
-for serialization and deserialization operations. This is useful for debugging and error handling.
- */
 
 /// A type that describes common errors encountered while serializing or deserializing network data.
 /// Each error either provides a description of the error or transparently passes the internal error,

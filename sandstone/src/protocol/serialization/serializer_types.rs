@@ -134,7 +134,7 @@ impl<T: McSerialize> McSerialize for Option<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Option<T> {
-	/// Special Deserialization note for Options: The protocol uses Options in some places, usually preceeded
+	/// Special Deserialization note for Options: The protocol uses Options in some places, usually preceded
 	/// by a boolean indicating if the option is present. In order to handle these cases in a packet,
 	/// you must make a custom struct for at least the Option field and the accompanying boolean field, and
 	/// place them in the correct order in the packet. See [crate::protocol::packets::LoginPropertyElement] as an example.

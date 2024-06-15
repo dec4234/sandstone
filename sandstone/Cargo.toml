@@ -24,7 +24,6 @@ zerocopy = {version = "0.7.29", features = ["derive", "byteorder"]}
 bincode = {version = "2.0.0-rc.3", features = ["default", "serde"]}
 base64 = "0.22.1"
 error = "0.1.9"
-indexmap = "2.2.6"
 log = "0.4.21"
 image = {version = "0.25.1", features = ["default", "png"]}
 flate2 = {version = "1.0.30", features = ["zlib"]}

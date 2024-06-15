@@ -446,20 +446,4 @@ mod tests {
 		VarLong(-9223372036854775808).mc_serialize(&mut serializer).unwrap();
 		assert_eq!(serializer.output, vec![128, 128, 128, 128, 128, 128, 128, 128, 128, 1]);
 	}
-
-	#[test]
-	fn test_string_serialization() {
-		let mut serializer = McSerializer::new();
-
-		"ABC".to_string().mc_serialize(&mut serializer).unwrap();
-		let mut deserializer = McDeserializer::new(&mut serializer.output);
-		assert_eq!("ABC".to_string(), String::mc_deserialize(&mut deserializer).unwrap());
-		assert_eq!(serializer.output, vec![3, 65, 66, 67]);
-
-		serializer.clear();
-
-		"HELLO WORLD 123456789".to_string().mc_serialize(&mut serializer).unwrap();
-		let mut deserializer = McDeserializer::new(&mut serializer.output);
-		assert_eq!("HELLO WORLD 123456789".to_string(), String::mc_deserialize(&mut deserializer).unwrap());
-	}
 }
