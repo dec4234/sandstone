@@ -1,5 +1,5 @@
 //! This file defines the packets for the most recent supported version of the Protocol
-//! <br>
+//! 
 //! It has a couple of key responsibilities:
 //! - Define the packets that are used in the protocol
 //! - Define the serialization and deserialization for each packet

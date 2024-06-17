@@ -146,3 +146,16 @@ impl<T: McDeserialize> McDeserialize for Option<T> {
 		Ok(Some(T::mc_deserialize(deserializer)?))
 	}
 }
+
+// not sure if this will ever be needed, but it's nice to have
+impl<T: McSerialize> McSerialize for Box<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
+		(**self).mc_serialize(serializer)
+	}
+}
+
+impl<T: McDeserialize> McDeserialize for Box<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
+		Ok(Box::new(T::mc_deserialize(deserializer)?))
+	}
+}

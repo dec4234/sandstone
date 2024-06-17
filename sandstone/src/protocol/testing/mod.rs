@@ -1,8 +1,11 @@
 pub mod packet_testing;
 mod primitive_serialization_testing;
+mod benchmarking;
 
 // TODO: derive macro
 /// A trait that defines the default value for a type. This is used for testing packet serialization.
+/// This is different from the typical `Default` trait in Rust, as it returns more random and meaningful
+/// values.
 pub trait McDefault {
 	fn default() -> Self;
 }

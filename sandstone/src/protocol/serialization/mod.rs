@@ -32,6 +32,26 @@ impl McSerializer {
 			output: vec![]
 		}
 	}
+	
+	/// Initialize the size of the internal serializer buffer. If you plan on serializing a lot of small
+	/// items, then this should be used to avoid unnecessary reallocations.
+	pub fn init_size(size: usize) -> Self {
+		Self {
+			output: Vec::with_capacity(size)
+		}
+	}
+	
+	/// Set the size of the internal buffer. This will resize the buffer to the size specified.
+	/// The provided size must be greater than the current length of the buffer.
+	pub fn set_size(&mut self, size: usize) -> SerializingResult<()> {
+		if size < self.output.len() {
+			return Err(SerializingErr::UniqueFailure("Cannot set size to less than current length".to_string()));
+		}
+		
+		self.output.resize(size, 0);
+		
+		Ok(())
+	}
 
 	/// Clear the existing serialized data from the internal buffer
 	pub fn clear(&mut self) {

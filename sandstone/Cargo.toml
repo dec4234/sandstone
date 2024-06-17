@@ -36,3 +36,8 @@ thiserror = "1.0.61"
 [dev-dependencies]
 #craftio-rs = "0.1.0"
 #mcproto-rs = {version = "0.2.0", features = ["v1_15_2"]}
+
+[profile.dev]
+opt-level = 3
+overflow-checks = true
+lto = true

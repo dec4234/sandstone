@@ -156,4 +156,16 @@ mod primitive_testing {
 		
 		serializer.clear();
 	}
+	
+	#[test]
+	#[allow(unused_allocation)]
+	fn test_box_serialization() {
+		let mut serializer = McSerializer::new();
+		
+		Box::new(5u8).mc_serialize(&mut serializer).unwrap();
+		let mut deserializer = McDeserializer::new(&mut serializer.output);
+		assert_eq!(Box::new(5u8), Box::<u8>::mc_deserialize(&mut deserializer).unwrap());
+		
+		serializer.clear();
+	}
 }
