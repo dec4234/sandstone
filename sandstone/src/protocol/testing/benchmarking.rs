@@ -53,7 +53,7 @@ fn benchmark_mass_varint_serialization() {
 		VarInt(i as i32).mc_serialize(&mut serializer).unwrap();
 	}
 	
-	println!("Average time taken to deserialize {ITERATIONS} packets: {:.3}micros", SystemTime::now().duration_since(current_millis).unwrap().as_micros() as f64 / ITERATIONS as f64);
+	println!("Average time taken to serialize {ITERATIONS} varints: {:.3}micros", SystemTime::now().duration_since(current_millis).unwrap().as_micros() as f64 / ITERATIONS as f64);
 	
 	let current_millis = SystemTime::now();
 	
@@ -63,5 +63,19 @@ fn benchmark_mass_varint_serialization() {
 		let _ = VarInt::mc_deserialize(&mut deserializer).unwrap();
 	}
 	
-	println!("Average time taken to deserialize {ITERATIONS} packets: {:.3}micros", SystemTime::now().duration_since(current_millis).unwrap().as_micros() as f64 / ITERATIONS as f64);
+	println!("Average time taken to deserialize {ITERATIONS} varints: {:.3}micros", SystemTime::now().duration_since(current_millis).unwrap().as_micros() as f64 / ITERATIONS as f64);
+}
+
+#[ignore]
+#[test]
+pub fn benchmark_get_bytes_of_varint() {
+	const ITERATIONS: usize = 10000000;
+	
+	let current_millis = SystemTime::now();
+	
+	for i in 0..ITERATIONS {
+		let _ = VarInt(i as i32).to_bytes();;
+	}
+	
+	println!("Average time taken to get bytes of {ITERATIONS} VarInts: {:.3}micros", SystemTime::now().duration_since(current_millis).unwrap().as_micros() as f64 / ITERATIONS as f64);
 }

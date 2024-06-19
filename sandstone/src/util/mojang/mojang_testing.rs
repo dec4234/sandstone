@@ -77,5 +77,5 @@ pub async fn test_get_player_details() {
 	assert_eq!(response.properties.len(), 1);
 	assert_eq!(response.properties[0].name, "textures");
 	
-	let texture = response.properties[0].get_skin_details().unwrap();
+	let _texture = response.properties[0].get_skin_details().unwrap();
 }

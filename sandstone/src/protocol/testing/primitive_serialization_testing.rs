@@ -1,3 +1,5 @@
+//! Testing for the serialization and deserialization of primitive types.
+
 #[cfg(test)]
 mod primitive_testing {
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};

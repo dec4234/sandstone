@@ -84,7 +84,7 @@ impl CraftClient {
 			}
 		}
 
-		let vari = VarInt::new_from_bytes(vec)?;
+		let vari = VarInt::from_slice(&vec)?;
 		let varbytes = vari.to_bytes();
 
 		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
@@ -163,7 +163,7 @@ impl CraftClient {
 			}
 		}
 
-		let vari = VarInt::new_from_bytes(vec)?;
+		let vari = VarInt::from_slice(&vec)?;
 		let varbytes = vari.to_bytes();
 
 		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
@@ -225,7 +225,7 @@ impl CraftClient {
 
 			// this indicates if the varint has ended
 			if b[i - 1] & CONTINUE_BIT == 0 {
-				vari = VarInt::new_from_bytes(b)?;
+				vari = VarInt::from_slice(&b)?;
 				break;
 			} else {
 				if i > 3 { // any varint over 3 bytes is either broken or too big for a packet

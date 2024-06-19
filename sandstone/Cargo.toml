@@ -15,8 +15,8 @@ exclude = ["src/sandstone-derive"]
 [dependencies]
 simple_logger = "5.0.0"
 tokio = {features = ["full"], version = "1.37.0"}
-rayon = "1.10.0"
-openssl = {version = "0.10.64", features = ["vendored"]}
+#rayon = "1.10.0"
+#openssl = {version = "0.10.64", features = ["vendored"]}
 serde_json = "1.0.117"
 serde = {version = "1.0.202", features = ["derive"]}
 uuid = {version = "1.8.0", features = ["v4"]}
@@ -26,7 +26,7 @@ base64 = "0.22.1"
 error = "0.1.9"
 log = "0.4.21"
 image = {version = "0.25.1", features = ["default", "png"]}
-flate2 = {version = "1.0.30", features = ["zlib"]}
+#flate2 = {version = "1.0.30", features = ["zlib"]}
 regex = "1.10.4"
 fastsnbt = "0.2.0"
 reqwest = "0.12.4"
@@ -36,8 +36,3 @@ thiserror = "1.0.61"
 [dev-dependencies]
 #craftio-rs = "0.1.0"
 #mcproto-rs = {version = "0.2.0", features = ["v1_15_2"]}
-
-[profile.dev]
-opt-level = 3
-overflow-checks = true
-lto = true

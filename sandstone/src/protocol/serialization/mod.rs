@@ -1,3 +1,9 @@
+//! This file defines the handlers for serialization and deserialization in the API.
+//! Information can be "serialized" from the original type into its raw bytes. This can then be
+//! sent in a packet over the network.
+//! Conversely, information can also be "deserialized" from raw bytes into the original type. This is useful
+//! for reading packets from the network.
+
 use std::cmp::min;
 
 use crate::protocol::packet_definer::{PacketDirection, PacketState};
@@ -6,14 +12,6 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 mod serializer_types;
 pub mod serializer_error;
 mod serializer_testing;
-
-/*
-This file defines the handlers for serialization and deserialization in the API.
-Information can be "serialized" from the original type into its raw bytes. This can then be
-sent in a packet over the network.
-Conversely, information can also be "deserialized" from raw bytes into the original type. This is useful
-for reading packets from the network.
- */
 
 /// The result of a serialization/deserialization operation
 /// See [SerializingErr] for more information on the error types
@@ -48,7 +46,7 @@ impl McSerializer {
 			return Err(SerializingErr::UniqueFailure("Cannot set size to less than current length".to_string()));
 		}
 		
-		self.output.resize(size, 0);
+		self.output.reserve(size);
 		
 		Ok(())
 	}
@@ -61,17 +59,13 @@ impl McSerializer {
 	/// Add a slice of bytes to the internal buffer. Reallocates the buffer
 	/// for the new amount of space required before pushing.
 	pub fn serialize_bytes(&mut self, input: &[u8]) {
-		let mut i = self.output.len();
-		self.output.resize(self.output.len() + input.len(), 1); // maybe this is helpful?
-
 		for b in input {
-			self.output[i] = *b;
-			i += 1;
+			self.output.push(*b);
 		}
 	}
 
 	pub fn serialize_vec(&mut self, vec: Vec<u8>) {
-		self.serialize_bytes(vec.as_slice());
+		self.serialize_bytes(&vec);
 	}
 
 	pub fn serialize_u8(&mut self, b: u8) {

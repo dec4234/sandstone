@@ -13,6 +13,8 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 
 const SEGMENT_INT: i32 = 0x7F;
 const SEGMENT_LONG: i64 = 0x7F;
+const SEGMENT_INT_OPP: i32 = !SEGMENT_INT; // cache these to avoid it at runtime
+const SEGMENT_LONG_OPP: i64 = !SEGMENT_LONG;
 const CONTINUE_INT: i32 = 0x80;
 const CONTINUE_LONG: i64 = 0x80;
 pub(crate) const CONTINUE_BYTE: u8 = 0x80; // 10000000
@@ -21,13 +23,11 @@ pub(crate) const CONTINUE_BYTE: u8 = 0x80; // 10000000
 /// a typical i32. The most significant bit of each byte is used to indicate if there are more bytes
 /// to be read, up to a max of 5.
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
-#[repr(C)]
+#[repr(C)] // TODO: maybe remove
 pub struct VarInt(pub i32);
 
 impl VarInt {
-
-	// Reading algorithm taken from https://wiki.vg/
-	// TODO: Optimize
+	/// Convert a slice of bytes into a VarInt. Reading algorithm taken from https://wiki.vg/
 	pub fn from_slice(bytes: &[u8]) -> Result<Self, SerializingErr> {
 		if bytes.len() > 5 {
 			return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
@@ -37,6 +37,10 @@ impl VarInt {
 		let mut pos = 0;
 
 		for b in bytes {
+			if *b == 0 {
+				break;
+			}
+			
 			let local: i32 = *b as i32;
 
 			i |= (local & SEGMENT_INT) << pos;
@@ -55,22 +59,18 @@ impl VarInt {
 		return Ok(VarInt(i));
 	}
 
-	pub fn new_from_bytes(bytes: Vec<u8>) -> Result<Self, SerializingErr> {
-		return VarInt::from_slice(bytes.as_slice());
-	}
-
-	// TODO: optimize
+	/// Convert the VarInt into a Vec of bytes which can be serialized, or converted back to a VarInt using `from_slice`.
 	pub fn to_bytes(&self) -> Vec<u8> {
-		let mut vec: Vec<u8> = vec![];
+		let mut vec: Vec<u8> = Vec::with_capacity(5);
 		let mut inner = self.0;
 
 		loop {
-			if (inner & !SEGMENT_INT) == 0 {
-				vec.push(inner.to_le_bytes()[0]);
+			if (inner & SEGMENT_INT_OPP) == 0 {
+				vec.push(inner as u8);
 				break;
 			}
 
-			vec.push(((inner & SEGMENT_INT) | CONTINUE_INT) as u8);
+			vec.push((inner | CONTINUE_INT) as u8); // this is boolean simplified from the wiki.vg example
 
 			// https://stackoverflow.com/questions/70212075/how-to-make-unsigned-right-shift-in-rust
 			inner = {
@@ -103,7 +103,7 @@ impl Display for VarInt {
 impl FromStr for VarInt {
 	type Err = Error;
 
-	fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let bytes = s.as_bytes();
 
 		if bytes.len() <= 0 || bytes.len() > 5 {
@@ -129,7 +129,7 @@ impl McSerialize for VarInt {
 
 impl McDeserialize for VarInt {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, VarInt> {
-		let mut bytes = vec![];
+		let mut bytes = Vec::with_capacity(5);
 
 		if deserializer.data.len() == 0 {
 			return Err(SerializingErr::InvalidEndOfVarInt);
@@ -138,7 +138,7 @@ impl McDeserialize for VarInt {
 		let mut i = 0;
 
 		while deserializer.data[i + deserializer.index] & CONTINUE_BYTE == CONTINUE_BYTE {
-			if i >= 5 {
+			if i >= 4 {
 				return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
 			}
 
@@ -154,17 +154,9 @@ impl McDeserialize for VarInt {
 
 		deserializer.increment(i + 1);
 
-		if bytes.len() > 5 {
-			return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
-		}
+		let var = VarInt::from_slice(&bytes)?;
 
-		let var = VarInt::new_from_bytes(bytes);
-
-		if var.is_err() {
-			return Err(SerializingErr::UnknownFailure);
-		}
-
-		return Ok(var.unwrap()); // safe to unwrap because we check for error above
+		return Ok(var);
 	}
 }
 
@@ -174,9 +166,9 @@ impl From<i32> for VarInt {
 	}
 }
 
-impl Into<i32> for VarInt {
-	fn into(self) -> i32 {
-		self.0
+impl From<&[u8]> for VarInt {
+	fn from(bytes: &[u8]) -> Self {
+		VarInt::from_slice(bytes).unwrap()
 	}
 }
 
@@ -184,12 +176,11 @@ impl Into<i32> for VarInt {
 /// a typical i64. The most significant bit of each byte is used to indicate if there are more bytes
 /// to be read, up to a max of 10.
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy)]
-#[repr(C)]
+#[repr(C)] // TODO: maybe remove
 pub struct VarLong(pub i64);
 
 impl VarLong {
-	// Reading algorithm taken from https://wiki.vg/
-	// TODO: Optimize
+	/// Convert a slice of bytes into a VarLong. Reading algorithm taken from https://wiki.vg/
 	pub fn from_slice(bytes: &[u8]) -> SerializingResult<Self> {
 		if bytes.len() > 10 {
 			return Err(SerializingErr::UniqueFailure("VarLong must be a max of 10 bytes.".to_string()));
@@ -199,6 +190,10 @@ impl VarLong {
 		let mut pos = 0;
 
 		for b in bytes {
+			if *b == 0 {
+				break;
+			}
+
 			let local: i64 = *b as i64;
 
 			i |= (local & SEGMENT_LONG) << pos;
@@ -221,18 +216,18 @@ impl VarLong {
 		return VarLong::from_slice(bytes.as_slice());
 	}
 
-	// TODO: optimize
+	/// Convert the VarLong into a Vec of bytes which can be serialized, or converted back to a VarLong using `from_slice`.
 	pub fn to_bytes(&self) -> Vec<u8> {
-		let mut vec: Vec<u8> = vec![];
+		let mut vec: Vec<u8> = Vec::with_capacity(10);
 		let mut inner = self.0;
 
 		loop {
-			if (inner & !SEGMENT_LONG) == 0 {
-				vec.push(inner.to_le_bytes()[0]);
+			if (inner & SEGMENT_LONG_OPP) == 0 {
+				vec.push(inner as u8);
 				break;
 			}
 
-			vec.push(((inner & SEGMENT_LONG) | CONTINUE_LONG) as u8);
+			vec.push((inner | CONTINUE_LONG) as u8); // this is boolean simplified from the wiki.vg example
 
 			// https://stackoverflow.com/questions/70212075/how-to-make-unsigned-right-shift-in-rust
 			inner = {
@@ -291,7 +286,7 @@ impl McSerialize for VarLong {
 
 impl McDeserialize for VarLong {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, VarLong> {
-		let mut bytes = vec![];
+		let mut bytes = Vec::with_capacity(10);
 
 		if deserializer.data.len() == 0 {
 			return Err(SerializingErr::InvalidEndOfVarInt);
@@ -300,7 +295,7 @@ impl McDeserialize for VarLong {
 		let mut i = 0;
 
 		while i + deserializer.index < deserializer.data.len() && deserializer.data[i + deserializer.index] & CONTINUE_BYTE == CONTINUE_BYTE {
-			if i >= 10 {
+			if i >= 9 {
 				return Err(SerializingErr::VarTypeTooLong("VarLong must be a max of 10 bytes.".to_string()));
 			}
 
@@ -316,17 +311,9 @@ impl McDeserialize for VarLong {
 
 		deserializer.increment(i);
 
-		if bytes.len() > 10 {
-			return Err(SerializingErr::VarTypeTooLong("VarLong must be a max of 10 bytes.".to_string()));
-		}
+		let var = VarLong::from_slice(&bytes)?;
 
-		let var = VarLong::new_from_bytes(bytes);
-
-		if var.is_err() {
-			return Err(SerializingErr::UnknownFailure);
-		}
-
-		return Ok(var.unwrap());
+		return Ok(var);
 	}
 }
 
@@ -336,9 +323,9 @@ impl From<i64> for VarLong {
 	}
 }
 
-impl Into<i64> for VarLong {
-	fn into(self) -> i64 {
-		self.0
+impl From<&[u8]> for VarLong {
+	fn from(bytes: &[u8]) -> Self {
+		VarLong::from_slice(bytes).unwrap()
 	}
 }
 
@@ -348,7 +335,7 @@ impl Into<i64> for VarLong {
 
 impl McSerialize for Uuid {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		self.as_u128().mc_serialize(serializer)?;
+		self.as_u128().mc_serialize(serializer)?; // serialized as u128 in mc protocol
 
 		Ok(())
 	}
@@ -367,25 +354,25 @@ mod tests {
 
 	#[test]
 	fn basic_varint_from_slice() {
-		assert!(VarInt::from_slice(&[221, 199, 1]).unwrap() == VarInt(25565));
-		assert!(VarInt::from_slice(&[255, 255, 127]).unwrap() == VarInt(2097151));
-		assert!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap() == VarInt(-1));
-		assert!(VarInt::from_slice(&[128, 128, 128, 128, 8]).unwrap() == VarInt(-2147483648));
+		assert_eq!(VarInt::from_slice(&[221, 199, 1]).unwrap(), VarInt(25565));
+		assert_eq!(VarInt::from_slice(&[255, 255, 127]).unwrap(), VarInt(2097151));
+		assert_eq!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap(), VarInt(-1));
+		assert_eq!(VarInt::from_slice(&[128, 128, 128, 128, 8]).unwrap(), VarInt(-2147483648));
 	}
 
 	#[test]
 	fn basic_varint_writing() {
-		assert!(VarInt::from_slice(&[221, 199, 1]).unwrap().to_bytes() == vec![221, 199, 1]);
-		assert!(VarInt::from_slice(&[255, 255, 127]).unwrap().to_bytes() == vec![255, 255, 127]);
-		assert!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap().to_bytes() == vec![255, 255, 255, 255, 15]);
+		assert_eq!(VarInt::from_slice(&[221, 199, 1]).unwrap().to_bytes(), vec![221, 199, 1]);
+		assert_eq!(VarInt::from_slice(&[255, 255, 127]).unwrap().to_bytes(), vec![255, 255, 127]);
+		assert_eq!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap().to_bytes(), vec![255, 255, 255, 255, 15]);
 	}
 
 	#[test]
 	fn basic_varlong_from_slice() {
-		assert!(VarLong::from_slice(&[255, 1]).unwrap() == VarLong(255));
-		assert!(VarLong::from_slice(&[255, 255, 255, 255, 7]).unwrap() == VarLong(2147483647));
-		assert!(VarLong::from_slice(&[255, 255, 255, 255, 255, 255, 255, 255, 255, 1]).unwrap() == VarLong(-1));
-		assert!(VarLong::from_slice(&[128, 128, 128, 128, 248, 255, 255, 255, 255, 1]).unwrap() == VarLong(-2147483648));
+		assert_eq!(VarLong::from_slice(&[255, 1]).unwrap(), VarLong(255));
+		assert_eq!(VarLong::from_slice(&[255, 255, 255, 255, 7]).unwrap(), VarLong(2147483647));
+		assert_eq!(VarLong::from_slice(&[255, 255, 255, 255, 255, 255, 255, 255, 255, 1]).unwrap(), VarLong(-1));
+		assert_eq!(VarLong::from_slice(&[128, 128, 128, 128, 248, 255, 255, 255, 255, 1]).unwrap(), VarLong(-2147483648));
 	}
 
 	#[test]
@@ -411,12 +398,12 @@ mod tests {
 
 		serializer.clear();
 		VarInt(-2147483648).mc_serialize(&mut serializer).unwrap();
-		deserializer = McDeserializer::new(&mut serializer.output);
-		assert_eq!(-2147483648, VarInt::mc_deserialize(&mut deserializer).unwrap().0);
+		assert_eq!(serializer.output, vec![128, 128, 128, 128, 8]);
 
 		serializer.clear();
 		VarInt(-2147483648).mc_serialize(&mut serializer).unwrap();
-		assert_eq!(serializer.output, vec![128, 128, 128, 128, 8]);
+		deserializer = McDeserializer::new(&mut serializer.output);
+		assert_eq!(-2147483648, VarInt::mc_deserialize(&mut deserializer).unwrap().0);
 	}
 
 	#[test]
@@ -445,5 +432,13 @@ mod tests {
 		serializer.clear();
 		VarLong(-9223372036854775808).mc_serialize(&mut serializer).unwrap();
 		assert_eq!(serializer.output, vec![128, 128, 128, 128, 128, 128, 128, 128, 128, 1]);
+	}
+	
+	#[test]
+	fn test_zero_handling() {
+		assert!(VarInt::from_slice(&[221, 199, 1, 0]).unwrap() == VarInt(25565));
+		assert!(VarInt::from_slice(&[255, 255, 127, 0]).unwrap() == VarInt(2097151));
+		assert!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap() == VarInt(-1));
+		assert!(VarInt::from_slice(&[128, 128, 128, 128, 8]).unwrap() == VarInt(-2147483648));
 	}
 }
