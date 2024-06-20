@@ -118,7 +118,6 @@ impl McDefault for bool {
 	}
 }
 
-// TODO: serialization impls for Box?
 impl<T: McDefault> McDefault for Box<T> {
 	fn default() -> Self {
 		Box::new(T::default())

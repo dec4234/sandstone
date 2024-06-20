@@ -12,7 +12,7 @@ enum Group {
 }
 
 impl Group {
-	pub fn id(&self) -> u8{
+	pub fn _id(&self) -> u8{
 		match self {
 			Group::VarI(_) => {0}
 			Group::StrM(_) => {1}

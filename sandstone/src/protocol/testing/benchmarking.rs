@@ -74,7 +74,7 @@ pub fn benchmark_get_bytes_of_varint() {
 	let current_millis = SystemTime::now();
 	
 	for i in 0..ITERATIONS {
-		let _ = VarInt(i as i32).to_bytes();;
+		let _ = VarInt(i as i32).to_bytes();
 	}
 	
 	println!("Average time taken to get bytes of {ITERATIONS} VarInts: {:.3}micros", SystemTime::now().duration_since(current_millis).unwrap().as_micros() as f64 / ITERATIONS as f64);

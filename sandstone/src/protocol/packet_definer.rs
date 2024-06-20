@@ -46,84 +46,92 @@ mod macros {
     #[macro_export]
     macro_rules! packets {
         ($ref_ver: ident => {
-            $($name: ident, $name_body: ident, $packetID: literal, $state: ident, $direction: ident => {
-                $($field: ident: $t: ty),*
+            // These are split into multiple levels to allow for more efficient deserialization 
+            $($state: ident => {
+                $($direction: ident => {
+                   $($name: ident, $name_body: ident, $packetID: literal => {
+                        $($field: ident: $t: ty),*
+                    }),* 
+                }),*
             }),*
         }) => {
             $(
-                #[derive(Debug, Clone, PartialEq, Eq)]
-                pub struct $name_body { // The body struct of the packet
-                    $(pub(crate) $field: $t),*
-                }
-                
-                impl $name_body {
-                    pub fn new($($field: $t),*) -> Self {
-                        Self {
-                            $($field),*
+                $(
+                    $(
+                        #[derive(Debug, Clone, PartialEq, Eq)]
+                        pub struct $name_body { // The body struct of the packet
+                            $(pub(crate) $field: $t),*
                         }
-                    }
-                }
-            
-                #[allow(unused)] // incase there's an empty packet
-                impl McDeserialize for $name_body {
-                    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
-                        let s = Self {
-                            $($field: <$t>::mc_deserialize(deserializer)?,)*
-                        };
-
-                        Ok(s)
-                    }
-                }
-            
-                #[allow(unused)] // incase there's an empty packet
-                impl McSerialize for $name_body {
-                    fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-                        $(self.$field.mc_serialize(serializer)?;)*
-
-                        Ok(())
-                    }
-                }
-            
-                impl From<$name_body> for Packet {
-                    fn from(p: $name_body) -> Self {
-                        Packet::$name(p)
-                    }
-                }
-            
-                impl From<Packet> for $name_body {
-                    fn from(p: Packet) -> Self {
-                        match p {
-                            Packet::$name(p) => p,
-                            _ => panic!("Invalid conversion")
+                        
+                        impl $name_body {
+                            pub fn new($($field: $t),*) -> Self {
+                                Self {
+                                    $($field),*
+                                }
+                            }
                         }
-                    }
-                }
+                    
+                        #[allow(unused)] // incase there's an empty packet
+                        impl McDeserialize for $name_body {
+                            fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
+                                let s = Self {
+                                    $($field: <$t>::mc_deserialize(deserializer)?,)*
+                                };
+        
+                                Ok(s)
+                            }
+                        }
+                    
+                        #[allow(unused)] // incase there's an empty packet
+                        impl McSerialize for $name_body {
+                            fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+                                $(self.$field.mc_serialize(serializer)?;)*
+        
+                                Ok(())
+                            }
+                        }
+                    
+                        impl From<$name_body> for Packet {
+                            fn from(p: $name_body) -> Self {
+                                Packet::$name(p)
+                            }
+                        }
+                    
+                        impl From<Packet> for $name_body {
+                            fn from(p: Packet) -> Self {
+                                match p {
+                                    Packet::$name(p) => p,
+                                    _ => panic!("Invalid conversion")
+                                }
+                            }
+                        }
+                    )*
+                )*
             )*
             
             $crate::as_item!( // weird workaround from mcproto-rs
                 #[derive(Debug, Clone, PartialEq, Eq)]
                 pub enum Packet {
-                    $($name($name_body)),*
+                    $($($($name($name_body),)*)*)*
                 }
             );
             
             impl Packet {
-                // TODO: this needs to be a VARINT
-                pub fn packet_id(&self) -> u8 {
+                pub fn packet_id(&self) -> VarInt {
                     match self {
-                        $(Packet::$name(_) => $packetID),*
+                        $($($(Packet::$name(_) => VarInt($packetID as i32),)*)*)*
                     }
                 }
                 
                 pub fn state(&self) -> PacketState {
                     match self {
-                        $(Packet::$name(_) => PacketState::$state),*
+                        $($($(Packet::$name(_) => PacketState::$state,)*)*)*
                     }
                 }
                 
                 pub fn direction(&self) -> PacketDirection {
                     match self {
-                        $(Packet::$name(_) => PacketDirection::$direction),*
+                        $($($(Packet::$name(_) => PacketDirection::$direction,)*)*)*
                     }
                 }
             }
@@ -132,13 +140,15 @@ mod macros {
                 fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
                     let mut length_serializer = McSerializer::new();
                     match self {
-                        $(Packet::$name(b) => {b.mc_serialize(&mut length_serializer)?}),*
+                        $($($(Packet::$name(b) => {b.mc_serialize(&mut length_serializer)?}),*)*)*
                     }
                     
-                    let packet_id = VarInt(self.packet_id() as i32);
+                    let packet_id = self.packet_id();
                     
-                    VarInt(length_serializer.output.len() as i32 + packet_id.to_bytes().len() as i32).mc_serialize(serializer)?;
-                    packet_id.mc_serialize(serializer)?;
+                    let bytes = packet_id.to_bytes(); // getting the bytes is kind of expensive, so cache it
+                    
+                    VarInt(length_serializer.output.len() as i32 + bytes.len() as i32).mc_serialize(serializer)?;
+                    bytes.mc_serialize(serializer)?;
                     serializer.merge(length_serializer);
                     
             
@@ -150,30 +160,69 @@ mod macros {
                 fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> SerializingResult<'a, Self> {
                     let length = VarInt::mc_deserialize(deserializer)?;
 
-                    let sub = deserializer.sub_deserializer_length(length.0 as usize);
-                    
-                    if let Err(e) = sub {
-                        return Err(e);
-                    }
-                    
-                    let mut sub = sub.unwrap();
+                    let mut sub = deserializer.sub_deserializer_length(length.0 as usize)?;
                     
                     let packet_id = VarInt::mc_deserialize(&mut sub)?;
                     
                     $(
-                    if(packet_id.0 == $packetID && state == PacketState::$state && packet_direction == PacketDirection::$direction) {
-                        let a = $name_body::mc_deserialize(&mut sub);
+                        if state == PacketState::$state {
+                            $(
+                                if packet_direction == PacketDirection::$direction {
+                                    match packet_id.0 {
+                                        $(
+                                            $packetID => {
+                                                let a = $name_body::mc_deserialize(&mut sub);
 
-                        if let Ok(a) = a {
-                            return Ok(Packet::$name(a));
+                                                if let Ok(a) = a {
+                                                    return Ok(Packet::$name(a));
+                                                }
+                                            }
+                                        )*
+                                        
+                                            _ => {}
+                                    }
+                                }
+                            )*
                         }
-                    }
                     )*
                     
                     return Err(SerializingErr::UniqueFailure("Could not find matching type.".to_string()));
                 }
             }
         };
+    }
+    
+    #[macro_export]
+    macro_rules! pac {
+        ($stru: ident => {
+            ($state: ident) => {
+                $($name: ident, $name_body: ident, $packetID: literal => {
+                    $($field: ident: $t: ty),*
+                }),* 
+            },*
+        }) => {
+            $(
+                $(
+                pub struct $name_body { // The body struct of the packet
+                    $(pub(crate) $field: $t),*
+                }
+                )*
+            )*
+            
+            pub enum stru {
+                $(
+                    $(
+                        $name($name_body)
+                    )*
+                )*
+            }
+            
+            impl stru {
+                pub fn here() {
+                    
+                }
+            }
+        }
     }
 
     /// Defines the structs for some fields for packets. This is most frequently used for nested

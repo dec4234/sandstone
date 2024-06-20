@@ -1,14 +1,13 @@
+//! Defines a lot of random components of network packets. This is separate from packet.rs to reduce
+//! clutter.
+
 use sandstone_derive::McSerialize;
 use uuid::Uuid;
 
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
-
-/*
-Defines a lot of random components of network packets. This is separate from packet.rs to reduce
-clutter.
- */
 
 // TODO: maybe we can make a derive tag for options? At the very least only the option section needs to
 // be in a special body struct.
@@ -17,7 +16,7 @@ pub struct LoginPropertyElement {
 	pub(crate) name: String,
 	pub(crate) value: String,
 	pub(crate) is_signed: bool,
-	pub(crate) signature: Option<String>
+	pub(crate) signature: Option<String>,
 }
 
 impl McDeserialize for LoginPropertyElement {
@@ -25,19 +24,19 @@ impl McDeserialize for LoginPropertyElement {
 		let name = String::mc_deserialize(deserializer)?;
 		let value = String::mc_deserialize(deserializer)?;
 		let is_signed = bool::mc_deserialize(deserializer)?;
-		
-		
+
+
 		let signature = if is_signed {
 			Some(String::mc_deserialize(deserializer)?)
 		} else {
 			None
 		};
-		
+
 		Ok(Self {
 			name,
 			value,
 			is_signed,
-			signature
+			signature,
 		})
 	}
 }
@@ -46,24 +45,24 @@ impl McDeserialize for LoginPropertyElement {
 pub struct LoginPluginSpec {
 	pub(crate) message_id: VarInt,
 	pub(crate) success: bool,
-	pub(crate) data: Option<Vec<u8>>
+	pub(crate) data: Option<Vec<u8>>,
 }
 
 impl McDeserialize for LoginPluginSpec {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 		let message_id = VarInt::mc_deserialize(deserializer)?;
 		let success = bool::mc_deserialize(deserializer)?;
-		
+
 		let data = if success {
 			Some(Vec::<u8>::mc_deserialize(deserializer)?)
 		} else {
 			None
 		};
-		
+
 		Ok(Self {
 			message_id,
 			success,
-			data
+			data,
 		})
 	}
 }
@@ -71,7 +70,7 @@ impl McDeserialize for LoginPluginSpec {
 #[derive(McSerialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemoveResourcePackSpec {
 	pub(crate) has_uuid: bool,
-	pub(crate) uuid: Option<Uuid>
+	pub(crate) uuid: Option<Uuid>,
 }
 
 impl McDeserialize for RemoveResourcePackSpec {
@@ -85,7 +84,7 @@ impl McDeserialize for RemoveResourcePackSpec {
 
 		Ok(Self {
 			has_uuid,
-			uuid
+			uuid,
 		})
 	}
 }
@@ -97,7 +96,7 @@ pub struct AddResourcePackSpec {
 	pub(crate) hash: String,
 	pub(crate) forced: bool,
 	pub(crate) has_prompt_message: bool,
-	pub(crate) prompt_message: Option<String>
+	pub(crate) prompt_message: Option<String>,
 }
 
 impl McDeserialize for AddResourcePackSpec {
@@ -119,7 +118,60 @@ impl McDeserialize for AddResourcePackSpec {
 			hash,
 			forced,
 			has_prompt_message,
-			prompt_message
+			prompt_message,
+		})
+	}
+}
+
+#[derive(McSerialize, Debug, Clone, PartialEq, Eq)]
+pub struct LoginCookieResponseSpec {
+	key: String,
+	has_payload: bool,
+	payload_length: VarInt,
+	payload: Option<Vec<u8>>,
+}
+
+impl McDeserialize for LoginCookieResponseSpec {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
+		let key = String::mc_deserialize(deserializer)?;
+		let has_payload = bool::mc_deserialize(deserializer)?;
+		let payload_length = VarInt::mc_deserialize(deserializer)?;
+		let payload = if has_payload {
+			Some(Vec::<u8>::mc_deserialize(deserializer)?)
+		} else {
+			None
+		};
+
+		Ok(Self {
+			key,
+			has_payload,
+			payload_length,
+			payload,
+		})
+	}
+}
+
+#[derive(McSerialize, Debug, Clone, PartialEq, Eq)]
+pub struct RegistryEntry {
+	pub id: String,
+	pub has_data: bool,
+	pub data: Option<NbtCompound>,
+}
+
+impl McDeserialize for RegistryEntry {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
+		let id = String::mc_deserialize(deserializer)?;
+		let has_data = bool::mc_deserialize(deserializer)?;
+		let data = if has_data {
+			Some(NbtCompound::mc_deserialize(deserializer)?)
+		} else {
+			None
+		};
+
+		Ok(Self {
+			id,
+			has_data,
+			data,
 		})
 	}
 }

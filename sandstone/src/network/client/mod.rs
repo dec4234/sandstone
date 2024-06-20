@@ -27,6 +27,7 @@ const CONTINUE_BIT: u8 = 0b10000000;
 /// In other words, this is only created and held from a server context, and does NOT support clients
 /// making connections to servers.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct CraftClient {
 	pub(crate) tcp_stream: TcpStream,
 	pub(crate) socket_addr: SocketAddr,
@@ -66,32 +67,28 @@ impl CraftClient {
 	// TODO: could use a good optimization pass - reduce # of copies, ideally to 0
 	/// Receive a minecraft packet from the client. This will block until a packet is received. This removes data from the TCP buffer
 	pub async fn receive_packet(&mut self) -> Result<Packet, NetworkError> {
-		let mut vec = vec![];
+		let mut vec = Vec::with_capacity(3);
 
 		// read varint for length
 		loop {
 			let b = self.tcp_stream.read_u8().await?;
 
+			vec.push(b);
+			
 			if b & CONTINUE_BIT == 0 {
-				vec.push(b);
 				break;
-			} else {
-				vec.push(b);
-
-				if vec.len() > 3 {
-					return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
-				}
+			} else if vec.len() > 3 {
+				return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
 			}
 		}
 
 		let vari = VarInt::from_slice(&vec)?;
-		let varbytes = vari.to_bytes();
 
 		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		let length = vari.0 as usize + varbytes.len();
+		let length = vari.0 as usize + vec.len();
 
 		// TODO: analysis needed - does this minimize copying?
 		// could define &[u8] to max packet size but that seems like too much memory usage
@@ -99,24 +96,25 @@ impl CraftClient {
 
 		let mut i = 0;
 
-		for b in &varbytes {
+		for b in &vec {
 			buffer[i] = *b;
 			i += 1;
 		}
 
-		let length = self.tcp_stream.read(&mut buffer[varbytes.len()..]).await;
+		let length = self.tcp_stream.read(&mut buffer[vec.len()..]).await;
+		
+		let length = match length {
+			Ok(length) => {length}
+			Err(e) => {
+				if e.to_string().contains("An established connection was aborted by the software in your host machine") {
+					debug!("OS Error detected in packet receive, closing the connection: {}", e);
+					self.close().await;
+					return Err(NetworkError::ConnectionAbortedLocally);
+				}
 
-		if let Err(e) = length {
-			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
-				debug!("OS Error detected in packet receive, closing the connection: {}", e);
-				self.close().await;
-				return Err(NetworkError::ConnectionAbortedLocally);
+				return Err(NetworkError::IOError(e));
 			}
-
-			return Err(NetworkError::IOError(e));
-		}
-
-		let length = length.unwrap();
+		};
 
 		trace!("Received from {} : {:?}", self, &buffer);
 

@@ -2,7 +2,7 @@ use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 
 #[test]
 pub fn simple_test() {
-	let base = "TAG_Compound('hello world'): 1 entry{TAG_String('name'): 'dec4234'}";
+	let _base = "TAG_Compound('hello world'): 1 entry{TAG_String('name'): 'dec4234'}";
 	
 	let mut nbt = NbtCompound::new(Some("hello world"));
 	nbt.add("name", NbtTag::String("dec4234".to_string()));
@@ -29,7 +29,7 @@ pub fn regex_testing() {
 	println!("Type: {}, Name: {}, Value: {}", &cap[1], &cap[2], &cap[3]);
 
 	for cap in captures {
-		let end = if let Some(Some(cap)) = cap.iter().last() { // use this to split input string
+		let _end = if let Some(Some(cap)) = cap.iter().last() { // use this to split input string
 			Some(cap.end())
 		} else {
 			None

@@ -13,7 +13,7 @@ mod serializer_types;
 pub mod serializer_error;
 mod serializer_testing;
 
-/// The result of a serialization/deserialization operation
+/// The result of a serialization/deserialization operation.
 /// See [SerializingErr] for more information on the error types
 pub type SerializingResult<'a, T> = Result<T, SerializingErr>;
 

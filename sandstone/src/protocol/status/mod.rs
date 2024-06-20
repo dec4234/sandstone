@@ -1,3 +1,7 @@
+//! The purpose of this file is to provide default implementations for the status and ping handlers.
+//! There is no conceivable reason why you would want to override these, but if you do, you can implement
+//! them yourself and use them.
+
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::{debug, trace};
@@ -10,12 +14,6 @@ use crate::protocol::packets::{Packet, PingResponseBody, StatusResponseBody};
 use crate::protocol_types::datatypes::var_types::VarInt;
 
 pub mod status_components;
-
-/*
-The purpose of this file is to provide default implementations for the status and ping handlers.
-There is no conceivable reason why you would want to override these, but if you do, you can implement
-them yourself and use them.
- */
 
 /// The default server-list status handler. Not sure why you wouldn't want to use it, but it's here.
 pub struct DefaultStatusHandler;

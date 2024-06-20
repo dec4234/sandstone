@@ -169,5 +169,9 @@ mod primitive_testing {
 		assert_eq!(Box::new(5u8), Box::<u8>::mc_deserialize(&mut deserializer).unwrap());
 		
 		serializer.clear();
+		
+		89678u32.mc_serialize(&mut serializer).unwrap();
+		let mut deserializer = McDeserializer::new(&mut serializer.output);
+		assert_eq!(Box::new(89678u32), Box::<u32>::mc_deserialize(&mut deserializer).unwrap());
 	}
 }
