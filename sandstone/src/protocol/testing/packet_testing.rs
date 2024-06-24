@@ -1,6 +1,6 @@
-use crate::protocol::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::{DisconnectBody, LoginPluginResponseBody, Packet};
 use crate::protocol::packets::packet_component::LoginPluginSpec;
+use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::chat::TextComponent;
 

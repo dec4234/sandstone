@@ -1,11 +1,9 @@
+//! Lists the traits used to handle packet sequences from the client. These are included so that you can
+//! override the default functionality for your own purposes.
+
 use crate::network::client::CraftClient;
 use crate::network::network_error::NetworkError;
 use crate::protocol::packets::StatusResponseBody;
-
-/*
-Lists the traits used to handle packet sequences from the client. These are included so that you can
-override the default functionality for your own purposes.
- */
 
 /// The procedure required to handle a handshake. Check [DefaultHandshakeHandler] for a default implementation.
 ///

@@ -130,8 +130,8 @@ impl McDeserialize for StringMix {
 
 #[cfg(test)]
 mod tests {
-	use crate::protocol::packet_definer::{PacketDirection, PacketState};
 	use crate::protocol::packets::{HandshakingBody, Packet};
+	use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 	use crate::protocol::serialization::serializer_testing::{Group, StringMix, VarIntMix};
 	use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};

@@ -1,3 +1,5 @@
+//! Implementations of the McSerialize and McDeserialize traits for primitive types and some common Rust types.
+
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_types::datatypes::var_types::VarInt;

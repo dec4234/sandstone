@@ -2,8 +2,8 @@
 
 use std::time::SystemTime;
 
-use crate::protocol::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::{HandshakingBody, Packet};
+use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::var_types::VarInt;
 

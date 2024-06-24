@@ -6,7 +6,7 @@
 
 use std::cmp::min;
 
-use crate::protocol::packet_definer::{PacketDirection, PacketState};
+use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 
 mod serializer_types;

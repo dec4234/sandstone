@@ -1,6 +1,4 @@
-/*
-Defines key macros, traits and enums used to describe packets.
- */
+//! Defines key macros, traits and enums used to describe packets.
 
 /// Defines the DESTINATION of the packet. So a packet that is C -> S would be `PacketDirection::SERVER`
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
@@ -22,6 +20,7 @@ pub enum PacketState {
 }
 
 impl PacketState {
+    /// Converts an u8 to a PacketState. Returns None if the id is unknown.
     pub fn from_id(id: u8) -> Option<PacketState> {
         match id {
             1 => Some(PacketState::STATUS),
@@ -30,6 +29,7 @@ impl PacketState {
         }
     }
     
+    /// Gets the ID of the packet state. Returns None if the state is unknown.
     pub fn get_id(&self) -> Option<u8> {
         match self {
             PacketState::STATUS => Some(1),
@@ -157,6 +157,8 @@ mod macros {
             }
             
             impl StateBasedDeserializer for Packet {
+                /// Deserialize a packet from a byte buffer, given the state and direction of the packet.
+                /// The byte buffer should include the raw packet details such as the packet length and id.
                 fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> SerializingResult<'a, Self> {
                     let length = VarInt::mc_deserialize(deserializer)?;
 

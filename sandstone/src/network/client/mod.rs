@@ -10,8 +10,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
 use crate::network::network_error::NetworkError;
-use crate::protocol::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::Packet;
+use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_types::datatypes::var_types::VarInt;
@@ -209,7 +209,7 @@ impl CraftClient {
 	/// Peek the next packet in the queue without removing it. This will block until a packet is received.
 	pub async fn peek_packet(&mut self) -> Result<Packet, NetworkError> {
 		// read varint for length
-		let mut i = 1 as usize;
+		let mut i = 1usize;
 		let vari: VarInt;
 
 		/*

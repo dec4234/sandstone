@@ -1,5 +1,6 @@
 pub mod mojang;
 mod threadpool;
+mod encryption;
 
 /*
 Useful utilities for the library such as macro helpers and enum builders
