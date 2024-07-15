@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, LevelFilter};
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
 
@@ -20,7 +20,7 @@ use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 /// The status procedure can be found [here](https://wiki.vg/Server_List_Ping)
 #[tokio::main]
 async fn main() {
-    SimpleLogger::new().init().unwrap();
+    SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();
 	debug!("Starting server");
 
 	let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
@@ -33,7 +33,7 @@ async fn main() {
 		let mut response = StatusResponseSpec::new(ProtocolVerison::V1_20, "&a&lThis is a test description &b§kttt");
 		response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
 		
-		let image = image::open("src/server-icon.png").unwrap();
+		let image = image::open("examples/status_handler/src/server-icon.png").unwrap();
 		response.set_favicon_image(image);
 		
 		DefaultHandshakeHandler::handle_handshake(&mut client).await.unwrap();
