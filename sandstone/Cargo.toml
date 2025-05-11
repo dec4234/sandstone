@@ -32,7 +32,7 @@ reqwest = "0.12.4"
 thiserror = "1.0.61"
 aes = "0.8.4"
 
-sandstone-derive = "0.1.0"
+sandstone-derive = {path = "src/sandstone-derive"} #todo: implications of local reference
 
 [dev-dependencies]
 #craftio-rs = "0.1.0"

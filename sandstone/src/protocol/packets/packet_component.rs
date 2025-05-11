@@ -26,6 +26,7 @@ impl McDeserialize for LoginPropertyElement {
 		let is_signed = bool::mc_deserialize(deserializer)?;
 
 
+		// todo: this kind of thing should be automated by a derive tag of some kind
 		let signature = if is_signed {
 			Some(String::mc_deserialize(deserializer)?)
 		} else {

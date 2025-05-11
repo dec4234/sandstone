@@ -1,6 +1,7 @@
 pub mod packet_testing;
 mod primitive_serialization_testing;
 mod benchmarking;
+mod derive_testing;
 
 // TODO: derive macro
 /// A trait that defines the default value for a type. This is used for testing packet serialization.
