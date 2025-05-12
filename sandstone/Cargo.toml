@@ -1,7 +1,7 @@
 [package]
 name = "sandstone"
 version = "0.1.2"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "Networking library for Minecraft: Java Edition servers"
 repository = "https://github.com/dec4234/sandstone"
@@ -14,22 +14,22 @@ exclude = ["src/sandstone-derive"]
 
 [dependencies]
 simple_logger = "5.0.0"
-tokio = {version = "1.37.0", features = ["full"]}
+tokio = {version = "1.45.0", features = ["full"]}
 #rayon = "1.10.0"
 cfb8 = {version = "0.8.1", features = ["std"]}
 hex = "0.4.3"
-serde_json = "1.0.117"
-serde = {version = "1.0.202", features = ["derive"]}
-uuid = {version = "1.8.0", features = ["v4"]}
-zerocopy = {version = "0.7.29", features = ["derive", "byteorder"]}
+serde_json = "1.0.140"
+serde = {version = "1.0.219", features = ["derive"]}
+uuid = {version = "1.16.0", features = ["v4"]}
+zerocopy = {version = "0.7.35", features = ["derive", "byteorder"]}
 base64 = "0.22.1"
-log = "0.4.21"
-image = {version = "0.25.1", features = ["default", "png"]}
+log = "0.4.27"
+image = {version = "0.25.6", features = ["default", "png"]}
 #flate2 = {version = "1.0.30", features = ["zlib"]}
-regex = "1.10.4"
+regex = "1.11.1"
 fastsnbt = "0.2.0"
-reqwest = "0.12.4"
-thiserror = "1.0.61"
+reqwest = "0.12.15"
+thiserror = "2.0.12"
 aes = "0.8.4"
 
 sandstone-derive = {path = "src/sandstone-derive"} #todo: implications of local reference

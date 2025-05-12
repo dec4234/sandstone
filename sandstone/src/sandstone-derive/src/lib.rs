@@ -1,9 +1,8 @@
 use proc_macro::TokenStream;
-
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Ident, parse_macro_input};
 use syn::__private::Span;
 use syn::spanned::Spanned;
+use syn::{parse_macro_input, Data, DeriveInput, Expr, Fields, GenericArgument, Ident, PathArguments, Type};
 
 /// Derive the `McSerialize` trait for a struct. This implies that all fields of the struct also
 /// implement `McSerialize`.
@@ -56,9 +55,67 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 					let field_name = field.ident.as_ref().unwrap();
 					let field_type = &field.ty;
 
-					init_stmts.push(quote! {
-						let #field_name = <#field_type>::mc_deserialize(deserializer)?;
-					});
+					let mut condition: Option<Expr> = None;
+
+					// Parse attributes to find #[mc(deserialize_if = ...)]
+					for attr in &field.attrs {
+						if !attr.path().is_ident("mc") {
+							continue;
+						}
+
+						// Parse nested meta: like deserialize_if = field1
+						attr.parse_nested_meta(|meta| {
+							if meta.path.is_ident("deserialize_if") {
+								let value_expr = meta.value()?;
+								condition = Some(value_expr.parse()?);
+								Ok(())
+							} else {
+								Err(meta.error("unsupported mc attribute argument"))
+							}
+						}).unwrap_or_else(|e| panic!("Error parsing mc attribute: {}", e));
+					}
+
+					if let Some(cond) = condition {
+						// Validate that the field is an Option<T>
+						let inner_type = match field_type {
+							Type::Path(type_path) => {
+								let segments = &type_path.path.segments;
+								if let Some(segment) = segments.first() {
+									if segment.ident == "Option" {
+										match &segment.arguments {
+											PathArguments::AngleBracketed(args) => {
+												if let Some(GenericArgument::Type(ty)) = args.args.first() {
+													ty
+												} else {
+													panic!("Option must have an inner type for field {}", field_name);
+												}
+											}
+											_ => panic!("Option must have angle bracketed arguments for field {}", field_name),
+										}
+									} else {
+										panic!("deserialize_if can only be applied to Option fields, but field {} is {}", field_name, segment.ident);
+									}
+								} else {
+									panic!("Invalid type path for field {}", field_name);
+								}
+							}
+							_ => panic!("deserialize_if can only be applied to Option fields with a type path for field {}", field_name),
+						};
+
+						// Conditional deserialization
+						init_stmts.push(quote! {
+							let #field_name = if #cond {
+								Some(<#inner_type as McDeserialize>::mc_deserialize(deserializer)?)
+							} else {
+								None
+							};
+						});
+					} else {
+						// Regular deserialization
+						init_stmts.push(quote! {
+							let #field_name = <#field_type as McDeserialize>::mc_deserialize(deserializer)?;
+						});
+					}
 
 					field_names.push(quote! { #field_name });
 				}
@@ -69,7 +126,7 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 					let field_type = &field.ty;
 
 					init_stmts.push(quote! {
-						let #field_ident = <#field_type>::mc_deserialize(deserializer)?;
+						let #field_ident = <#field_type as McDeserialize>::mc_deserialize(deserializer)?;
 					});
 
 					field_names.push(quote! { #field_ident });
