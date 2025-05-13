@@ -187,7 +187,7 @@ impl CraftClient {
 			return Err(NetworkError::IOError(e));
 		}
 
-		let length = length.unwrap();
+		let length = length?;
 
 		trace!("Received from {} : {:?}", self, &buffer);
 
@@ -265,7 +265,7 @@ impl CraftClient {
 			return Err(NetworkError::IOError(e));
 		}
 
-		let length = length.unwrap();
+		let length = length?;
 
 		trace!("Peeked from {} : {:?}", self, &buffer);
 

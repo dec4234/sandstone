@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 
 #[test]
@@ -7,7 +9,7 @@ pub fn simple_test() {
 	let mut nbt = NbtCompound::new(Some("hello world"));
 	nbt.add("name", NbtTag::String("dec4234".to_string()));
 	
-	let nbt = NbtTag::Compound(nbt);
+	NbtTag::Compound(nbt);
 }
 
 /**

@@ -9,7 +9,7 @@ use log::{debug, trace};
 use crate::network::client::client_handlers::{HandshakeHandler, PingHandler, StatusHandler};
 use crate::network::client::CraftClient;
 use crate::network::network_error::NetworkError;
-use crate::protocol::packets::{Packet, PingResponseBody, StatusResponseBody};
+use crate::protocol::packets::{Packet, PingResponsePacket, StatusResponsePacket};
 use crate::protocol::packets::packet_definer::PacketState;
 use crate::protocol_types::datatypes::var_types::VarInt;
 
@@ -19,7 +19,7 @@ pub mod status_components;
 pub struct DefaultStatusHandler;
 
 impl StatusHandler for DefaultStatusHandler {
-	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: StatusResponseBody, _ping_handler: P) -> Result<(), NetworkError> {
+	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: StatusResponsePacket, _ping_handler: P) -> Result<(), NetworkError> {
 		if connection.packet_state != PacketState::STATUS {
 			return Err(NetworkError::InvalidPacketState);
 		}
@@ -37,7 +37,7 @@ impl StatusHandler for DefaultStatusHandler {
 				connection.send_packet(packed).await?;
 			}
 			Packet::PingRequest(b) => {
-				let packed = Packet::PingResponse(PingResponseBody {
+				let packed = Packet::PingResponse(PingResponsePacket {
 					payload: b.payload as u64
 				});
 
@@ -77,7 +77,7 @@ impl PingHandler for DefaultPingHandler {
 
 		trace!("Received ping request from {}", connection);
 
-		let packed = Packet::PingResponse(PingResponseBody {
+		let packed = Packet::PingResponse(PingResponsePacket {
 			payload: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64
 		});
 

@@ -1,3 +1,6 @@
+//! Defines the protocol version numbers for the final patch of each Minecraft version. This is important
+//! for verifying client protocol versions.
+
 use crate::versions;
 
 // https://wiki.vg/Protocol_History
@@ -15,5 +18,5 @@ versions!(ProtocolVerison, i16 => {
     V1_18, 758, "1.18.2",
     V1_19, 762, "1.19.4",
     V1_20, 766, "1.20.6",
-    V1_21, -1, ""
+    V1_21, 770, "1.21.5"
 });

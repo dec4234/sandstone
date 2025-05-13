@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 pub mod packet_testing;
 mod primitive_serialization_testing;
 mod benchmarking;

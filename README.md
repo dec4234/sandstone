@@ -17,26 +17,26 @@ Here is a current example of handling the server list status.
 
 ```rust
 #[tokio::main]
-async fn main() {
-    SimpleLogger::new().init().unwrap();
-	debug!("Starting server");
+async fn main() { 
+  SimpleLogger::new().init().unwrap();
+  debug!("Starting server");
 
-	let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
+  let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
-	loop {
-		let (socket, _) = server.accept().await.unwrap();
-		
-		let mut client = CraftClient::from_connection(socket).unwrap();
-		
-		let mut response = StatusResponseSpec::new(ProtocolVerison::V1_20, "&a&lThis is a test description &b§kttt");
-		response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
-		
-		let image = image::open("src/server-icon.png").unwrap();
-		response.set_favicon_image(image);
-		
-		DefaultHandshakeHandler::handle_handshake(&mut client).await.unwrap();
-		DefaultStatusHandler::handle_status(&mut client, StatusResponseBody::new(response), DefaultPingHandler).await.unwrap();
-	}
+  loop {
+      let (socket, _) = server.accept().await.unwrap();
+      
+      let mut client = CraftClient::from_connection(socket).unwrap();
+      
+      let mut response = StatusResponseSpec::new(ProtocolVerison::V1_20, "&a&lThis is a test description &b§kttt");
+      response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
+      
+      let image = image::open("src/server-icon.png").unwrap();
+      response.set_favicon_image(image);
+      
+      DefaultHandshakeHandler::handle_handshake(&mut client).await.unwrap();
+      DefaultStatusHandler::handle_status(&mut client, StatusResponsePacket::new(response), DefaultPingHandler).await.unwrap();
+  }
 }
 ```
 
@@ -73,7 +73,7 @@ Please note that this project is under heavy development and functions might not
 Please also note that encryption has not been rigorously tested for security, so please use online features with caution.
 
 ## References
-- [wiki.vg](https://wiki.vg) = The main resource for implementing new functions for the library. This wiki has extensive documentation
+- [Protocol Wiki](https://minecraft.wiki/w/Java_Edition_protocol) = The main resource for implementing new functions for the library. This wiki has extensive documentation
 on everything relating to the Minecraft protocol, both Bedrock and Java Edition. It also has a lot of articles relating to encryption,
 the Mojang protocol, and other hidden details about the game. 
 
@@ -81,7 +81,7 @@ Some other projects were consulted for general design and handling for the minec
 
 - [feather](https://github.com/feather-rs/feather)
 - [valence](https://github.com/valence-rs/valence)
-- [MCHPSRS](https://github.com/MCHPR/MCHPRS)
+- [MCHPRS](https://github.com/MCHPR/MCHPRS)
 
 The following projects were significantly useful for understanding some quirks with the Minecraft protocol. It also guided
 me on early version of McSerializer and McDeserializer (instead of using serde).

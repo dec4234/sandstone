@@ -8,12 +8,6 @@ default-members = ["sandstone", "examples/status_handler", "sandstone/src/sandst
 
 resolver = "2"
 
-[build.env]
-passthrough = [
-    "RUSTFLAGS",
-    "RUST_BACKTRACE",
-]
-
 #[profile.dev]
 #opt-level = 3
 #overflow-checks = true

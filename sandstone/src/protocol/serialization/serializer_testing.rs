@@ -130,7 +130,7 @@ impl McDeserialize for StringMix {
 
 #[cfg(test)]
 mod tests {
-	use crate::protocol::packets::{HandshakingBody, Packet};
+	use crate::protocol::packets::{HandshakingPacket, Packet};
 	use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 	use crate::protocol::serialization::serializer_testing::{Group, StringMix, VarIntMix};
@@ -211,7 +211,7 @@ mod tests {
 	fn try_direct_deserialize() {
 		let mut serializer = McSerializer::new();
 
-		let p = Packet::Handshaking(HandshakingBody {
+		let p = Packet::Handshaking(HandshakingPacket {
 			protocol_version: VarInt(3),
 			server_address: "".to_string(),
 			port: 0,

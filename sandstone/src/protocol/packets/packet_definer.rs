@@ -49,8 +49,11 @@ mod macros {
             // These are split into multiple levels to allow for more efficient deserialization 
             $($state: ident => {
                 $($direction: ident => {
-                   $($name: ident, $name_body: ident, $packetID: literal => {
-                        $($field: ident: $t: ty),*
+                   $($name: ident, $name_body: ident, $packetID: literal $(#[$struct_meta: meta])* => {
+                        $(
+                            $(#[$field_meta: meta])*
+                            $field: ident: $t: ty
+                        ),*
                     }),* 
                 }),*
             }),*
@@ -59,8 +62,12 @@ mod macros {
                 $(
                     $(
                         #[derive(Debug, Clone, PartialEq, Eq)]
+                        $(#[$struct_meta])*
                         pub struct $name_body { // The body struct of the packet
-                            $(pub(crate) $field: $t),*
+                            $(
+                                $(#[$field_meta])*
+                                pub(crate) $field: $t
+                            ),*
                         }
                         
                         impl $name_body {

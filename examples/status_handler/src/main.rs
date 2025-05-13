@@ -4,7 +4,7 @@ use tokio::net::TcpListener;
 
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::client::CraftClient;
-use sandstone::protocol::packets::StatusResponseBody;
+use sandstone::protocol::packets::StatusResponsePacket;
 use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
@@ -37,6 +37,6 @@ async fn main() {
 		response.set_favicon_image(image);
 		
 		DefaultHandshakeHandler::handle_handshake(&mut client).await.unwrap();
-		DefaultStatusHandler::handle_status(&mut client, StatusResponseBody::new(response), DefaultPingHandler).await.unwrap();
+		DefaultStatusHandler::handle_status(&mut client, StatusResponsePacket::new(response), DefaultPingHandler).await.unwrap();
 	}
 }

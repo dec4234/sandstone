@@ -3,7 +3,7 @@
 
 use crate::network::client::CraftClient;
 use crate::network::network_error::NetworkError;
-use crate::protocol::packets::StatusResponseBody;
+use crate::protocol::packets::{StatusResponsePacket};
 
 /// The procedure required to handle a handshake. Check [DefaultHandshakeHandler] for a default implementation.
 ///
@@ -16,7 +16,7 @@ pub trait HandshakeHandler {
 ///
 /// The status procedure can be found [here](https://wiki.vg/Server_List_Ping)
 pub trait StatusHandler {
-	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: StatusResponseBody, ping_handler: P) -> Result<(), NetworkError>;
+	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: StatusResponsePacket, ping_handler: P) -> Result<(), NetworkError>;
 }
 
 /// Lists the methods required to handle a ping request. Check [DefaultPingHandler] for a default implementation.

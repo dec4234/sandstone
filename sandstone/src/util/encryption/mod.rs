@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 //! AES/CFB8 encryption utilities. https://wiki.vg/Protocol_Encryption
 
 use aes::cipher::{AsyncStreamCipher, KeyIvInit};
@@ -11,7 +12,7 @@ fn encryption_testing() {
 	let iv = [0x24; 16];
 	let text = *b"HELLO WORLD ABCDEFGHIJKLMNOPQRSTUV";
 	println!("length: {}", text.len());
-	let cipher = hex::encode("33b356ce9184290c4c8facc1c0b1f918d5475aeb75b88c161ca65bdf05c7137ff4b0");
+	let _cipher = hex::encode("33b356ce9184290c4c8facc1c0b1f918d5475aeb75b88c161ca65bdf05c7137ff4b0");
 
 	let mut buf = text.to_vec();
 	Aes128Cfb8Enc::new(&key.into(), &iv.into()).encrypt(&mut buf);

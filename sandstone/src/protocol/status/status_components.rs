@@ -6,7 +6,7 @@ use image::{DynamicImage, ImageFormat};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::protocol::packets::StatusResponseBody;
+use crate::protocol::packets::StatusResponsePacket;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::protocol_verison::ProtocolVerison;
 
@@ -113,15 +113,15 @@ impl McDeserialize for StatusResponseSpec {
 	}
 }
 
-impl From<StatusResponseBody> for StatusResponseSpec {
-	fn from(p: StatusResponseBody) -> Self {
+impl From<StatusResponsePacket> for StatusResponseSpec {
+	fn from(p: StatusResponsePacket) -> Self {
 		p.response
 	}
 }
 
-impl From<StatusResponseSpec> for StatusResponseBody {
+impl From<StatusResponseSpec> for StatusResponsePacket {
 	fn from(p: StatusResponseSpec) -> Self {
-		StatusResponseBody {
+		StatusResponsePacket {
 			response: p
 		}
 	}

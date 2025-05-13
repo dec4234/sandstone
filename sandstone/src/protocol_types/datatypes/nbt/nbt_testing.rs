@@ -1,3 +1,5 @@
+#![allow(unused_imports)] // because something is wrong with unused imports and tests
+
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol_types::datatypes::nbt::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
 

@@ -2,7 +2,7 @@
 
 use std::time::SystemTime;
 
-use crate::protocol::packets::{HandshakingBody, Packet};
+use crate::protocol::packets::{HandshakingPacket, Packet};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::var_types::VarInt;
@@ -16,7 +16,7 @@ fn benchmark_mass_packet_serializations() {
 	
 	let mut serializer = McSerializer::init_size(10000000);
 	
-	let packet = Packet::Handshaking(HandshakingBody {
+	let packet = Packet::Handshaking(HandshakingPacket {
 		protocol_version: VarInt(754),
 		server_address: "localhost".to_string(),
 		port: 25565,

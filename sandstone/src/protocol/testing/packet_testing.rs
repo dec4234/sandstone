@@ -1,4 +1,4 @@
-use crate::protocol::packets::{DisconnectBody, LoginPluginResponseBody, Packet};
+use crate::protocol::packets::{DisconnectPacket, LoginPluginResponsePacket, Packet};
 use crate::protocol::packets::packet_component::LoginPluginSpec;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
@@ -31,7 +31,7 @@ pub fn test_basic_deserialization() {
 pub fn test_optional_vec_serialization() {
 	let mut serializer = McSerializer::new();
 	
-	let packet = Packet::LoginPluginResponse(LoginPluginResponseBody {
+	let packet = Packet::LoginPluginResponse(LoginPluginResponsePacket {
 		response: LoginPluginSpec {
 			message_id: 0.into(),
 			success: true,
@@ -49,7 +49,7 @@ pub fn test_optional_vec_serialization() {
 	
 	serializer.clear();
 	
-	let packet = Packet::LoginPluginResponse(LoginPluginResponseBody {
+	let packet = Packet::LoginPluginResponse(LoginPluginResponsePacket {
 		response: LoginPluginSpec {
 			message_id: 0.into(),
 			success: false,
@@ -70,7 +70,7 @@ pub fn test_optional_vec_serialization() {
 pub fn test_cross_serialization() {
 	let mut serializer = McSerializer::new();
 	
-	let packet = Packet::Disconnect(DisconnectBody {
+	let packet = Packet::Disconnect(DisconnectPacket {
 		reason: TextComponent::from("Hello, world!".to_string())
 	});
 	

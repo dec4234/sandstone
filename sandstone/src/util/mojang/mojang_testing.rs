@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+
 use crate::util::mojang::{get_player_details, get_uuid_from_username, get_uuids_from_usernames};
 
 /*
