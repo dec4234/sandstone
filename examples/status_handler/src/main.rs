@@ -30,7 +30,7 @@ async fn main() {
 		
 		let mut client = CraftClient::from_connection(socket).unwrap();
 		
-		let mut response = StatusResponseSpec::new(ProtocolVerison::V1_20, "&a&lThis is a test description &b§kttt");
+		let mut response = StatusResponseSpec::new(ProtocolVerison::V1_21, "&a&lThis is a test description &b§kttt");
 		response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
 		
 		let image = image::open("examples/status_handler/src/server-icon.png").unwrap();

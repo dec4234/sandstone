@@ -41,8 +41,12 @@ impl PacketState {
 
 #[macro_use]
 mod macros {
-    /// Used to define the minecraft packet protocol. This includes, the name, packet ID, state and
-    /// the respective fields for the packet.
+    /// This is the complex macro used to define every packet in the game. First, we it define the packet with all of its fields,
+    /// then it adds it to a central enum. This enum is used to deserialize the raw incoming packets from a connection since otherwise
+    /// we can only determine the packet based on the id and current state of the connection.
+    /// 
+    /// Generally, this is an internal macro, but you may need to work on it in order to change packets around based on
+    /// different game versions. Needless to say, this packet is only used for a single Minecraft version at a time.
     #[macro_export]
     macro_rules! packets {
         ($ref_ver: ident => {

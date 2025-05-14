@@ -129,6 +129,7 @@ impl <'a> McDeserializer<'a> {
 		Some(slice)
 	}
 
+	/// Pop a single byte from the buffer and return it if the buffer is not empty.
 	pub fn pop(&mut self) -> Option<u8> {
 		if self.index < self.data.len() {
 			let u = self.data[self.index];

@@ -301,7 +301,7 @@ impl CraftClient {
 		self.tcp_stream.shutdown().await.is_ok()
 	}
 
-	/// Get the protocol version of this client as a `ProtocolVersion` enum. This will return 'None' if the
+	/// Get the protocol version of this client as a `ProtocolVersion` enum. This will return `None` if the
 	/// handshake has not been performed or if the protocol version number is not known to the library
 	pub fn get_client_version(&self) -> Option<ProtocolVerison> {
 		Some(ProtocolVerison::from(self.client_version?.0 as i16)?)

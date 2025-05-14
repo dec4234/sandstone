@@ -4,6 +4,9 @@
 //! - Define the packets that are used in the protocol
 //! - Define the serialization and deserialization for each packet
 //! - Provide vital information about each packet such as the packet ID, the packet state, and the packet destination
+//! 
+//! All information for the packets is derived from the wiki. Consider supporting the wiki efforts.
+//! https://minecraft.wiki/w/Java_Edition_protocol
 
 use uuid::Uuid;
 

@@ -1,10 +1,7 @@
+//! The purpose of this file is to test random nesting of enums and structs for serialization and deserialization
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
-
-/*
-The purpose of this file is to test random nesting of enums and structs for serialization and deserialization
- */
 
 enum Group {
 	VarI(VarIntMix),
