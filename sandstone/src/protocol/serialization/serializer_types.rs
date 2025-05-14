@@ -1,5 +1,6 @@
 //! Implementations of the McSerialize and McDeserialize traits for primitive types and some common Rust types.
 
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_types::datatypes::var_types::VarInt;
@@ -159,5 +160,42 @@ impl<T: McSerialize> McSerialize for Box<T> {
 impl<T: McDeserialize> McDeserialize for Box<T> {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
 		Ok(Box::new(T::mc_deserialize(deserializer)?))
+	}
+}
+
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, FromBytes, FromZeroes, Clone)]
+pub struct PrefixedArray<T: McSerialize + McDeserialize> {
+	vec: Vec<T>
+}
+
+impl<T: McSerialize + McDeserialize> PrefixedArray<T> {
+	pub fn new(vec: Vec<T>) -> Self {
+		Self {
+			vec
+		}
+	}
+}
+
+impl<T: McSerialize + McDeserialize> McSerialize for PrefixedArray<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
+		VarInt(self.vec.len() as i32).mc_serialize(serializer)?;
+		for item in &self.vec {
+			item.mc_serialize(serializer)?;
+		}
+
+		Ok(())
+	}
+}
+
+impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
+		let var_output = VarInt::mc_deserialize(deserializer)?;
+		let mut vec = Vec::with_capacity(var_output.0 as usize);
+
+		for _ in 0..var_output.0 {
+			vec.push(T::mc_deserialize(deserializer)?);
+		}
+
+		Ok(PrefixedArray::new(vec))
 	}
 }

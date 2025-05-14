@@ -11,11 +11,12 @@
 use uuid::Uuid;
 
 use crate::packets;
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RegistryEntry, RemoveResourcePackSpec};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RegistryEntry, RemoveResourcePackSpec, ResourcePackEntry};
 use crate::protocol::packets::packet_component::LoginPropertyElement;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::status::status_components::StatusResponseSpec;
@@ -72,11 +73,9 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				verify_token: Vec<u8>
 			},
 			LoginSuccess, LoginSuccessPacket, 0x02 => {
-				uuid: String,
+				uuid: Uuid,
 				username: String,
-				num_properties: VarInt,
-				array: Vec<LoginPropertyElement>,
-				strict_error_handling: bool
+				array: PrefixedArray<LoginPropertyElement>
 			},
 			SetCompression, SetCompressionPacket, 0x03 => {
 				threshold: VarInt
@@ -153,6 +152,33 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			FeatureFlags, FeatureFlagsPacket, 0x0C => {
 				total: VarInt,
 				flags: Vec<String>
+			},
+			
+			ClientboundKnownPacks, ClientboundKnownPacksPacket, 0x0E => {
+				entries: PrefixedArray<ResourcePackEntry>
+			}
+		},
+		SERVER => {
+			ClientInformation, ClientInformationPacket, 0x00 => {
+				locale: String,
+				view_distance: i8,
+				chat_mode: VarInt,
+				chat_colors: bool,
+				displayed_skin_parts: u8,
+				main_hand: VarInt,
+				enable_text_filtering: bool,
+				allow_server_listing: bool,
+				particle_status: VarInt
+			},
+			ServerboundPluginMessage, ServerboundPluginMessagePacket, 0x02 => {
+				channel: String,
+				data: Vec<u8>
+			},
+			AcknowledgeFinishConfiguration, AcknowledgeFinishConfigurationPacket, 0x03 => {
+				// none
+			},
+			ServerboundKnownPacks, ServerboundKnownPacksPacket, 0x07 => {
+				entries: PrefixedArray<ResourcePackEntry>
 			}
 		}
 	}

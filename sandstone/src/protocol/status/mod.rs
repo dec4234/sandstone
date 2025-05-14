@@ -108,6 +108,8 @@ impl HandshakeHandler for DefaultHandshakeHandler {
 					client.change_state(PacketState::STATUS);
 				} else if handshake.next_state == VarInt(2) {
 					client.change_state(PacketState::LOGIN);
+				} else if handshake.next_state == VarInt(3) {
+					client.change_state(PacketState::TRANSFER);
 				} else {
 					return Err(NetworkError::InvalidNextState(format!("Invalid next state detected, got \"{}\"", handshake.next_state.0)));
 				}

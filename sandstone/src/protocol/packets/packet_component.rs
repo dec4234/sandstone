@@ -61,3 +61,10 @@ pub struct RegistryEntry {
 	#[mc(deserialize_if = has_data)]
 	pub data: Option<NbtCompound>,
 }
+
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ResourcePackEntry {
+	pub namespace: String,
+	pub id: String,
+	pub version: String
+}

@@ -16,7 +16,8 @@ pub enum PacketState {
 	HANDSHAKING,
 	LOGIN,
     CONFIGURATION,
-	PLAY
+	PLAY,
+    TRANSFER // is this actually a distinct state or is it just login
 }
 
 impl PacketState {
@@ -70,7 +71,7 @@ mod macros {
                         pub struct $name_body { // The body struct of the packet
                             $(
                                 $(#[$field_meta])*
-                                pub(crate) $field: $t
+                                pub $field: $t
                             ),*
                         }
                         
