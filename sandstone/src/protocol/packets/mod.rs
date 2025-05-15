@@ -8,6 +8,7 @@
 //! All information for the packets is derived from the wiki. Consider supporting the wiki efforts.
 //! https://minecraft.wiki/w/Java_Edition_protocol
 
+use sandstone_derive::mc;
 use uuid::Uuid;
 
 use crate::packets;
@@ -21,6 +22,7 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol_types::datatypes::chat::TextComponent;
+use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::var_types::VarInt;
 
 pub mod packet_component;
@@ -153,7 +155,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				total: VarInt,
 				flags: Vec<String>
 			},
-			
+
 			ClientboundKnownPacks, ClientboundKnownPacksPacket, 0x0E => {
 				entries: PrefixedArray<ResourcePackEntry>
 			}
@@ -179,6 +181,36 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			},
 			ServerboundKnownPacks, ServerboundKnownPacksPacket, 0x07 => {
 				entries: PrefixedArray<ResourcePackEntry>
+			}
+		}
+	},
+	PLAY => {
+		CLIENT => {
+			LoginInfo, LoginInfoPacket, 0x2B => {
+				entity_id: i32,
+				is_hardcore: bool,
+				dimension_names: PrefixedArray<String>,
+				max_players: VarInt,
+				render_distance: VarInt,
+				simulation_distance: VarInt,
+				reduced_debug_info: bool,
+				enable_respawn_screen: bool,
+				do_limited_crafting: bool,
+				dimension_type: VarInt,
+				dimension_name: String,
+				hashed_seed: i64,
+				gamemode: u8,
+				previous_gamemode: u8,
+				is_debug: bool,
+				is_flat: bool,
+				has_death_location: bool,
+				#[mc(deserialize_if = has_death_location)]
+				death_dimension_name: Option<String>,
+				#[mc(deserialize_if = has_death_location)]
+				death_location: Option<Position>,
+				portal_cooldown: VarInt,
+				sea_level: VarInt,
+				enforces_secure_chat: bool
 			}
 		}
 	}

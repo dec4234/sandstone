@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::__private::Span;
 use syn::spanned::Spanned;
 use syn::{parse_macro_input, Data, DeriveInput, Expr, Fields, GenericArgument, Ident, PathArguments, Type};
@@ -53,7 +53,12 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 			Fields::Named(fields) => {
 				for field in &fields.named {
 					let field_name = field.ident.as_ref().unwrap();
-					let field_type = &field.ty;
+					let mut current_ty = &field.ty;
+					// Unwrap all Type::Group layers (e.g., types wrapped in parentheses)
+					// This is needed to use "mc" attributes within packets!
+					while let Type::Group(group) = current_ty {
+						current_ty = &group.elem;
+					}
 
 					let mut condition: Option<Expr> = None;
 
@@ -77,10 +82,10 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 
 					if let Some(cond) = condition {
 						// Validate that the field is an Option<T>
-						let inner_type = match field_type {
+						let inner_type = match current_ty {
 							Type::Path(type_path) => {
 								let segments = &type_path.path.segments;
-								if let Some(segment) = segments.first() {
+								if let Some(segment) = segments.last() { // Check the last segment instead of the first
 									if segment.ident == "Option" {
 										match &segment.arguments {
 											PathArguments::AngleBracketed(args) => {
@@ -99,7 +104,7 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 									panic!("Invalid type path for field {}", field_name);
 								}
 							}
-							_ => panic!("deserialize_if can only be applied to Option fields with a type path for field {}", field_name),
+							_ => panic!("deserialize_if can only be applied to Option fields with a type path for field {} and field type {}", field_name, current_ty.to_token_stream()),
 						};
 
 						// Conditional deserialization
@@ -113,7 +118,7 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 					} else {
 						// Regular deserialization
 						init_stmts.push(quote! {
-							let #field_name = <#field_type as McDeserialize>::mc_deserialize(deserializer)?;
+							let #field_name = <#current_ty as McDeserialize>::mc_deserialize(deserializer)?;
 						});
 					}
 
@@ -165,4 +170,10 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 	};
 
 	TokenStream::from(expanded)
+}
+
+#[proc_macro_attribute]
+pub fn mc(_attr: TokenStream, item: TokenStream) -> TokenStream {
+	
+	item
 }

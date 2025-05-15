@@ -1,6 +1,6 @@
 //! Implementations of the McSerialize and McDeserialize traits for primitive types and some common Rust types.
 
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, FromZeroes};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_types::datatypes::var_types::VarInt;
@@ -163,6 +163,7 @@ impl<T: McDeserialize> McDeserialize for Box<T> {
 	}
 }
 
+/// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array. This is a protocol type.
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, FromBytes, FromZeroes, Clone)]
 pub struct PrefixedArray<T: McSerialize + McDeserialize> {
 	vec: Vec<T>

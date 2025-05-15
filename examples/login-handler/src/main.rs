@@ -5,7 +5,7 @@ use tokio::net::TcpListener;
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::client::CraftClient;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::{ClientboundKnownPacksPacket, LoginStartPacket, LoginSuccessPacket, Packet, StatusResponsePacket};
+use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginSuccessPacket, Packet, StatusResponsePacket};
 use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
@@ -97,12 +97,30 @@ async fn main() {
             Packet::ClientInformation(..) => {
                 debug!("Received client information from {}", client);
                 debug!("Client information: {:?}", client_info);
-                continue;
             }
             _ => {
                 debug!("Expected client info, got {:?}", client_info);
             }
         }
+        
+        let packet = Packet::FinishConfiguration(FinishConfigurationPacket::new());
+        client.send_packet(packet).await.unwrap();
+        
+        debug!("Sent finish configuration to {}", client);
+        
+        let ack = client.receive_packet().await.unwrap();
+        match ack {
+            Packet::AcknowledgeFinishConfiguration(..) => {
+                debug!("Received acknowledge finish configuration from {}", client);
+                debug!("Acknowledge finish configuration: {:?}", ack);
+            }
+            _ => {
+                debug!("Expected acknowledge finish configuration, got {:?}", ack);
+                continue;
+            }
+        }
+        
+        
     }
 }
 

@@ -56,7 +56,7 @@ mod macros {
                 $($direction: ident => {
                    $($name: ident, $name_body: ident, $packetID: literal $(#[$struct_meta: meta])* => {
                         $(
-                            $(#[$field_meta: meta])*
+                            $(#[$field_meta:meta])*
                             $field: ident: $t: ty
                         ),*
                     }),* 
@@ -66,7 +66,7 @@ mod macros {
             $(
                 $(
                     $(
-                        #[derive(Debug, Clone, PartialEq, Eq)]
+                        #[derive(Debug, Clone, PartialEq, Eq, sandstone_derive::McDeserialize, sandstone_derive::McSerialize)]
                         $(#[$struct_meta])*
                         pub struct $name_body { // The body struct of the packet
                             $(
@@ -80,26 +80,6 @@ mod macros {
                                 Self {
                                     $($field),*
                                 }
-                            }
-                        }
-                    
-                        #[allow(unused)] // incase there's an empty packet
-                        impl McDeserialize for $name_body {
-                            fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
-                                let s = Self {
-                                    $($field: <$t>::mc_deserialize(deserializer)?,)*
-                                };
-        
-                                Ok(s)
-                            }
-                        }
-                    
-                        #[allow(unused)] // incase there's an empty packet
-                        impl McSerialize for $name_body {
-                            fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-                                $(self.$field.mc_serialize(serializer)?;)*
-        
-                                Ok(())
                             }
                         }
                     
