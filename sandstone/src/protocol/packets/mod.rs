@@ -24,6 +24,7 @@ use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::var_types::VarInt;
+use crate::util::java::bitfield::BitField;
 
 pub mod packet_component;
 pub mod packet_definer;
@@ -140,7 +141,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			RegistryData, RegistryDataPacket, 0x07 => {
 				registry_id: String,
 				entry_count: VarInt,
-				entries: Vec<RegistryEntry>
+				entries: PrefixedArray<RegistryEntry>
 			},
 			RemoveResourcePack, RemoveResourcePackPacket, 0x08 => {
 				spec: RemoveResourcePackSpec
@@ -211,6 +212,33 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				portal_cooldown: VarInt,
 				sea_level: VarInt,
 				enforces_secure_chat: bool
+			},
+			SyncPlayerPosition, SyncPlayerPositionPacket, 0x41 => {
+				teleport_id: VarInt,
+				x: f64,
+				y: f64,
+				z: f64,
+				velocity_x: f64,
+				velocity_y: f64,
+				velocity_z: f64,
+				yaw: f32,
+				pitch: f32,
+				#[doc = "See https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags for more info"]
+				flags: BitField<i8>
+			}
+		},
+		SERVER => {
+			ConfirmTeleport, ConfirmTeleportPacket, 0x00 => {
+				teleport_id: VarInt
+			},
+			SetPlayerPositionRotation, SetPlayerPositionRotationPacket, 0x1D => {
+				x: f64,
+				#[doc = "Feet y position. Head - 1.62"]
+				y: f64,
+				z: f64,
+				yaw: f32,
+				pitch: f32,
+				flags: BitField<i8>
 			}
 		}
 	}

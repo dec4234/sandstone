@@ -1,2 +1,3 @@
 //! Contains utilities like those found in Java
-mod bitset;
+pub mod bitset;
+pub mod bitfield;

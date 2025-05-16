@@ -66,7 +66,7 @@ mod macros {
             $(
                 $(
                     $(
-                        #[derive(Debug, Clone, PartialEq, Eq, sandstone_derive::McDeserialize, sandstone_derive::McSerialize)]
+                        #[derive(Debug, Clone, PartialEq, sandstone_derive::McDeserialize, sandstone_derive::McSerialize)]
                         $(#[$struct_meta])*
                         pub struct $name_body { // The body struct of the packet
                             $(
@@ -102,7 +102,7 @@ mod macros {
             )*
             
             $crate::as_item!( // weird workaround from mcproto-rs
-                #[derive(Debug, Clone, PartialEq, Eq)]
+                #[derive(Debug, Clone, PartialEq)]
                 pub enum Packet {
                     $($($($name($name_body),)*)*)*
                 }

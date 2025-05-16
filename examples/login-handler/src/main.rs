@@ -4,14 +4,15 @@ use tokio::net::TcpListener;
 
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::client::CraftClient;
-use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginSuccessPacket, Packet, StatusResponsePacket};
+use sandstone::protocol::packets::packet_definer::{PacketState};
+use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, SetPlayerPositionRotationPacket, StatusResponsePacket, SyncPlayerPositionPacket};
 use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use uuid::Uuid;
-use sandstone::protocol::serialization::{McDeserializer, StateBasedDeserializer};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
+use sandstone::protocol_types::datatypes::var_types::VarInt;
+use sandstone::util::java::bitfield::BitField;
 
 #[tokio::main]
 async fn main() {
@@ -92,6 +93,8 @@ async fn main() {
             }
         }
         
+        // todo: registry data
+        
         let client_info = client.receive_packet().await.unwrap();
         match client_info {
             Packet::ClientInformation(..) => {
@@ -120,14 +123,41 @@ async fn main() {
             }
         }
         
+        client.change_state(PacketState::PLAY);
         
+        let login = Packet::LoginInfo(LoginInfoPacket::new(0, false, PrefixedArray::new(vec!["world".to_string()]), 2.into(), 0.into(), 0.into(), false, false, false,
+        VarInt(1), "world".to_string(), 0i64, 0u8, 0u8, false, true, false, None, None, VarInt(0), VarInt(2), false));
+        client.send_packet(login).await.unwrap();
+        
+        debug!("Sent login info to {}", client);
+        
+        let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(VarInt(2), 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, BitField::new(0)));
+        client.send_packet(sync).await.unwrap();
+        
+        debug!("Sent sync player position to {}", client);
+        
+        let telep = client.receive_packet().await.unwrap();
+        match telep {
+            Packet::ConfirmTeleport(..) => {
+                debug!("Received teleport confirm from {}", client);
+                debug!("Teleport confirm: {:?}", telep);
+            }
+            _ => {
+                debug!("Expected teleport confirm, got {:?}", telep);
+                continue;
+            }
+        }
+        
+        let setpos = client.receive_packet().await.unwrap();
+        match setpos {
+            Packet::SetPlayerPositionRotation(..) => {
+                debug!("Received set player position rotation from {}", client);
+                debug!("Set player position rotation: {:?}", setpos);
+            }
+            _ => {
+                debug!("Expected set player position rotation, got {:?}", setpos);
+                continue;
+            }
+        }
     }
-}
-
-#[test]
-fn test_pack() {
-    let bytes = vec![25, 2, 15, 109, 105, 110, 101, 99, 114, 97, 102, 116, 58, 98, 114, 97, 110, 100, 7, 118, 97, 110, 105, 108, 108, 97];
-    let mut deserializer = McDeserializer::new(&bytes);
-    let packet = Packet::deserialize_state(&mut deserializer, PacketState::CONFIGURATION, PacketDirection::SERVER).unwrap();
-    println!("{:?}", packet);
 }

@@ -1,8 +1,15 @@
 //! https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html
 
+use crate::protocol::serialization::McSerialize;
+use crate::protocol::serialization::McSerializer;
+use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::McDeserialize;
+use crate::protocol::serialization::McDeserializer;
 use std::ops::Range;
+use sandstone_derive::{McDeserialize, McSerialize};
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BitSet {
 	bits: Vec<u64>,
 }
