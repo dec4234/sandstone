@@ -128,96 +128,121 @@ impl From<BitSet> for Vec<u8> {
 	}
 }
 
-#[test]
-fn test_bitset() {
-	let mut bitset = BitSet::new(128);
+#[cfg(test)]
+mod test {
+	use crate::util::java::bitset::BitSet;
 
-	bitset.set_bit(0, true);
-	bitset.set_bit(63, true);
-	bitset.set_bit(64, true);
-	bitset.set_bit(127, true);
+	#[test]
+	fn test_bitset() {
+		let mut bitset = BitSet::new(128);
 
-	assert!(bitset.get_bit(0));
-	assert!(bitset.get_bit(63));
-	assert!(bitset.get_bit(64));
-	assert!(bitset.get_bit(127));
+		bitset.set_bit(0, true);
+		bitset.set_bit(63, true);
+		bitset.set_bit(64, true);
+		bitset.set_bit(127, true);
 
-	assert!(!bitset.get_bit(1));
-	assert!(!bitset.get_bit(62));
-	assert!(!bitset.get_bit(65));
-	assert!(!bitset.get_bit(126));
-}
+		assert!(bitset.get_bit(0));
+		assert!(bitset.get_bit(63));
+		assert!(bitset.get_bit(64));
+		assert!(bitset.get_bit(127));
 
-#[test]
-fn flip_test() {
-	let mut bitset = BitSet::new(128);
-	bitset.set_bit(0, true);
-	bitset.set_bit(63, true);
-	bitset.set_bit(64, true);
-	bitset.set_bit(127, true);
+		assert!(!bitset.get_bit(1));
+		assert!(!bitset.get_bit(62));
+		assert!(!bitset.get_bit(65));
+		assert!(!bitset.get_bit(126));
+	}
 
-	assert!(bitset.get_bit(0));
-	assert!(bitset.get_bit(63));
-	assert!(bitset.get_bit(64));
-	assert!(bitset.get_bit(127));
+	#[test]
+	fn flip_test() {
+		let mut bitset = BitSet::new(128);
+		bitset.set_bit(0, true);
+		bitset.set_bit(63, true);
+		bitset.set_bit(64, true);
+		bitset.set_bit(127, true);
 
-	bitset.flip();
+		assert!(bitset.get_bit(0));
+		assert!(bitset.get_bit(63));
+		assert!(bitset.get_bit(64));
+		assert!(bitset.get_bit(127));
 
-	assert!(!bitset.get_bit(0));
-	assert!(!bitset.get_bit(63));
-	assert!(!bitset.get_bit(64));
-	assert!(!bitset.get_bit(127));
-}
+		bitset.flip();
 
-#[test]
-fn slicing() {
-	let mut bitset = BitSet::new(128);
-	bitset.set_bit(0, true);
-	bitset.set_bit(63, true);
-	bitset.set_bit(64, true);
-	bitset.set_bit(127, true);
+		assert!(!bitset.get_bit(0));
+		assert!(!bitset.get_bit(63));
+		assert!(!bitset.get_bit(64));
+		assert!(!bitset.get_bit(127));
+	}
 
-	let slice = bitset.slice(0..64);
-	assert!(slice.get_bit(0));
-	assert!(slice.get_bit(63));
-	assert!(!slice.get_bit(64));
-	assert!(!slice.get_bit(127));
+	#[test]
+	fn slicing() {
+		let mut bitset = BitSet::new(128);
+		bitset.set_bit(0, true);
+		bitset.set_bit(63, true);
+		bitset.set_bit(64, true);
+		bitset.set_bit(127, true);
 
-	let slice = bitset.slice(64..128);
-	assert!(slice.get_bit(0));
-	assert!(!slice.get_bit(62));
-	assert!(slice.get_bit(63));
-}
+		let slice = bitset.slice(0..64);
+		assert!(slice.get_bit(0));
+		assert!(slice.get_bit(63));
+		assert!(!slice.get_bit(64));
+		assert!(!slice.get_bit(127));
 
-#[test]
-fn test_or_and() {
-	let mut bitset1 = BitSet::new(128);
-	let mut bitset2 = BitSet::new(128);
+		let slice = bitset.slice(64..128);
+		assert!(slice.get_bit(0));
+		assert!(!slice.get_bit(62));
+		assert!(slice.get_bit(63));
+	}
 
-	bitset1.set_bit(0, true);
-	bitset1.set_bit(63, true);
-	bitset2.set_bit(0, true);
-	bitset2.set_bit(63, true);
+	#[test]
+	fn test_or_and() {
+		let mut bitset1 = BitSet::new(128);
+		let mut bitset2 = BitSet::new(128);
 
-	bitset1.or(&bitset2);
+		bitset1.set_bit(0, true);
+		bitset1.set_bit(63, true);
+		bitset2.set_bit(0, true);
+		bitset2.set_bit(63, true);
 
-	assert!(bitset1.get_bit(0));
-	assert!(bitset1.get_bit(63));
-	assert!(!bitset1.get_bit(61));
-	assert!(!bitset1.get_bit(127));
+		bitset1.or(&bitset2);
 
-	bitset2.set_bit(60, true);
-	
-	bitset1.and(&bitset2);
+		assert!(bitset1.get_bit(0));
+		assert!(bitset1.get_bit(63));
+		assert!(!bitset1.get_bit(61));
+		assert!(!bitset1.get_bit(127));
 
-	assert!(bitset1.get_bit(0));
-	assert!(bitset1.get_bit(63));
-	assert!(!bitset1.get_bit(61));
-	assert!(!bitset1.get_bit(127));
-	assert!(!bitset1.get_bit(60));
-}
+		bitset2.set_bit(60, true);
 
-#[test]
-fn test_xor_not() {
-	
+		bitset1.and(&bitset2);
+
+		assert!(bitset1.get_bit(0));
+		assert!(bitset1.get_bit(63));
+		assert!(!bitset1.get_bit(61));
+		assert!(!bitset1.get_bit(127));
+		assert!(!bitset1.get_bit(60));
+	}
+
+	#[test]
+	fn test_xor_not() {
+		let mut bitset1 = BitSet::new(128);
+		let mut bitset2 = BitSet::new(128);
+
+		bitset1.set_bit(0, true);
+		bitset1.set_bit(63, true);
+		bitset2.set_bit(0, true);
+		bitset2.set_bit(63, true);
+
+		bitset1.xor(&bitset2);
+
+		assert!(!bitset1.get_bit(0));
+		assert!(!bitset1.get_bit(63));
+		assert!(!bitset1.get_bit(61));
+		assert!(!bitset1.get_bit(127));
+
+		bitset1.not();
+
+		assert!(bitset1.get_bit(0));
+		assert!(bitset1.get_bit(63));
+		assert!(bitset1.get_bit(61));
+		assert!(bitset1.get_bit(127));
+	}
 }

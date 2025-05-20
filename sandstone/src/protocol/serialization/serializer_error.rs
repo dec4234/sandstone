@@ -32,6 +32,8 @@ pub enum SerializingErr {
 	UniqueFailure(String),
 	#[error("The current packet state does not match what is needed to deserialize this packet")]
 	InvalidPacketState,
+	#[error("Not a valid bits per entry")]
+	InvalidBitsPerEntry,
 }
 
 impl PartialEq for SerializingErr {

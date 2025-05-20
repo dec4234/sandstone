@@ -10,7 +10,7 @@
 
 use sandstone_derive::mc;
 use uuid::Uuid;
-
+use crate::game::world::chunk::{Chunk, Heightmap};
 use crate::packets;
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RegistryEntry, RemoveResourcePackSpec, ResourcePackEntry};
 use crate::protocol::packets::packet_component::LoginPropertyElement;
@@ -187,6 +187,15 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 	},
 	PLAY => {
 		CLIENT => {
+			ChunkData, ChunkDataPacket, 0x27 => {
+				x: i32,
+				y: i32,
+				heightmap_count: VarInt,
+				heightmaps: Vec<Heightmap>,
+				data_size: VarInt,
+				data: Chunk
+				
+			},
 			LoginInfo, LoginInfoPacket, 0x2B => {
 				entity_id: i32,
 				is_hardcore: bool,
@@ -225,6 +234,10 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				pitch: f32,
 				#[doc = "See https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags for more info"]
 				flags: BitField<i8>
+			},
+			SetCenterChunk, SetCenterChunkPacket, 0x57 => {
+				x: VarInt,
+				z: VarInt
 			}
 		},
 		SERVER => {

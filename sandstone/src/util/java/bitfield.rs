@@ -1,3 +1,6 @@
+//! A bit field is a fixed length primitive unsigned or signed integer that packs its data into 
+//! individual bits.
+
 use std::ops::{BitAnd, BitOr, Not, Shl, Shr, Sub};
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::McDeserialize;
@@ -5,7 +8,7 @@ use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::McDeserializer;
 
-/// A simple bit field internally represented as a 32-bit integer.
+/// A simple bit field internally represented as any primitive signed or unsigned integer.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BitField<T: BitFieldInteger + McSerialize + McDeserialize> {
 	bits: T,
@@ -66,6 +69,7 @@ impl <'a, T: BitFieldInteger + McSerialize + McDeserialize> McDeserialize for Bi
 	}
 }
 
+/// A number that can be used for a fixed-length bit field.
 pub trait BitFieldInteger:
 Copy
 + PartialEq
@@ -95,30 +99,35 @@ macro_rules! impl_bitfield_integer {
 
 impl_bitfield_integer!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
-#[test]
-fn test_basic_bitfield() {
-	let mut bitfield = BitField::new(0);
-	
-	bitfield.set_bit(0, true);
-	assert_eq!(bitfield.get_bit(0), true);
-	
-	bitfield.set_bit(1, true);
-	assert_eq!(bitfield.get_bit(1), true);
-	
-	bitfield.set_bit(0, false);
-	assert_eq!(bitfield.get_bit(0), false);
-	
-	bitfield.set_all();
-	assert_eq!(bitfield.get_bit(0), true);
-	assert_eq!(bitfield.get_bit(1), true);
-	
-	bitfield.clear_all();
-	assert_eq!(bitfield.get_bit(0), false);
-	assert_eq!(bitfield.get_bit(1), false);
-	
-	bitfield.flip();
-	assert_eq!(bitfield.get_bit(0), true);
-	assert_eq!(bitfield.get_bit(1), true);
+#[cfg(test)]
+mod test {
+	use crate::util::java::bitfield::BitField;
+
+	#[test]
+	fn test_basic_bitfield() {
+		let mut bitfield = BitField::new(0);
+
+		bitfield.set_bit(0, true);
+		assert_eq!(bitfield.get_bit(0), true);
+
+		bitfield.set_bit(1, true);
+		assert_eq!(bitfield.get_bit(1), true);
+
+		bitfield.set_bit(0, false);
+		assert_eq!(bitfield.get_bit(0), false);
+
+		bitfield.set_all();
+		assert_eq!(bitfield.get_bit(0), true);
+		assert_eq!(bitfield.get_bit(1), true);
+
+		bitfield.clear_all();
+		assert_eq!(bitfield.get_bit(0), false);
+		assert_eq!(bitfield.get_bit(1), false);
+
+		bitfield.flip();
+		assert_eq!(bitfield.get_bit(0), true);
+		assert_eq!(bitfield.get_bit(1), true);
+	}
 }
 
 
