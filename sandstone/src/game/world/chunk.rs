@@ -1,4 +1,4 @@
-//! A collection of internal data formats for chunk storage
+//! A collection of internal data formats for chunk data transfer
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format
 
@@ -13,11 +13,89 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol_types::datatypes::game_types::PackedEntries;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDeserialize, McSerialize};
+use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::util::java::bitset::BitSet;
 
-// todo https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data
+/// Chunk Data field as defined in https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ChunkData {
+	pub heightmaps: PrefixedArray<Heightmap>,
+	pub data: ChunkByteData,
+	pub block_entities: PrefixedArray<BlockEntity>,
+}
 
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct LightData {
+	pub sky_light_mask: BitSet,
+	pub block_light_mask: BitSet,
+	pub empty_light_mask: BitSet,
+	pub empty_block_light_mask: BitSet,
+	pub sky_light: PrefixedArray<LightArray>,
+	pub block_light: PrefixedArray<LightArray>,
+}
+
+/// The length of the inner array is always 2048; There is 1 array for each bit set to true in the block 
+/// light mask, starting with the lowest value. Half a byte per light value. Acceptable light values are
+/// 0-15
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct LightArray {
+	pub data: PrefixedArray<u8>
+}
+
+impl LightArray {
+	pub fn new() -> Self {
+		Self {
+			data: PrefixedArray::new(vec![0; 2048])
+		}
+	}
+
+	/// Set the light value for the given index. Half a byte per light value.
+	pub fn set(&mut self, index: usize, value: u8) -> SerializingResult<()> {
+		if value > 0x0F {
+			return Err(SerializingErr::OutOfBounds);
+		}
+
+		let byte_index = index / 2;
+		let is_high = index % 2 == 1;
+
+		if byte_index >= self.data.vec.len() {
+			return Err(SerializingErr::OutOfBounds);
+		}
+
+		let byte = self.data.vec[byte_index];
+		self.data.vec[byte_index] = if is_high {
+			// Set high nibble
+			(byte & 0x0F) | (value << 4)
+		} else {
+			// Set low nibble
+			(byte & 0xF0) | (value & 0x0F)
+		};
+		
+		Ok(())
+	}
+	
+	/// Get the light value for the given index. Half a byte per light value.
+	pub fn get(&self, index: usize) -> SerializingResult<u8> {
+		let byte_index = index / 2;
+		let is_high = index % 2 == 1;
+
+		if byte_index >= self.data.vec.len() {
+			return Err(SerializingErr::OutOfBounds);
+		}
+
+		let byte = self.data.vec[byte_index];
+		Ok(if is_high {
+			byte >> 4
+		} else {
+			byte & 0x0F
+		})
+	}
+}
+
+/// An array of 24 chunk sections, containing the block data for a single chunk. This is serialized to/from
+/// a byte array.
 #[derive(Debug, Clone, Hash, PartialEq)]
-pub struct ChunkSectionData {
+pub struct ChunkByteData {
 	/// This array is NOT length-prefixed. The number of elements in the array is calculated based on the world's height. 
 	/// Sections are sent bottom-to-top. The world height changes based on the dimension. 
 	/// The height of each dimension is assigned by the server in its corresponding registry data entry. 
@@ -26,7 +104,7 @@ pub struct ChunkSectionData {
 }
 
 // convert the section data into a PrefixedArray<u8>
-impl McSerialize for ChunkSectionData {
+impl McSerialize for ChunkByteData {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		let mut small_serializer = McSerializer::new();
 		
@@ -39,7 +117,7 @@ impl McSerialize for ChunkSectionData {
 	}
 }
 
-impl McDeserialize for ChunkSectionData {
+impl McDeserialize for ChunkByteData {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let prefixed_array = PrefixedArray::<u8>::mc_deserialize(deserializer)?;
 		
@@ -177,6 +255,41 @@ pub struct Heightmap {
 	data: Vec<i64>,
 }
 
+/// A block entity is something like a chest or other block which has NBT.
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct BlockEntity {
+	pub packed_xz: PackedXZ,
+	pub y: i16,
+	pub typ: VarInt,
+	pub data: NbtCompound
+}
+
+/// Relative coordinates within a chunk. Each x and z value has valid values 0-15
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct PackedXZ {
+	data: u8,
+}
+
+impl PackedXZ {
+	pub fn new<'a>(x: u8, z: u8) -> SerializingResult<'a, Self> {
+		if x > 15 || z > 15 {
+			return Err(SerializingErr::OutOfBounds);
+		}
+		
+		Ok(Self {
+			data: (x << 4) | z
+		})
+	}
+	
+	pub fn x(&self) -> u8 {
+		self.data >> 4
+	}
+	
+	pub fn z(&self) -> u8 {
+		self.data & 0x0F
+	}
+}
+
 /// An entry is defined by a set of adjacent bits packed within the same long. The bits per entry value
 /// differs based on a variety of factors (check wiki). This function calculates the number of entries that
 /// can entirely fit within the same long. Entries cannot be split across longs, so any remaining bits are 
@@ -203,5 +316,24 @@ mod test {
 		assert_eq!(entries_per_i64(6), 10);
 		assert_eq!(entries_per_i64(7), 9);
 		assert_eq!(entries_per_i64(8), 8);
+	}
+	
+	#[test]
+	fn test_light_array() {
+		let mut light_array = super::LightArray::new();
+		
+		light_array.set(0, 0x0F).unwrap();
+		assert_eq!(light_array.get(0).unwrap(), 0x0F);
+		
+		light_array.set(1, 0x0F).unwrap();
+		assert_eq!(light_array.get(1).unwrap(), 0x0F);
+		
+		light_array.set(2, 0x00).unwrap();
+		assert_eq!(light_array.get(2).unwrap(), 0x00);
+		
+		light_array.set(3, 0x00).unwrap();
+		assert_eq!(light_array.get(3).unwrap(), 0x00);
+		
+		assert_eq!(light_array.get(4).is_err(), false);
 	}
 }

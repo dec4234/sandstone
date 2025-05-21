@@ -10,7 +10,7 @@
 
 use sandstone_derive::mc;
 use uuid::Uuid;
-use crate::game::world::chunk::{Heightmap};
+use crate::game::world::chunk::{ChunkData, LightData};
 use crate::packets;
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RegistryEntry, RemoveResourcePackSpec, ResourcePackEntry};
 use crate::protocol::packets::packet_component::LoginPropertyElement;
@@ -30,7 +30,6 @@ pub mod packet_component;
 pub mod packet_definer;
 
 // https://minecraft.wiki/w/Java_Edition_protocol
-// TODO: https://stackoverflow.com/questions/33999341/generating-documentation-in-macros
 packets!(v1_21 => { // version name is for reference only, has no effect
 	HANDSHAKING => {
 		SERVER => { // Server is the destination
@@ -187,13 +186,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 	},
 	PLAY => {
 		CLIENT => {
-			ChunkData, ChunkDataPacket, 0x27 => {
+			ChunkDataUpdateLight, ChunkDataUpdateLightPacket, 0x27 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
 				x: i32,
 				y: i32,
-				heightmap_count: VarInt,
-				heightmaps: Vec<Heightmap>,
-				data_size: VarInt
-				
+				#[doc = "Chunk byte data"]
+				data: ChunkData,
+				light: LightData
 			},
 			LoginInfo, LoginInfoPacket, 0x2B => {
 				entity_id: i32,
@@ -220,6 +218,9 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				portal_cooldown: VarInt,
 				sea_level: VarInt,
 				enforces_secure_chat: bool
+			},
+			PlayerInfoUpdate, PlayerInfoUpdatePacket, 0x3F => {
+					
 			},
 			SyncPlayerPosition, SyncPlayerPositionPacket, 0x41 => {
 				teleport_id: VarInt,

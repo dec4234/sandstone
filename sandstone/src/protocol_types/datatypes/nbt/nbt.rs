@@ -1,3 +1,6 @@
+//! An NBT implementation without support for sNBT (string NBT). See 
+//! [here](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/NBT) for more information.
+
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Index;
@@ -9,8 +12,7 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 
-// https://wiki.vg/NBT
-
+/// The various tags or data types that could be present inside of an NBT compound
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum NbtTag {
 	End,
@@ -47,7 +49,7 @@ impl NbtTag {
 		}
 	}
 
-	/// Used to assist in deserialization
+	/// Used to assist in deserialization. Returns 'None' if payload size is variable
 	pub fn get_payload_size(&self) -> Option<u8> {
 		match self {
 			NbtTag::End => Some(0),
@@ -66,6 +68,7 @@ impl NbtTag {
 		}
 	}
 
+	/// Get the string representation of a tag, used for sNBT
 	pub fn get_name(&self) -> String {
 		match self {
 			NbtTag::End => "TAG_End".to_string(),
@@ -249,10 +252,10 @@ impl NbtCompound {
 
 		loop {
 			let tag = deserializer.slice(1)[0];
-			let name_length = i16::mc_deserialize(deserializer).unwrap();
+			let name_length = i16::mc_deserialize(deserializer)?;
 			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
 
-			let tag = NbtTag::deserialize_specific(deserializer, tag).unwrap();
+			let tag = NbtTag::deserialize_specific(deserializer, tag)?;
 
 			if tag == NbtTag::End {
 				break;
@@ -261,7 +264,7 @@ impl NbtCompound {
 			compound.add(name, tag);
 		}
 
-		return Ok(compound);
+		Ok(compound)
 	}
 
 	fn serialize_tags(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
@@ -321,7 +324,7 @@ impl McDeserialize for NbtCompound {
 			compound.add(name, tag);
 		}
 		
-		return Ok(compound);
+		Ok(compound)
 	}
 }
 
@@ -343,12 +346,13 @@ impl From<NbtTag> for NbtCompound {
 
 impl PartialEq for NbtCompound {
 	fn eq(&self, other: &Self) -> bool {
-		return self.map == other.map && self.root_name == other.root_name
+		self.map == other.map && self.root_name == other.root_name
 	}
 }
 
 impl Eq for NbtCompound {}
 
+/// A list of NbtTags held sequentially.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct NbtList {
 	pub type_id: u8,
@@ -372,7 +376,7 @@ impl NbtList {
 			list.add_tag(tag)?;
 		}
 		
-		return Ok(list);
+		Ok(list)
 	}
 
 	#[inline]

@@ -1,4 +1,4 @@
-//! https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html
+//! Implementation of https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html
 
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
@@ -9,12 +9,14 @@ use crate::protocol::serialization::McDeserializer;
 use std::ops::Range;
 use sandstone_derive::{McDeserialize, McSerialize};
 
+/// A BitSet is a bitmask datatype of infinite size. It is stored as a Vec of u64
 #[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BitSet {
 	bits: Vec<u64>,
 }
 
 impl BitSet {
+	/// Create a new bitset, defining the number of bits within the bitset
 	pub fn new(size: usize) -> Self {
 		let byte_size = (size + 63) / 64;
 		Self {
