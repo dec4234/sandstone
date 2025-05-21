@@ -2,23 +2,55 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format
 
+use crate::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol_types::datatypes::game_types::PackedEntries;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDeserialize, McSerialize};
-use crate::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
 
-#[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
-pub struct Chunk {
+// todo https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data
+
+#[derive(Debug, Clone, Hash, PartialEq)]
+pub struct ChunkSectionData {
 	/// This array is NOT length-prefixed. The number of elements in the array is calculated based on the world's height. 
 	/// Sections are sent bottom-to-top. The world height changes based on the dimension. 
 	/// The height of each dimension is assigned by the server in its corresponding registry data entry. 
 	/// For example, the vanilla overworld is 384 blocks tall, meaning 24 chunk sections will be included in this array
 	pub data: Vec<ChunkSection>,
+}
+
+// convert the section data into a PrefixedArray<u8>
+impl McSerialize for ChunkSectionData {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		let mut small_serializer = McSerializer::new();
+		
+		self.data.mc_serialize(&mut small_serializer)?;
+		
+		let prefixed_array = PrefixedArray::new(small_serializer.output);
+		prefixed_array.mc_serialize(serializer)?;
+		
+		Ok(())
+	}
+}
+
+impl McDeserialize for ChunkSectionData {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let prefixed_array = PrefixedArray::<u8>::mc_deserialize(deserializer)?;
+		
+		let mut small_deserializer = McDeserializer::new(&prefixed_array.vec);
+		
+		let data = Vec::mc_deserialize(&mut small_deserializer)?;
+		
+		Ok(Self {
+			data
+		})
+	}
 }
 
 #[derive(McSerialize, Debug, Clone, Hash, PartialEq)]
@@ -73,56 +105,7 @@ impl PalletedContainer {
 	}
 }
 
-/// Represents a packed i64 (long) that contains block or biome data. See 
-/// https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Data_Array_format for more info. This
-/// matches the spec for packed data after 1.16
-#[derive(Debug, Clone, Hash, PartialEq)]
-pub struct PackedEntries {
-	data: i64,
-	/// The number of bits allocated to each entry
-	bpe: u8,
-}
-
-impl PackedEntries {
-	pub fn new(bpe: u8) -> Self {
-		Self {
-			data: 0,
-			bpe,
-		}
-	}
-	
-	/// Get the entry by the index from the packed i64. The first entry occupies the least significant bits
-	pub fn get_entry(&self, index: u8) -> u64 {
-		let mask = (1 << self.bpe) - 1;
-		let shift = index * self.bpe;
-		((self.data >> shift) & mask as i64) as u64
-	}
-	
-	pub fn set_entry(&mut self, index: u8, value: u64) {
-		let mask = (1 << self.bpe) - 1;
-		let shift = index * self.bpe;
-		self.data &= !(mask << shift);
-		self.data |= ((value & mask as u64) << shift ) as i64;
-	}
-
-	/// A nonstandard deserializer that utilizes bits per entry
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, bpe: u8) -> SerializingResult<'a, Self> where Self: Sized {
-		let data = i64::mc_deserialize(deserializer)?;
-
-		Ok(Self {
-			data,
-			bpe
-		})
-	}
-}
-
-impl McSerialize for PackedEntries {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		self.data.mc_serialize(serializer)?;
-		Ok(())
-	}
-}
-
+/// Used to determine which palette format to use based on the Bits Per Entry
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum PaletteFormatType {
 	BLOCKS,
@@ -194,11 +177,10 @@ pub struct Heightmap {
 	data: Vec<i64>,
 }
 
-// todo
-pub struct ChunkDataUpdateLight {
-	
-}
-
+/// An entry is defined by a set of adjacent bits packed within the same long. The bits per entry value
+/// differs based on a variety of factors (check wiki). This function calculates the number of entries that
+/// can entirely fit within the same long. Entries cannot be split across longs, so any remaining bits are 
+/// wasted as padding.
 fn entries_per_i64(bpe: u8) -> u8 {
 	if bpe == 0 {
 		return 0;
@@ -209,7 +191,7 @@ fn entries_per_i64(bpe: u8) -> u8 {
 
 #[cfg(test)]
 mod test {
-	use crate::game::world::chunk::{entries_per_i64, PackedEntries};
+	use crate::game::world::chunk::entries_per_i64;
 
 	#[test]
 	fn test_entries_per_i64() {
@@ -221,57 +203,5 @@ mod test {
 		assert_eq!(entries_per_i64(6), 10);
 		assert_eq!(entries_per_i64(7), 9);
 		assert_eq!(entries_per_i64(8), 8);
-	}
-	
-	#[test]
-	fn basic_packed_entries_test() {
-		let mut packed = super::PackedEntries::new(4);
-		packed.set_entry(0, 1);
-		packed.set_entry(1, 2);
-		packed.set_entry(2, 3);
-		packed.set_entry(3, 4);
-		
-		assert_eq!(packed.get_entry(0), 1);
-		assert_eq!(packed.get_entry(1), 2);
-		assert_eq!(packed.get_entry(2), 3);
-		assert_eq!(packed.get_entry(3), 4);
-	}
-	
-	#[test]
-	fn extract_from_hex() {
-		let packed = PackedEntries {
-			data: 0x0020863148418841,
-			bpe: 5
-		};
-		
-		assert_eq!(packed.get_entry(0), 1);
-		assert_eq!(packed.get_entry(1), 2);
-		assert_eq!(packed.get_entry(2), 2);
-		assert_eq!(packed.get_entry(3), 3);
-		assert_eq!(packed.get_entry(4), 4);
-		assert_eq!(packed.get_entry(5), 4);
-		assert_eq!(packed.get_entry(6), 5);
-		assert_eq!(packed.get_entry(7), 6);
-		assert_eq!(packed.get_entry(8), 6);
-		assert_eq!(packed.get_entry(9), 4);
-		assert_eq!(packed.get_entry(10), 8);
-		
-		let packed = PackedEntries {
-			data: 0x01018A7260F68C87,
-			bpe: 5
-		};
-		
-		assert_eq!(packed.get_entry(0), 7);
-		assert_eq!(packed.get_entry(1), 4);
-		assert_eq!(packed.get_entry(2), 3);
-		assert_eq!(packed.get_entry(3), 13);
-		assert_eq!(packed.get_entry(4), 15);
-		assert_eq!(packed.get_entry(5), 16);
-		assert_eq!(packed.get_entry(6), 9);
-		assert_eq!(packed.get_entry(7), 14);
-		assert_eq!(packed.get_entry(8), 10);
-		assert_eq!(packed.get_entry(9), 12);
-		assert_eq!(packed.get_entry(10), 0);
-		assert_eq!(packed.get_entry(11), 2);
 	}
 }

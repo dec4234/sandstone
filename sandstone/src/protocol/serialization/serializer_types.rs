@@ -166,7 +166,7 @@ impl<T: McDeserialize> McDeserialize for Box<T> {
 /// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array. This is a protocol type.
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, FromBytes, FromZeroes, Clone)]
 pub struct PrefixedArray<T: McSerialize + McDeserialize> {
-	vec: Vec<T>
+	pub(crate) vec: Vec<T>
 }
 
 impl<T: McSerialize + McDeserialize> PrefixedArray<T> {

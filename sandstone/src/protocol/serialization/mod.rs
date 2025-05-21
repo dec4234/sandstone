@@ -81,6 +81,7 @@ impl McSerializer {
 		self.output.last()
 	}
 
+	/// Merge the contents of the provided McSerializer into this one.
 	pub fn merge(&mut self, serializer: McSerializer) {
 		self.serialize_bytes(&serializer.output);
 	}

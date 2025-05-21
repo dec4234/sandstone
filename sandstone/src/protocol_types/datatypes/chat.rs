@@ -10,8 +10,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 /// in chat messages and book messages. The only thing that is required to be included is a String
 /// representing the text to be displayed. Everything else is an optional modifier.
 ///
-/// See [https://wiki.vg/Text_formatting#Text_components](https://wiki.vg/Text_formatting#Text_components)
-/// for more information.
+/// See https://minecraft.wiki/w/Text_component_format for more information.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 pub struct TextComponent {

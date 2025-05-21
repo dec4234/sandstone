@@ -5,7 +5,7 @@ use tokio::net::TcpListener;
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::client::CraftClient;
 use sandstone::protocol::packets::packet_definer::{PacketState};
-use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, SetPlayerPositionRotationPacket, StatusResponsePacket, SyncPlayerPositionPacket};
+use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, StatusResponsePacket, SyncPlayerPositionPacket};
 use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;

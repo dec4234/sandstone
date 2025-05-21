@@ -204,8 +204,6 @@ list_nbtvalue!(
 );
 
 /// Effectively a map of NbtTagLegacys
-///
-/// Order is not needed according to NBT specification, but I do it anyways
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct NbtCompound {
 	pub(crate) map: HashMap<String, NbtTag>,

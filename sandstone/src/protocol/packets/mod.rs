@@ -10,7 +10,7 @@
 
 use sandstone_derive::mc;
 use uuid::Uuid;
-use crate::game::world::chunk::{Chunk, Heightmap};
+use crate::game::world::chunk::{Heightmap};
 use crate::packets;
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RegistryEntry, RemoveResourcePackSpec, ResourcePackEntry};
 use crate::protocol::packets::packet_component::LoginPropertyElement;
@@ -192,8 +192,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				y: i32,
 				heightmap_count: VarInt,
 				heightmaps: Vec<Heightmap>,
-				data_size: VarInt,
-				data: Chunk
+				data_size: VarInt
 				
 			},
 			LoginInfo, LoginInfoPacket, 0x2B => {
