@@ -40,9 +40,8 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
         Data::Enum(enu) => {
             let mut match_arms = vec![];
 
-            for (index, variant) in enu.variants.iter().enumerate() {
+            for (_, variant) in enu.variants.iter().enumerate() {
                 let variant_name = &variant.ident;
-                let index_lit = index as u8;
 
                 let pattern = match &variant.fields {
                     Fields::Named(fields) => {

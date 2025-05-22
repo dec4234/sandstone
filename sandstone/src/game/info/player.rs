@@ -56,6 +56,7 @@ impl PlayerInfoUpdateType {
 	}
 }
 
+// todo https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Info_Update
 /*#[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
 pub enum PlayerInfoAction {
 	AddPlayer((String, String))

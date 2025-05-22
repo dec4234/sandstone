@@ -9,16 +9,6 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 
-// todo: now that we have attribute tag, do any of these need to be separate from the rest?
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LoginPropertyElement {
-	pub(crate) name: String,
-	pub(crate) value: String,
-	pub(crate) is_signed: bool,
-	#[mc(deserialize_if = is_signed)]
-	pub(crate) signature: Option<String>,
-}
-
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoginPluginSpec {
 	pub(crate) message_id: VarInt,

@@ -13,11 +13,10 @@ use uuid::Uuid;
 use crate::game::world::chunk::{ChunkData, LightData};
 use crate::packets;
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RegistryEntry, RemoveResourcePackSpec, ResourcePackEntry};
-use crate::protocol::packets::packet_component::LoginPropertyElement;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::serializer_types::PrefixedArray;
+use crate::protocol::serialization::serializer_types::{PrefixedArray, ProtocolPropertyElement};
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::status::status_components::StatusResponseSpec;
@@ -77,7 +76,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			LoginSuccess, LoginSuccessPacket, 0x02 => {
 				uuid: Uuid,
 				username: String,
-				array: PrefixedArray<LoginPropertyElement>
+				array: PrefixedArray<ProtocolPropertyElement>
 			},
 			SetCompression, SetCompressionPacket, 0x03 => {
 				threshold: VarInt

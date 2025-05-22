@@ -1,6 +1,7 @@
 //! Implementations of the McSerialize and McDeserialize traits for primitive types and some common Rust types.
 
 use zerocopy::{FromBytes, FromZeroes};
+use sandstone_derive::{McDeserialize, McSerialize};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol_types::datatypes::var_types::VarInt;
@@ -199,4 +200,47 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 
 		Ok(PrefixedArray::new(vec))
 	}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrefixedOptional<T: McSerialize + McDeserialize> {
+	pub(crate) is_present: bool,
+	pub(crate) value: Option<T>
+}
+
+impl<T: McSerialize + McDeserialize> McSerialize for PrefixedOptional<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
+		if self.is_present {
+			serializer.serialize_u8(1);
+			self.value.as_ref().unwrap().mc_serialize(serializer)?;
+		} else {
+			serializer.serialize_u8(0);
+		}
+
+		Ok(())
+	}
+}
+
+impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedOptional<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
+		let is_present = u8::mc_deserialize(deserializer)? == 1;
+
+		let value = if is_present {
+			Some(T::mc_deserialize(deserializer)?)
+		} else {
+			None
+		};
+
+		Ok(PrefixedOptional {
+			is_present,
+			value
+		})
+	}
+}
+
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ProtocolPropertyElement {
+	pub name: String,
+	pub value: String,
+	pub signature: PrefixedOptional<String>
 }
