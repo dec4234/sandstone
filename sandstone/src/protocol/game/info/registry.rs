@@ -9,7 +9,7 @@ use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use sandstone_derive::{McDeserialize, McSerialize};
 use crate::protocol::serialization::serializer_types::PrefixedOptional;
-use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound};
+use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct RegistryEntry {
@@ -24,7 +24,7 @@ macro_rules! registry_entry {
 			$( $field_name:ident : $field_type:ty ),*
 		}
 	) => {
-		#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+		#[derive(Debug, Clone, PartialEq)]
 		pub struct $lib_name {
 			pub id: String,
 			$(
@@ -40,7 +40,18 @@ macro_rules! registry_entry {
 				}
 			}
 			
-			pub fn to_nbt(self) -> NbtCompound {
+			/*pub fn from_nbt(nbt: &NbtCompound) -> Result<Self, SerializingErr> {
+				let id = nbt.get_string("id")?;
+				
+				Ok(Self {
+					id: id,
+					$(
+						$field_name: nbt[stringify!($field_name)]?,
+					)*
+				})
+			}*/
+			
+			pub fn to_nbt(&self) -> NbtCompound {
 				let mut nbt = NbtCompound::new(Some($mc_name));
 				
 				$(
@@ -51,9 +62,20 @@ macro_rules! registry_entry {
 			}
 		}
 		
-		#[derive(McSerialize, Debug, Clone, PartialEq)]
+		#[derive(Debug, Clone, PartialEq)]
 		pub enum RegistryType {
 			$lib_name($lib_name),
+		}
+		
+		impl McSerialize for RegistryType {
+			fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+				match self {
+					RegistryType::$lib_name(entry) => {
+						entry.to_nbt().mc_serialize(serializer)?;
+					}
+				}
+				Ok(())
+			}
 		}
 	};
 }
@@ -62,6 +84,6 @@ macro_rules! registry_entry {
 // https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 registry_entry!(
 	"minecraft:dimension_type", DimensionType => {
-		fixed_time: i64
+		fixed_time: Option<i64>
 	}
 );

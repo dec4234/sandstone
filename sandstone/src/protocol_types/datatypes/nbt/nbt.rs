@@ -27,7 +27,8 @@ pub enum NbtTag {
 	List(NbtList),
 	Compound(NbtCompound),
 	IntArray(NbtIntArray),
-	LongArray(NbtLongArray)
+	LongArray(NbtLongArray),
+	None
 }
 
 impl NbtTag {
@@ -45,7 +46,8 @@ impl NbtTag {
 			NbtTag::List(_) => 9,
 			NbtTag::Compound(_) => 10,
 			NbtTag::IntArray(_) => 11,
-			NbtTag::LongArray(_) => 12
+			NbtTag::LongArray(_) => 12,
+			NbtTag::None => 255,
 		}
 	}
 
@@ -65,6 +67,7 @@ impl NbtTag {
 			NbtTag::Compound(_) => None,
 			NbtTag::IntArray(_) => None,
 			NbtTag::LongArray(_) => None,
+			NbtTag::None => Some(0),
 		}
 	}
 
@@ -83,7 +86,8 @@ impl NbtTag {
 			NbtTag::List(_) => "TAG_List".to_string(),
 			NbtTag::Compound(_) => "TAG_Compound".to_string(),
 			NbtTag::IntArray(_) => "TAG_Int_Array".to_string(),
-			NbtTag::LongArray(_) => "TAG_Long_Array".to_string()
+			NbtTag::LongArray(_) => "TAG_Long_Array".to_string(),
+			NbtTag::None => "TAG_None".to_string(),
 		}
 	}
 	
@@ -171,6 +175,7 @@ impl McSerialize for NbtTag {
 			NbtTag::Compound(c) => {
 				c.mc_serialize(serializer)?
 			}
+			_ => {} // do nothing for None
 		}
 
 		Ok(())
@@ -233,7 +238,13 @@ impl NbtCompound {
 
 	#[inline]
 	pub fn add<K: Into<String>, V: Into<NbtTag>>(&mut self, name: K, tag: V) {
-		self.map.insert(name.into(), tag.into());
+		let tag = tag.into();
+		
+		if tag == NbtTag::End {
+			return; // do not add None tag
+		}
+		
+		self.map.insert(name.into(), tag);
 	}
 
 	#[inline]
@@ -282,7 +293,13 @@ impl NbtCompound {
 impl Index<&str> for NbtCompound {
 	type Output = NbtTag;
 
+	/// Returns a reference to the value inside of the HashMap mapped to the given key. 
+	/// Returns `NbtTag::None` if the key does not exist.
 	fn index(&self, index: &str) -> &Self::Output {
+		if !self.map.contains_key(index) {
+			return &NbtTag::None;
+		}
+		
 		&self.map[index]
 	}
 }
@@ -325,6 +342,16 @@ impl McDeserialize for NbtCompound {
 		}
 		
 		Ok(compound)
+	}
+}
+
+impl<T: Into<NbtTag>> From<Option<T>> for NbtTag {
+	fn from(value: Option<T>) -> Self {
+		if let Some(tag) = value {
+			tag.into()
+		} else {
+			NbtTag::None
+		}
 	}
 }
 
