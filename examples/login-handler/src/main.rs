@@ -11,7 +11,6 @@ use sandstone::protocol::status::status_components::{PlayerSample, StatusRespons
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use uuid::Uuid;
 use sandstone::game::player::PlayerGamemode;
-use sandstone::protocol::serialization::McSerialize;
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::util::java::bitfield::BitField;
@@ -162,12 +161,4 @@ async fn main() {
             }
         }
     }
-}
-
-#[test]
-fn my_test() {
-    let mut array = PrefixedArray::new(vec!["test".to_string(), "test".to_string()]);
-    let mut serializer = sandstone::protocol::serialization::McSerializer::new();
-    array.mc_serialize(&mut serializer).unwrap();
-    println!("{:?}", serializer);
 }

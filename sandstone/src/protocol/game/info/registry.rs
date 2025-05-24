@@ -59,7 +59,7 @@ macro_rules! registry_entry {
 }
 
 
-/// https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
+// https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 registry_entry!(
 	"minecraft:dimension_type", DimensionType => {
 		fixed_time: i64
