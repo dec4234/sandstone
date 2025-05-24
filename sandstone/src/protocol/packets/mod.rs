@@ -10,9 +10,11 @@
 
 use sandstone_derive::mc;
 use uuid::Uuid;
-use crate::game::world::chunk::{ChunkData, LightData};
+use crate::game::player::PlayerGamemode;
 use crate::packets;
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RegistryEntry, RemoveResourcePackSpec, ResourcePackEntry};
+use crate::protocol::game::info::registry::RegistryEntry;
+use crate::protocol::game::world::chunk::{ChunkData, LightData};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RemoveResourcePackSpec, ResourcePackEntry};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol::serialization::serializer_error::SerializingErr;
@@ -205,8 +207,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				dimension_type: VarInt,
 				dimension_name: String,
 				hashed_seed: i64,
-				gamemode: u8,
-				previous_gamemode: u8,
+				gamemode: PlayerGamemode,
+				previous_gamemode: PlayerGamemode,
 				is_debug: bool,
 				is_flat: bool,
 				has_death_location: bool,

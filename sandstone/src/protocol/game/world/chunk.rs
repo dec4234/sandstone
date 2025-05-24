@@ -2,7 +2,6 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format
 
-use crate::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::McDeserialize;
@@ -13,6 +12,7 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol_types::datatypes::game_types::PackedEntries;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDeserialize, McSerialize};
+use crate::protocol::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::util::java::bitset::BitSet;
 
@@ -304,7 +304,7 @@ fn entries_per_i64(bpe: u8) -> u8 {
 
 #[cfg(test)]
 mod test {
-	use crate::game::world::chunk::entries_per_i64;
+	use crate::protocol::game::world::chunk::entries_per_i64;
 
 	#[test]
 	fn test_entries_per_i64() {

@@ -6,7 +6,6 @@ use uuid::Uuid;
 
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -42,14 +41,6 @@ pub struct LoginCookieResponseSpec {
 	payload_length: VarInt,
 	#[mc(deserialize_if = has_payload)]
 	payload: Option<Vec<u8>>,
-}
-
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct RegistryEntry {
-	pub id: String,
-	pub has_data: bool,
-	#[mc(deserialize_if = has_data)]
-	pub data: Option<NbtCompound>,
 }
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]

@@ -10,6 +10,8 @@ use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, D
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use uuid::Uuid;
+use sandstone::game::player::PlayerGamemode;
+use sandstone::protocol::serialization::McSerialize;
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::util::java::bitfield::BitField;
@@ -125,8 +127,8 @@ async fn main() {
         
         client.change_state(PacketState::PLAY);
         
-        let login = Packet::LoginInfo(LoginInfoPacket::new(0, false, PrefixedArray::new(vec!["world".to_string()]), 2.into(), 0.into(), 0.into(), false, false, false,
-        VarInt(1), "world".to_string(), 0i64, 0u8, 0u8, false, true, false, None, None, VarInt(0), VarInt(2), false));
+        let login = Packet::LoginInfo(LoginInfoPacket::new(0, false, PrefixedArray::new(vec!["minecraft:world".to_string()]), 2.into(), 0.into(), 0.into(), false, false, false,
+        VarInt(1), "minecraft:world".to_string(), 0i64, PlayerGamemode::SURVIVAL, PlayerGamemode::SURVIVAL, false, true, false, None, None, VarInt(0), VarInt(2), false));
         client.send_packet(login).await.unwrap();
         
         debug!("Sent login info to {}", client);
@@ -160,4 +162,12 @@ async fn main() {
             }
         }
     }
+}
+
+#[test]
+fn my_test() {
+    let mut array = PrefixedArray::new(vec!["test".to_string(), "test".to_string()]);
+    let mut serializer = sandstone::protocol::serialization::McSerializer::new();
+    array.mc_serialize(&mut serializer).unwrap();
+    println!("{:?}", serializer);
 }

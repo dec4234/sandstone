@@ -33,6 +33,12 @@ impl McDeserialize for String {
 	}
 }
 
+impl McSerialize for &str {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		self.to_string().mc_serialize(serializer)
+	}
+}
+
 impl McSerialize for bool {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match *self {

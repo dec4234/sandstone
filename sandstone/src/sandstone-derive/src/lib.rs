@@ -1,3 +1,5 @@
+//! Derive traits for `McSerialize` and `McDeserialize` much like `serde` has for `Serialize` and `Deserialize`.
+
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::__private::Span;
@@ -107,6 +109,11 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+/// Derive the `McDeserialize` trait for a struct. This implies that all fields of the struct also implement
+/// `McDeserialize`. 
+/// 
+/// This macro supports the `#[mc(deserialize_if = ...)]` attribute on fields, which allows for conditional
+/// deserialization of Option<T> fields according to if another boolean field is true.
 #[proc_macro_derive(McDeserialize, attributes(mc))]
 pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

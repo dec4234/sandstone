@@ -34,6 +34,8 @@ pub enum SerializingErr {
 	InvalidPacketState,
 	#[error("Not a valid bits per entry")]
 	InvalidBitsPerEntry,
+	#[error("The input data is not a valid enum value: {0}")]
+	InvalidEnumValue(i8),
 }
 
 impl PartialEq for SerializingErr {
