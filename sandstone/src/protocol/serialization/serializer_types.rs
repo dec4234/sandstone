@@ -1,11 +1,11 @@
 //! Implementations of the McSerialize and McDeserialize traits for primitive types and some common Rust types.
 
-use zerocopy::{FromBytes, FromZeroes};
-use sandstone_derive::{McDeserialize, McSerialize};
-use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::serialize_primitives;
+use sandstone_derive::{McDeserialize, McSerialize};
+use zerocopy::{FromBytes, FromZeroes};
 
 impl McSerialize for String {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
@@ -212,6 +212,16 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 pub struct PrefixedOptional<T: McSerialize + McDeserialize> {
 	pub(crate) is_present: bool,
 	pub(crate) value: Option<T>
+}
+
+impl<T: McSerialize + McDeserialize> PrefixedOptional<T> {
+	pub fn new(value: Option<T>) -> Self {
+		let is_present = value.is_some();
+		Self {
+			is_present,
+			value
+		}
+	}
 }
 
 impl<T: McSerialize + McDeserialize> McSerialize for PrefixedOptional<T> {

@@ -25,6 +25,15 @@ mod macros {
                     }
                 }
             }
+            
+            impl From<NbtTag> for Option<$t> {
+                fn from(tag: NbtTag) -> Self {
+                    match tag {
+                        NbtTag::$name(val) => Some(val),
+                        _ => None
+                    }
+                }
+            }
         )*
         };
 }
@@ -102,6 +111,15 @@ mod macros {
                         match tag {
                             NbtTag::$name(val) => val,
                             _ => panic!("Invalid conversion")
+                        }
+                    }
+                }
+            
+                impl From<NbtTag> for Option<$fancyname> {
+                    fn from(tag: NbtTag) -> Self {
+                        match tag {
+                            NbtTag::$name(val) => Some(val),
+                            _ => None
                         }
                     }
                 }

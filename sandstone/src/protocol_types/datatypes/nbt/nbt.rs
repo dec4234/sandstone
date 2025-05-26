@@ -196,6 +196,21 @@ impl From<&str> for NbtTag {
 	}
 }
 
+impl From<String> for NbtTag {
+	fn from(value: String) -> Self {
+		NbtTag::String(value)
+	}
+}
+
+impl From<NbtTag> for String {
+	fn from(value: NbtTag) -> Self {
+		match value {
+			NbtTag::String(s) => s,
+			_ => panic!("Cannot convert non-string tag to string"),
+		}
+	}
+}
+
 primvalue_nbtvalue!(
     (i8, Byte),
     (i16, Short),
