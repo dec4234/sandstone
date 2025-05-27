@@ -1,4 +1,5 @@
-//! Registry data structures for specific details about 
+//! Registry data structures for specific details about biomes, dimensions, datapacks, etc.
+//! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -25,6 +26,7 @@ pub struct RegistryEntry {
 	pub data: PrefixedOptional<NbtTag>,
 }
 
+/// Define a registry data group sent by a RegistryDataPacket.
 #[macro_export]
 macro_rules! registry_entry {
 	(
@@ -71,6 +73,8 @@ macro_rules! registry_entry {
 			}
 		}
 		
+		// todo deserialization
+		
 		#[derive(Debug, Clone, PartialEq)]
 		pub enum RegistryType {
 			$lib_name($lib_name),
@@ -78,6 +82,8 @@ macro_rules! registry_entry {
 	};
 }
 
+/// Used to convert a field defined for a registry structure into a `RegistryEntry`. This requires a 
+/// PrefixedOptional, and we don't want to double wrap any Option<T> fields like PrefixedOptional<Option<T>>.
 #[macro_export]
 macro_rules! registry_entry_optional {
 	(Option<$t:ty>, $field:expr) => {
@@ -112,10 +118,3 @@ registry_entry!(
 		monster_spawn_block_light_limit: i32
 	}
 );
-
-// https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
-impl Default for DimensionType {
-	fn default() -> Self {
-		todo!()
-	}
-}
