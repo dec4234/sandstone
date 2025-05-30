@@ -47,6 +47,8 @@ mod test {
 				assert_eq!(compound["list"], deserialized["list"]);
 
 				assert_eq!(compound["compound"], deserialized["compound"]);
+				
+				assert_eq!(compound.root_name, deserialized.root_name);
 			},
 			_ => panic!("Expected compound")
 		}

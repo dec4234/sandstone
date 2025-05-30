@@ -1,7 +1,7 @@
 //! Define the default values for the different registry entries according to the defaults generally
 //! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
 
-use crate::protocol::game::info::registry::DimensionType;
+use crate::protocol::game::info::registry::{BannerPattern, DimensionType};
 
 impl Default for DimensionType {
 	fn default() -> Self {
@@ -25,6 +25,16 @@ impl Default for DimensionType {
 			piglin_safe: 0,
 			respawn_anchor_works: 0,
 			ultrawarm: 0,
+		}
+	}
+}
+
+impl Default for BannerPattern {
+	fn default() -> Self {
+		Self {
+			id: "minecraft:base".to_string(),
+			asset_id: "minecraft:base".to_string(),
+			translation_key: "block.minecraft.banner.base".to_string(),
 		}
 	}
 }

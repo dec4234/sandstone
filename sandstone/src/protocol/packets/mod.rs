@@ -8,24 +8,24 @@
 //! All information for the packets is derived from the wiki. Consider supporting the wiki efforts.
 //! https://minecraft.wiki/w/Java_Edition_protocol
 
-use sandstone_derive::mc;
-use uuid::Uuid;
 use crate::game::player::PlayerGamemode;
 use crate::packets;
-use crate::protocol::game::info::registry::RegistryEntry;
+use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RemoveResourcePackSpec, ResourcePackEntry};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, ProtocolPropertyElement};
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitfield::BitField;
+use sandstone_derive::mc;
+use uuid::Uuid;
 
 pub mod packet_component;
 pub mod packet_definer;
@@ -139,9 +139,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				// none
 			},
 			RegistryData, RegistryDataPacket, 0x07 => {
-				registry_id: String,
-				entry_count: VarInt,
-				entries: PrefixedArray<RegistryEntry>
+				packet: RegistryDataPacketInternal
 			},
 			RemoveResourcePack, RemoveResourcePackPacket, 0x08 => {
 				spec: RemoveResourcePackSpec

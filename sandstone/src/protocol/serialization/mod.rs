@@ -85,6 +85,26 @@ impl McSerializer {
 	pub fn merge(&mut self, serializer: McSerializer) {
 		self.serialize_bytes(&serializer.output);
 	}
+	
+	pub fn as_bytes(&self) -> &[u8] {
+		&self.output
+	}
+}
+
+impl From<&[u8]> for McSerializer {
+	/// Create a new McSerializer from a byte slice. This will copy the bytes into the internal buffer.
+	fn from(input: &[u8]) -> Self {
+		let mut serializer = McSerializer::new();
+		serializer.serialize_bytes(input);
+		serializer
+	}
+}
+
+impl From<McSerializer> for Vec<u8> {
+	/// Convert a McSerializer into a Vec<u8>. This is useful for sending the serialized data over the network.
+	fn from(serializer: McSerializer) -> Self {
+		serializer.output
+	}
 }
 
 /// Helper for deserializing byte data into types that `impl McDeserialize`
