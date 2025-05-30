@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 //! Registry data structures for specific details about biomes, dimensions, datapacks, etc.
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
@@ -8,22 +10,22 @@ use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
-use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
+use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::registry_entry;
 use sandstone_derive::{McDeserialize, McSerialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct RegistryDataPacket {
-	pub id: String,
+	pub registry_id: String,
 	pub entries: PrefixedArray<RegistryEntry>
 }
 
-// todo deserialization
+// todo: deserialize using id, but which one
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct RegistryEntry {
 	pub id: String,
-	pub data: PrefixedOptional<NbtTag>,
+	pub data: PrefixedOptional<NbtCompound>,
 }
 
 /// Define a registry data group sent by a RegistryDataPacket.
@@ -49,35 +51,67 @@ macro_rules! registry_entry {
 					$($field_name,)*
 				}
 			}
-		}
-		
-		impl McSerialize for $lib_name {
-			fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-				let mut v: Vec<RegistryEntry> = Vec::new();
+			
+			pub fn from_nbt(nbt: &NbtCompound) -> Result<Self, SerializingErr> {
+				let id = nbt.root_name.clone().unwrap_or($mc_name.to_string());
+				
+				Ok(Self {
+					id,
+					$(
+						$field_name: nbt.map.get(stringify!($field_name))
+							.ok_or_else(|| SerializingErr::NbtMissingField(stringify!($field_name).to_string()))?
+							.clone().into(),
+					)*
+				})
+			}
+			
+			pub fn to_nbt(&self) -> NbtCompound {
+				let mut nbt = NbtCompound::new(Some(self.id.clone()));
 				
 				$(
-					let entry = RegistryEntry {
-						id: self.id.clone(),
-						data: PrefixedOptional::new(
-							registry_entry_optional!($field_type, self.$field_name)
-						),
-					};
-				
-					v.push(entry);
+					nbt.add(stringify!($field_name), self.$field_name.clone());
 				)*
 				
-				let entries = PrefixedArray::new(v);
-				entries.mc_serialize(serializer)?;
-				
-				Ok(())
+				nbt
 			}
 		}
 		
-		// todo deserialization
+		impl McSerialize for $lib_name {
+			fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+				self.to_nbt().mc_serialize(serializer)
+			}
+		}
+		
+		impl McDeserialize for $lib_name {
+			fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
+				let nbt = NbtCompound::mc_deserialize(deserializer)?;
+				Self::from_nbt(&nbt)
+			}
+		}
 		
 		#[derive(Debug, Clone, PartialEq)]
 		pub enum RegistryType {
 			$lib_name($lib_name),
+		}
+		
+		impl RegistryType {
+			pub fn deserialize<'a>(deserializer: &'a mut McDeserializer, string: String) -> SerializingResult<'a, Self> {
+				match string.as_str() {
+					$mc_name => {
+						let entry = $lib_name::mc_deserialize(deserializer)?;
+						Ok(RegistryType::$lib_name(entry))
+					},
+					_ => Err(SerializingErr::UniqueFailure(format!("Unknown registry type: {}", string))),
+				}
+			}
+		}
+		
+		impl McSerialize for RegistryType {
+			fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+				match self {
+					RegistryType::$lib_name(entry) => entry.mc_serialize(serializer),
+				}
+			}
 		}
 	};
 }
@@ -118,3 +152,18 @@ registry_entry!(
 		monster_spawn_block_light_limit: i32
 	}
 );
+
+#[cfg(test)]
+mod test {
+	use crate::protocol::game::info::registry::DimensionType;
+
+	#[test]
+	fn dimensiontype_asnbt() {
+		let dim = DimensionType::default();
+		let original = dim.to_nbt();
+		let from_nbt = DimensionType::from_nbt(&original).unwrap();
+		assert_eq!(dim, from_nbt);
+		let second = from_nbt.to_nbt();
+		assert_eq!(original, second);
+	}
+}

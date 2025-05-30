@@ -36,6 +36,8 @@ pub enum SerializingErr {
 	InvalidBitsPerEntry,
 	#[error("The input data is not a valid enum value: {0}")]
 	InvalidEnumValue(i8),
+	#[error("Nbt input is missing a field: {0}")]
+	NbtMissingField(String),
 }
 
 impl PartialEq for SerializingErr {
