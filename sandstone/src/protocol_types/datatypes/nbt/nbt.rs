@@ -267,6 +267,7 @@ impl NbtCompound {
 		self.map.remove(&name.into());
 	}
 	
+	/// Since 1.20.2 (764), nbt over the network has been changed to omit the name from the root compound tag.
 	pub fn from_network<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, NbtCompound> {
 		let t = u8::mc_deserialize(deserializer)?;
 		

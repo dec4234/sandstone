@@ -52,8 +52,6 @@ impl McDeserialize for RegistryDataPacketInternal {
 	}
 }
 
-// todo: deserialize using id, but which one
-
 #[derive(McSerialize, Debug, Clone, PartialEq)]
 pub struct RegistryEntry {
 	/// The ID of the registry entry, e.g. "minecraft:overworld"
@@ -95,7 +93,6 @@ macro_rules! registry_entry {
 		$(
 			#[derive(Debug, Clone, PartialEq)]
 			pub struct $lib_name {
-				pub id: String,
 				$(
 					pub $field_name: $field_type,
 				)*
@@ -104,16 +101,12 @@ macro_rules! registry_entry {
 			impl $lib_name {
 				pub fn new($($field_name: $field_type),*) -> Self {
 					Self {
-						id: $mc_name.to_string(),
 						$($field_name,)*
 					}
 				}
 				
 				pub fn from_nbt(nbt: &NbtCompound) -> Result<Self, SerializingErr> {
-					let id = nbt.root_name.clone().unwrap_or($mc_name.to_string());
-					
 					Ok(Self {
-						id,
 						$(
 							$field_name: nbt.map.get(stringify!($field_name))
 								.ok_or_else(|| SerializingErr::NbtMissingField(stringify!($field_name).to_string()))?
@@ -123,7 +116,7 @@ macro_rules! registry_entry {
 				}
 				
 				pub fn to_nbt(&self) -> NbtCompound {
-					let mut nbt = NbtCompound::new(Some(self.id.clone()));
+					let mut nbt = NbtCompound::new::<String>(None);
 					
 					$(
 						nbt.add(stringify!($field_name), self.$field_name.clone());
@@ -141,8 +134,7 @@ macro_rules! registry_entry {
 			
 			impl McDeserialize for $lib_name {
 				fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
-					let nbt = NbtCompound::mc_deserialize(deserializer)?;
-					println!("{:?}", nbt);
+					let nbt = NbtCompound::from_network(deserializer)?;
 					Self::from_nbt(&nbt)
 				}
 			}
@@ -242,6 +234,8 @@ mod test {
 		println!("{:?}", dim.to_nbt());
 		
 		let mut deserializer = McDeserializer::new(serializer.as_bytes());
+		println!("Deserializing: {:?}", deserializer.data);
+		println!("First byte: {}", deserializer.data[0]);
 		let deserialized: BannerPattern = McDeserialize::mc_deserialize(&mut deserializer).unwrap();
 		
 		assert_eq!(dim, deserialized);

@@ -6,7 +6,6 @@ use crate::protocol::game::info::registry::{BannerPattern, DimensionType};
 impl Default for DimensionType {
 	fn default() -> Self {
 		Self {
-			id: "minecraft:overworld".to_string(),
 			fixed_time: Some(1000),
 			ambient_light: 0.0,
 			bed_works: 1,
@@ -32,7 +31,6 @@ impl Default for DimensionType {
 impl Default for BannerPattern {
 	fn default() -> Self {
 		Self {
-			id: "minecraft:base".to_string(),
 			asset_id: "minecraft:base".to_string(),
 			translation_key: "block.minecraft.banner.base".to_string(),
 		}
