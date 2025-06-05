@@ -7,10 +7,10 @@ use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{list_nbtvalue, primvalue_nbtvalue};
-use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+use crate::{list_nbtvalue, primvalue_nbtvalue};
 
 /// The various tags or data types that could be present inside of an NBT compound
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -279,12 +279,17 @@ impl NbtCompound {
 
 		loop {
 			let tag = deserializer.slice(1)[0];
+
+			if tag == 0 { // end tag
+				break;
+			}
+
 			let name_length = i16::mc_deserialize(deserializer)?;
 			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
 
 			let tag = NbtTag::deserialize_specific(deserializer, tag)?;
 
-			if tag == NbtTag::End {
+			if tag == NbtTag::End { // might not be needed since prior check will catch any END ids
 				break;
 			}
 
