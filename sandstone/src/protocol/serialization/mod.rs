@@ -77,6 +77,7 @@ impl McSerializer {
 		self.serialize_bytes(s.as_bytes());
 	}
 
+	/// Return the last byte in the internal buffer, if it exists.
 	pub fn get_last(&self) -> Option<&u8> {
 		self.output.last()
 	}

@@ -25,6 +25,7 @@ pub struct RegistryDataPacketInternal {
 impl McSerialize for RegistryDataPacketInternal {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		self.registry_id.mc_serialize(serializer)?;
+		self.num_entries.mc_serialize(serializer)?;
 		self.entries.mc_serialize(serializer)?;
 		Ok(())
 	}
@@ -134,7 +135,7 @@ macro_rules! registry_entry {
 			
 			impl McDeserialize for $lib_name {
 				fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
-					let nbt = NbtCompound::from_network(deserializer)?;
+					let nbt = NbtCompound::mc_deserialize(deserializer)?;
 					Self::from_nbt(&nbt)
 				}
 			}
@@ -212,7 +213,7 @@ registry_entry!(
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::game::info::registry::{BannerPattern, DimensionType};
+	use crate::protocol::game::info::registry::{BannerPattern, DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 
 	#[test]
@@ -239,5 +240,64 @@ mod test {
 		let deserialized: BannerPattern = McDeserialize::mc_deserialize(&mut deserializer).unwrap();
 		
 		assert_eq!(dim, deserialized);
+	}
+	
+	#[test]
+	fn test_registry_internal() {
+		let registry = RegistryDataPacketInternal {
+			registry_id: "minecraft:dimension_type".to_string(),
+			num_entries: 0.into(),
+			entries: vec![],
+		};
+		
+		let mut serializer = McSerializer::new();
+		registry.mc_serialize(&mut serializer).unwrap();
+		let mut deserializer = McDeserializer::new(serializer.as_bytes());
+		let deserialized: RegistryDataPacketInternal = McDeserialize::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(registry, deserialized);
+	}
+	
+	#[test]
+	fn test_registry_components() {
+		let dim = DimensionType::default();
+		let entry = RegistryEntry {
+			id: "minecraft:overworld".to_string(),
+			is_present: true,
+			data: Some(RegistryType::DimensionType(dim)),
+		};
+		
+		let registry = RegistryDataPacketInternal {
+			registry_id: "minecraft:dimension_type".to_string(),
+			num_entries: 1.into(),
+			entries: vec![entry.clone()],
+		};
+		
+		let mut serializer = McSerializer::new();
+		registry.mc_serialize(&mut serializer).unwrap();
+		println!("Serialized: {:?}", serializer.as_bytes());
+		let mut deserializer = McDeserializer::new(serializer.as_bytes());
+		let deserialized: RegistryDataPacketInternal = McDeserialize::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(registry, deserialized);
+		assert_eq!(deserialized.entries.len(), 1);
+		assert_eq!(deserialized.entries[0].id, "minecraft:overworld");
+		
+		assert_eq!(entry, deserialized.entries[0]);
+		
+	}
+	
+	#[test]
+	fn test_registry_entry() {
+		let mut serializer = McSerializer::new();
+		let dim = DimensionType::default();
+		let entry = RegistryEntry {
+			id: "minecraft:overworld".to_string(),
+			is_present: true,
+			data: Some(RegistryType::DimensionType(dim)),
+		};
+				
+		entry.mc_serialize(&mut serializer).unwrap();
+		let mut deserializer = McDeserializer::new(serializer.as_bytes());
+		let deserialized = RegistryEntry::mc_deserialize(&mut deserializer, "minecraft:dimension_type".to_string()).unwrap();
+		assert_eq!(entry, deserialized);
 	}
 }

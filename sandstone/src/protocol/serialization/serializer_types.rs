@@ -118,6 +118,7 @@ impl<T: McSerialize> McSerialize for Vec<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Vec<T> {
+	/// Deserializes a Vec<T> from the deserializer until the end of the input is reached.
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
 		let mut vec = vec![];
 

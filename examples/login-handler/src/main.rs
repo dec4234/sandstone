@@ -1,3 +1,5 @@
+//! https://minecraft.wiki/w/Java_Edition_protocol/FAQ#What%27s_the_normal_login_sequence_for_a_client%3F
+
 use log::{debug, LevelFilter};
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
@@ -94,7 +96,11 @@ async fn main() {
             }
         }
         
-        // todo: registry data
+        /*let p = Packet::RegistryData(RegistryDataPacket::new(RegistryDataPacketInternal {
+            registry_id: "minecraft:dimension_type".to_string(),
+            num_entries: VarInt(1),
+            entries: vec![RegistryType::DimensionType()]
+        }));*/
         
         let client_info = client.receive_packet().await.unwrap();
         match client_info {

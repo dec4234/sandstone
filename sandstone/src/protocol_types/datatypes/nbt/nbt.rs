@@ -15,6 +15,7 @@ use crate::{list_nbtvalue, primvalue_nbtvalue};
 /// The various tags or data types that could be present inside of an NBT compound
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum NbtTag {
+	/// Used to mark the end of a compound or list
 	End,
 	Byte(i8),
 	Short(i16),
@@ -28,10 +29,12 @@ pub enum NbtTag {
 	Compound(NbtCompound),
 	IntArray(NbtIntArray),
 	LongArray(NbtLongArray),
+	/// Used to mark the absence of a tag, like for an Option
 	None
 }
 
 impl NbtTag {
+	/// Returns the type ID of the NBT tag, used for serialization and deserialization
 	pub fn get_type_id(&self) -> u8 {
 		match self {
 			NbtTag::End => 0,
@@ -47,7 +50,7 @@ impl NbtTag {
 			NbtTag::Compound(_) => 10,
 			NbtTag::IntArray(_) => 11,
 			NbtTag::LongArray(_) => 12,
-			NbtTag::None => 255,
+			NbtTag::None => 255, // not an actual type
 		}
 	}
 
@@ -91,6 +94,7 @@ impl NbtTag {
 		}
 	}
 	
+	/// Given the type ID, deserialize the corresponding NbtTag.
 	pub fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
 		match ty {
 			// Primitives
@@ -234,6 +238,7 @@ pub struct NbtCompound {
 }
 
 impl NbtCompound {
+	/// Root name is only present if it is not the root compound of network NBT (1.20.2+).
 	pub fn new<T: Into<String>>(root_name: Option<T>) -> Self {
 		let option: Option<String> = if let Some(root_name) = root_name {
 			Some(root_name.into())
@@ -245,6 +250,11 @@ impl NbtCompound {
 			map: HashMap::new(),
 			root_name: option
 		}
+	}
+	
+	/// Create a new NbtCompound without a root name, usually for network nbt.
+	pub fn new_no_name() -> Self {
+		Self::new::<String>(None)
 	}
 
 	pub fn change_root_name<T: Into<String>>(&mut self, name: T) {
@@ -267,32 +277,29 @@ impl NbtCompound {
 		self.map.remove(&name.into());
 	}
 	
-	/// Since 1.20.2 (764), nbt over the network has been changed to omit the name from the root compound tag.
-	pub fn from_network<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, NbtCompound> {
+	/// Deserialize compounds with a root name
+	pub fn from_root<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, NbtCompound> {
 		let t = u8::mc_deserialize(deserializer)?;
-		
+
 		if t != 10 {
-			return Err(SerializingErr::UniqueFailure("Expected compound tag".to_string()));
+			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {} instead", t)));
 		}
 
-		let mut compound = NbtCompound::new::<String>(None);
+		let name_length = u16::mc_deserialize(deserializer)?;
+		let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
+		let mut compound = NbtCompound::new(Some(name));
 
 		loop {
-			let tag = deserializer.slice(1)[0];
+			let tag = deserializer.pop();
 
-			if tag == 0 { // end tag
+			if tag.is_none() || tag.unwrap() == 0 { // END Tag
 				break;
 			}
 
-			let name_length = i16::mc_deserialize(deserializer)?;
+			let name_length = u16::mc_deserialize(deserializer)?;
 			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
 
-			let tag = NbtTag::deserialize_specific(deserializer, tag)?;
-
-			if tag == NbtTag::End { // might not be needed since prior check will catch any END ids
-				break;
-			}
-
+			let tag = NbtTag::deserialize_specific(deserializer, tag.unwrap())?;
 			compound.add(name, tag);
 		}
 
@@ -327,9 +334,7 @@ impl Index<&str> for NbtCompound {
 
 impl McSerialize for NbtCompound {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		if serializer.get_last().is_none() { // only serialize tag type if its the main compound
-			10u8.mc_serialize(serializer)?; // TODO: needs more investigation
-		}
+		10u8.mc_serialize(serializer)?;
 		
 		// only serialize root name if present (non-network compound tag or pre 1.20.2)
 		if let Some(root_name) = &self.root_name {
@@ -343,10 +348,15 @@ impl McSerialize for NbtCompound {
 }
 
 impl McDeserialize for NbtCompound {
+	/// Deserialize a compound without a root name, such as network NBT or compounds in compounds.
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		let name_length = u16::mc_deserialize(deserializer)?;
-		let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
-		let mut compound = NbtCompound::new(Some(name));
+		let t = u8::mc_deserialize(deserializer)?;
+
+		if t != 10 {
+			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {} instead", t)));
+		}
+		
+		let mut compound = NbtCompound::new_no_name();
 		
 		loop {
 			let tag = deserializer.pop();

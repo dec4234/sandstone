@@ -19,49 +19,43 @@ mod test {
 		compound.add("long_array", NbtLongArray::new(vec![1, 2, 3, 4, 5]));
 		compound.add("list", NbtList::from_vec(vec![NbtTag::Int(1), NbtTag::Int(2), NbtTag::Int(3)]).unwrap());
 
-		let mut compound2 = NbtCompound::new(Some("AB"));
+		let mut compound2 = NbtCompound::new::<String>(None);
 		compound2.add("byte", 13i8);
 		compound.add("compound", compound2);
-
-
+		
 		let mut serializer = McSerializer::new();
-		//serializer.serialize_u8(10);
 		compound.mc_serialize(&mut serializer).unwrap();
 
 		println!("Out: {:?}", serializer.output);
 
 		let mut deserializer = McDeserializer::new(&serializer.output);
-		let deserialized = NbtTag::mc_deserialize(&mut deserializer).unwrap();
+		let deserialized = NbtCompound::from_root(&mut deserializer).unwrap();
+		println!("Deserialized: {:?}", deserialized);
 
-		match deserialized {
-			NbtTag::Compound(deserialized) => {
-				assert_eq!(compound["i8"], deserialized["i8"]);
-				assert_eq!(compound["i16"], deserialized["i16"]);
-				assert_eq!(compound["i32"], deserialized["i32"]);
-				assert_eq!(compound["f32"], deserialized["f32"]);
-				assert_eq!(compound["f64"], deserialized["f64"]);
-				assert_eq!(compound["str"], deserialized["str"]);
-				assert_eq!(compound["byte_array"], deserialized["byte_array"]);
-				assert_eq!(compound["int_array"], deserialized["int_array"]);
-				assert_eq!(compound["long_array"], deserialized["long_array"]);
-				assert_eq!(compound["list"], deserialized["list"]);
+		assert_eq!(compound["i8"], deserialized["i8"]);
+		assert_eq!(compound["i16"], deserialized["i16"]);
+		assert_eq!(compound["i32"], deserialized["i32"]);
+		assert_eq!(compound["f32"], deserialized["f32"]);
+		assert_eq!(compound["f64"], deserialized["f64"]);
+		assert_eq!(compound["str"], deserialized["str"]);
+		assert_eq!(compound["byte_array"], deserialized["byte_array"]);
+		assert_eq!(compound["int_array"], deserialized["int_array"]);
+		assert_eq!(compound["long_array"], deserialized["long_array"]);
+		assert_eq!(compound["list"], deserialized["list"]);
 
-				assert_eq!(compound["compound"], deserialized["compound"]);
-				
-				assert_eq!(compound.root_name, deserialized.root_name);
-			},
-			_ => panic!("Expected compound")
-		}
+		assert_eq!(compound["compound"], deserialized["compound"]);
+
+		assert_eq!(compound.root_name, deserialized.root_name);
 	}
 
 	#[test]
 	fn test_compounds_in_compounds() {
 		let mut outer = NbtCompound::new(Some("outer"));
-		let mut mid1 = NbtCompound::new(Some("mid1"));
-		let mut mid2 = NbtCompound::new(Some("mid2"));
-		let mut inner1 = NbtCompound::new(Some("inner1"));
-		let mut inner2 = NbtCompound::new(Some("inner2"));
-		let mut inner3 = NbtCompound::new(Some("inner3"));
+		let mut mid1 = NbtCompound::new::<String>(None);
+		let mut mid2 = NbtCompound::new::<String>(None);
+		let mut inner1 = NbtCompound::new::<String>(None);
+		let mut inner2 = NbtCompound::new::<String>(None);
+		let mut inner3 = NbtCompound::new::<String>(None);
 
 		inner1.add("i8", 123i8);
 		inner1.add("i16", 1234i16);
@@ -89,16 +83,38 @@ mod test {
 		println!("Out: {:?}", serializer.output);
 
 		let mut deserializer = McDeserializer::new(&serializer.output);
-		let deserialized = NbtTag::mc_deserialize(&mut deserializer).unwrap();
+		let deserialized = NbtCompound::from_root(&mut deserializer).unwrap();
 
-		match deserialized {
-			NbtTag::Compound(deserialized) => {
-				assert_eq!(outer, deserialized);
-				assert_eq!(outer["mid1"], deserialized["mid1"]);
-				assert_eq!(outer["mid2"], deserialized["mid2"]);
-			},
-			_ => panic!("Expected compound")
-		}
+		assert_eq!(outer, deserialized);
+		assert_eq!(outer["mid1"], deserialized["mid1"]);
+		assert_eq!(outer["mid2"], deserialized["mid2"]);
+	}
+	
+	/// Test network compound deserialization.
+	#[test]
+	fn test_network() {
+		let mut compound = NbtCompound::new_no_name();
+		compound.add("i8", 123i8);
+		compound.add("i16", 1234i16);
+		compound.add("i32", 12345i32);
+		compound.add("f32", -3.6f32);
+		compound.add("f64", -3.6789f64);
+		compound.add("str", "hello");
+		
+		let mut serializer = McSerializer::new();
+		compound.mc_serialize(&mut serializer).unwrap();
+
+		println!("Out: {:?}", serializer.output);
+
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let deserialized = NbtCompound::mc_deserialize(&mut deserializer).unwrap();
+		
+		assert_eq!(deserialized["i8"], NbtTag::Byte(123i8));
+		assert_eq!(deserialized["i16"], NbtTag::Short(1234i16));
+		assert_eq!(deserialized["i32"], NbtTag::Int(12345i32));
+		assert_eq!(deserialized["f32"], NbtTag::Float(-3.6f32));
+		assert_eq!(deserialized["f64"], NbtTag::Double(-3.6789f64));
+		assert_eq!(deserialized["str"], NbtTag::String("hello".to_string()));
 	}
 	
 	/// Test how NbtTag::None behaves when serialized and deserialized. It can be present in a compound but
