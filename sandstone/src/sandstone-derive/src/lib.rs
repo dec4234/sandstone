@@ -251,3 +251,89 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
 pub fn mc(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
+
+/// Convert a struct to an NbtCompound using the `as_nbt` method.
+#[proc_macro_derive(AsNbt)]
+pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let struct_name = input.ident;
+
+    // Extract fields from the struct
+    let fields = if let Data::Struct(data) = input.data {
+        data.fields
+    } else {
+        panic!("AsNbt can only be derived for structs");
+    };
+
+    let field_names = fields.iter().map(|f| {
+        let name = f.ident.as_ref().unwrap();
+        let name_str = name.to_string();
+        quote! {
+            compound.add(#name_str, self.#name.clone());
+        }
+    });
+
+    let expanded = quote! {
+        impl Into<NbtCompound> for #struct_name {
+            fn into(self) -> NbtCompound {
+                self.as_nbt()
+            }
+        }
+        
+        // Provide explicitly named function for clarity
+        impl #struct_name {
+            /// Convert the struct into an NbtCompound, adding all fields to the compound. Keys for the compound match the field names of the struct.
+            pub fn as_nbt(&self) -> NbtCompound {
+                let mut compound = NbtCompound::new_no_name();
+                #(#field_names)*
+                compound
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Convert an NbtCompound into a struct using the `from_nbt` method.
+#[proc_macro_derive(FromNbt)]
+pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
+    use quote::quote;
+    use syn::{parse_macro_input, DeriveInput};
+
+    let input = parse_macro_input!(input as DeriveInput);
+    let struct_name = input.ident;
+
+    let fields = if let Data::Struct(data) = input.data {
+        data.fields
+    } else {
+        panic!("FromNbt can only be derived for structs");
+    };
+
+    let field_initializers = fields.iter().map(|f| {
+        let field_ident = f.ident.as_ref().unwrap();
+        let field_name = field_ident.to_string();
+        quote! {
+			#field_ident: ::std::convert::From::from(nbt.map[#field_name].clone()),
+		}
+    });
+
+    let expanded = quote! {
+		impl ::std::convert::From<NbtCompound> for #struct_name {
+			fn from(nbt: NbtCompound) -> Self {
+				Self {
+					#(#field_initializers)*
+				}
+			}
+		}
+        
+        // Provide explicitly named function for clarity
+        impl #struct_name {
+            /// Convert the provided NbtCompound into the struct. If any non-optional fields are missing from the NbtCompound, an error will be returned.
+            pub fn from_nbt(nbt: NbtCompound) -> Result<Self, SerializingErr> {
+                Ok(nbt.into())
+            }
+        }
+	};
+
+    TokenStream::from(expanded)
+}

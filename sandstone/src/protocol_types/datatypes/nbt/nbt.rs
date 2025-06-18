@@ -215,6 +215,42 @@ impl From<NbtTag> for String {
 	}
 }
 
+impl From<bool> for NbtTag {
+	fn from(value: bool) -> Self {
+		NbtTag::Byte(if value { 1 } else { 0 })
+	}
+}
+
+impl From<NbtTag> for bool {
+	fn from(value: NbtTag) -> Self {
+		match value {
+			NbtTag::Byte(b) => b != 0,
+			_ => panic!("Cannot convert non-byte tag to bool"),
+		}
+	}
+}
+
+impl<T: Into<NbtTag>> From<Option<T>> for NbtTag {
+	fn from(value: Option<T>) -> Self {
+		if let Some(tag) = value {
+			tag.into()
+		} else {
+			NbtTag::None
+		}
+	}
+}
+
+// this is replicated for the other types in the primvalue_nbtvalue! macro
+impl From<NbtTag> for Option<String> {
+	fn from(value: NbtTag) -> Self {
+		if let NbtTag::String(s) = value {
+			Some(s)
+		} else {
+			None
+		}
+	}
+}
+
 primvalue_nbtvalue!(
     (i8, Byte),
     (i16, Short),
@@ -252,7 +288,7 @@ impl NbtCompound {
 		}
 	}
 	
-	/// Create a new NbtCompound without a root name, usually for network nbt.
+	/// Create a new NbtCompound without a root name, usually for network nbt or a compound inside a compound.
 	pub fn new_no_name() -> Self {
 		Self::new::<String>(None)
 	}
@@ -373,16 +409,6 @@ impl McDeserialize for NbtCompound {
 		}
 		
 		Ok(compound)
-	}
-}
-
-impl<T: Into<NbtTag>> From<Option<T>> for NbtTag {
-	fn from(value: Option<T>) -> Self {
-		if let Some(tag) = value {
-			tag.into()
-		} else {
-			NbtTag::None
-		}
 	}
 }
 

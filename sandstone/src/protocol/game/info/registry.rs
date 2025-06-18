@@ -208,6 +208,12 @@ registry_entry!(
 		has_raids: i8,
 		monster_spawn_light_level: i32,
 		monster_spawn_block_light_limit: i32
+	},
+	"minecraft:worldgen/biome", Biome => {
+		has_precipitation: bool,
+		temperature: f32,
+		temperature_modifier: Option<String>,
+		downfall: f32
 	}
 );
 

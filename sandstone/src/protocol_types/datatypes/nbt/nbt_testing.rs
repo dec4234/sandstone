@@ -2,9 +2,12 @@
 
 #[cfg(test)]
 mod test {
+	use crate::protocol::serialization::serializer_error::SerializingErr;
+	use sandstone_derive::{AsNbt, FromNbt};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 	use crate::protocol_types::datatypes::nbt::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
 
+	/// Test standard serialization of a NbtCompound.
 	#[test]
 	fn test_compound_serialization() {
 		let mut compound = NbtCompound::new(Some("A"));
@@ -26,11 +29,8 @@ mod test {
 		let mut serializer = McSerializer::new();
 		compound.mc_serialize(&mut serializer).unwrap();
 
-		println!("Out: {:?}", serializer.output);
-
 		let mut deserializer = McDeserializer::new(&serializer.output);
 		let deserialized = NbtCompound::from_root(&mut deserializer).unwrap();
-		println!("Deserialized: {:?}", deserialized);
 
 		assert_eq!(compound["i8"], deserialized["i8"]);
 		assert_eq!(compound["i16"], deserialized["i16"]);
@@ -48,6 +48,7 @@ mod test {
 		assert_eq!(compound.root_name, deserialized.root_name);
 	}
 
+	/// Test compounds within compounds and their serialization.
 	#[test]
 	fn test_compounds_in_compounds() {
 		let mut outer = NbtCompound::new(Some("outer"));
@@ -80,8 +81,6 @@ mod test {
 		let mut serializer = McSerializer::new();
 		outer.mc_serialize(&mut serializer).unwrap();
 
-		println!("Out: {:?}", serializer.output);
-
 		let mut deserializer = McDeserializer::new(&serializer.output);
 		let deserialized = NbtCompound::from_root(&mut deserializer).unwrap();
 
@@ -103,8 +102,6 @@ mod test {
 		
 		let mut serializer = McSerializer::new();
 		compound.mc_serialize(&mut serializer).unwrap();
-
-		println!("Out: {:?}", serializer.output);
 
 		let mut deserializer = McDeserializer::new(&serializer.output);
 		let deserialized = NbtCompound::mc_deserialize(&mut deserializer).unwrap();
@@ -132,5 +129,60 @@ mod test {
 
 		let mut deserializer = McDeserializer::new(&serializer.output);
 		NbtTag::mc_deserialize(&mut deserializer).expect_err("No tag should be deserialized");
+	}
+
+	/// Test struct for conversion to/from NbtCompound.
+	#[derive(AsNbt, FromNbt, Debug, PartialEq)]
+	struct TestStruct {
+		a: i32,
+		b: String,
+		c: f64,
+	}
+
+	/// Confirm that the `as_nbt` and `from_nbt` methods work the same.
+	#[test]
+	fn test_into_vs_as() {
+		let test = TestStruct {
+			a: 42,
+			b: "Hello".to_string(),
+			c: 3.14,
+		};
+
+		let as_test = test.as_nbt();
+		let nbt: NbtCompound = test.into();
+		
+		assert_eq!(as_test, nbt);
+	}
+	
+	/// Test that a struct can be converted into an NbtCompound using the `as_nbt` function.
+	#[test]
+	fn test_as_nbt() {
+		let test = TestStruct {
+			a: 42,
+			b: "Hello".to_string(),
+			c: 3.14,
+		};
+
+		let nbt: NbtCompound = test.into();
+
+		assert_eq!(nbt["a"], NbtTag::Int(42));
+		assert_eq!(nbt["b"], NbtTag::String("Hello".to_string()));
+		assert_eq!(nbt["c"], NbtTag::Double(3.14));
+	}
+
+	/// Test that an NbtCompound can be converted into a struct using the `from_nbt` function.
+	#[test]
+	fn test_from_nbt() {
+		let mut nbt = NbtCompound::new(Some("Test"));
+		
+		nbt.add("a", NbtTag::Int(42));
+		nbt.add("b", NbtTag::String("Hello".to_string()));
+		nbt.add("c", NbtTag::Double(3.14));
+
+		let test: TestStruct = nbt.into();
+
+		assert_eq!(test.a, 42);
+		assert_eq!(test.b, "Hello");
+		assert_eq!(test.c, 3.14);
 	}
 }
