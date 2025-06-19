@@ -185,4 +185,47 @@ mod test {
 		assert_eq!(test.b, "Hello");
 		assert_eq!(test.c, 3.14);
 	}
+
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	struct OptionTestStruct {
+		a: i32,
+		b: Option<String>,
+		c: Option<f64>,
+	}
+	
+	/// Test struct with None values to and from NBT.
+	#[test]
+	fn test_simple_none_nbt() {
+		let test = OptionTestStruct {
+			a: 0,
+			b: None,
+			c: None,
+		};
+		
+		let nbt: NbtCompound = test.clone().into();
+		assert_eq!(nbt["a"], NbtTag::Int(0));
+		assert_eq!(nbt["b"], NbtTag::None);
+		assert_eq!(nbt["c"], NbtTag::None);
+		
+		let test2: OptionTestStruct = nbt.into();
+		assert_eq!(test, test2);
+	}
+	
+	/// Test for struct with Option fields to and from NBT
+	#[test]
+	fn test_simple_option_nbt() {
+		let test = OptionTestStruct {
+			a: 0,
+			b: Some("Hello".to_string()),
+			c: Some(2.6),
+		};
+		
+		let nbt: NbtCompound = test.clone().into();
+		assert_eq!(nbt["a"], NbtTag::Int(0));
+		assert_eq!(nbt["b"], NbtTag::String("Hello".to_string()));
+		assert_eq!(nbt["c"], NbtTag::Double(2.6));
+		
+		let test2: OptionTestStruct = nbt.into();
+		assert_eq!(test, test2);
+	}
 }
