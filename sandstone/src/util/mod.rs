@@ -1,4 +1,3 @@
-pub mod mojang;
 pub(crate) mod threadpool;
 pub mod encryption;
 pub mod java;
