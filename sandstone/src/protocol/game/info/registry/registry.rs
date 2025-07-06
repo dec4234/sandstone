@@ -62,6 +62,14 @@ pub struct RegistryEntry {
 }
 
 impl RegistryEntry {
+	pub fn new(id: String, data: Option<RegistryType>) -> Self {
+		Self {
+			id,
+			is_present: data.is_some(),
+			data,
+		}
+	}
+
 	pub fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, registry_type: String) -> SerializingResult<'a, Self> {
 		let id = String::mc_deserialize(deserializer)?;
 		let is_present = bool::mc_deserialize(deserializer)?;
@@ -219,7 +227,7 @@ registry_entry!(
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::game::info::registry::{BannerPattern, DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType};
+	use crate::protocol::game::info::registry::registry::{BannerPattern, DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 
 	#[test]

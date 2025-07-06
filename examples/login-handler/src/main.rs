@@ -4,18 +4,19 @@ use log::{debug, LevelFilter};
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
 
+use sandstone::game::player::PlayerGamemode;
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::client::CraftClient;
-use sandstone::protocol::packets::packet_definer::{PacketState};
-use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, StatusResponsePacket, SyncPlayerPositionPacket};
-use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
-use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
-use sandstone::protocol_types::protocol_verison::ProtocolVerison;
-use uuid::Uuid;
-use sandstone::game::player::PlayerGamemode;
+use sandstone::protocol::game::info::registry::registry::{DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType};
+use sandstone::protocol::packets::packet_definer::PacketState;
+use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, RegistryDataPacket, StatusResponsePacket, SyncPlayerPositionPacket};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
+use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
+use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
 use sandstone::protocol_types::datatypes::var_types::VarInt;
+use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use sandstone::util::java::bitfield::BitField;
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
@@ -84,34 +85,31 @@ async fn main() {
                     debug!("Plugin message: {:?}", packs);
                     continue;
                 }
+                Packet::ClientInformation(..) => { // optional: before known packs
+                    debug!("Received client information from {}", client);
+                    debug!("Client information: {:?}", packs);
+                    continue;
+                }
                 Packet::ServerboundKnownPacks(..) => {
-                    debug!("Received clientbound known packs from {}", client);
-                    debug!("Clientbound known packs: {:?}", packs);
+                    debug!("Received serverbound known packs from {}", client);
+                    debug!("Serverbound known packs: {:?}", packs);
                     break;
                 }
                 _ => {
-                    debug!("Expected clientbound known packs, got {:?}", packs);
+                    debug!("Expected serverbound known packs, got {:?}", packs);
                     break;
                 }
             }
         }
-        
-        /*let p = Packet::RegistryData(RegistryDataPacket::new(RegistryDataPacketInternal {
+
+        // todo: fix registry, currently causes protocol error
+        let p = Packet::RegistryData(RegistryDataPacket::new(RegistryDataPacketInternal {
             registry_id: "minecraft:dimension_type".to_string(),
             num_entries: VarInt(1),
-            entries: vec![RegistryType::DimensionType()]
-        }));*/
-        
-        let client_info = client.receive_packet().await.unwrap();
-        match client_info {
-            Packet::ClientInformation(..) => {
-                debug!("Received client information from {}", client);
-                debug!("Client information: {:?}", client_info);
-            }
-            _ => {
-                debug!("Expected client info, got {:?}", client_info);
-            }
-        }
+            entries: vec![RegistryEntry::new("minecraft:overworld".to_string(), Some(RegistryType::DimensionType(DimensionType::default())))]
+        }));
+
+        client.send_packet(p).await.unwrap();
         
         let packet = Packet::FinishConfiguration(FinishConfigurationPacket::new());
         client.send_packet(packet).await.unwrap();
@@ -133,7 +131,7 @@ async fn main() {
         client.change_state(PacketState::PLAY);
         
         let login = Packet::LoginInfo(LoginInfoPacket::new(0, false, PrefixedArray::new(vec!["minecraft:world".to_string()]), 2.into(), 0.into(), 0.into(), false, false, false,
-        VarInt(1), "minecraft:world".to_string(), 0i64, PlayerGamemode::SURVIVAL, PlayerGamemode::SURVIVAL, false, true, false, None, None, VarInt(0), VarInt(2), false));
+        VarInt(0), "minecraft:world".to_string(), 0i64, PlayerGamemode::SURVIVAL, PlayerGamemode::SURVIVAL, false, true, false, None, None, VarInt(0), VarInt(2), false));
         client.send_packet(login).await.unwrap();
         
         debug!("Sent login info to {}", client);
