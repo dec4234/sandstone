@@ -1,7 +1,7 @@
 //! Define the default values for the different registry entries according to the defaults generally
 //! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
 
-use crate::protocol::game::info::registry::registry::{BannerPattern, DimensionType};
+use crate::protocol::game::info::registry::registry::{BannerPattern, DimensionType, WolfVariant};
 
 impl Default for DimensionType {
 	fn default() -> Self {
@@ -33,6 +33,17 @@ impl Default for BannerPattern {
 		Self {
 			asset_id: "minecraft:base".to_string(),
 			translation_key: "block.minecraft.banner.base".to_string(),
+		}
+	}
+}
+
+impl Default for WolfVariant {
+	fn default() -> Self {
+		Self {
+			wild_texture: "minecraft:entity/wolf/wolf_woods".to_string(),
+			tame_texture: "minecraft:entity/wolf/wolf_woods_tame".to_string(),
+			angry_texture: "minecraft:entity/wolf/wolf_woods_angry".to_string(),
+			biomes: "minecraft:forest".to_string(), // Default biome for wolves
 		}
 	}
 }

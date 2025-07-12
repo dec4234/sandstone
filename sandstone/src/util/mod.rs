@@ -82,6 +82,9 @@ pub mod macros {
                 /// is no conceivable reason to use any of the previous sub-versions.<br>
                 /// Provided is also the protocol number associated with the last sub-version for that major version,
                 /// as well as the name typically associated with that version.
+                ///
+                /// Please keep in mind that while protocol numbers are provided back all the way to 1.8.9,
+                /// the library typically only supports the latest version of Minecraft: Java Edition.
                 #[derive(Clone, Copy, PartialEq)]
                 #[allow(non_snake_case)]
                 pub enum $name {

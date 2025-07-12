@@ -32,6 +32,7 @@ impl McSerialize for RegistryDataPacketInternal {
 }
 
 impl McDeserialize for RegistryDataPacketInternal {
+	/// Deserialize the registry data packet according to the number of entries specified.
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let id = String::mc_deserialize(deserializer)?;
 		let num_entries = VarInt::mc_deserialize(deserializer)?;
@@ -57,6 +58,7 @@ impl McDeserialize for RegistryDataPacketInternal {
 pub struct RegistryEntry {
 	/// The ID of the registry entry, e.g. "minecraft:overworld"
 	pub id: String,
+	/// Whether the entry is present in the registry, used for serializing the data field.
 	pub is_present: bool,
 	pub data: Option<RegistryType>,
 }
@@ -113,7 +115,8 @@ macro_rules! registry_entry {
 						$($field_name,)*
 					}
 				}
-				
+
+				/// Convert from NBT to the registry entry. Useful for deserializing from a RegistryDataPacket.
 				pub fn from_nbt(nbt: &NbtCompound) -> Result<Self, SerializingErr> {
 					Ok(Self {
 						$(
@@ -123,7 +126,8 @@ macro_rules! registry_entry {
 						)*
 					})
 				}
-				
+
+				/// Convert the registry entry to NBT. Useful for serializing to a RegistryDataPacket.
 				pub fn to_nbt(&self) -> NbtCompound {
 					let mut nbt = NbtCompound::new::<String>(None);
 					
@@ -136,12 +140,14 @@ macro_rules! registry_entry {
 			}
 			
 			impl McSerialize for $lib_name {
+				/// Serialize the registry via NBT.
 				fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 					self.to_nbt().mc_serialize(serializer)
 				}
 			}
 			
 			impl McDeserialize for $lib_name {
+				/// Deserialize the registry via NBT.
 				fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 					let nbt = NbtCompound::mc_deserialize(deserializer)?;
 					Self::from_nbt(&nbt)
@@ -155,6 +161,7 @@ macro_rules! registry_entry {
 		}
 		
 		impl RegistryType {
+			/// Deserialize the registry type according to the given registry type string. Such as "minecraft:dimension_type".
 			pub fn deserialize<'a>(deserializer: &'a mut McDeserializer, registry_type: String) -> SerializingResult<'a, Self> {
 				match registry_type.as_str() {
 					$(
@@ -222,7 +229,15 @@ registry_entry!(
 		temperature: f32,
 		temperature_modifier: Option<String>,
 		downfall: f32
+	},
+	"minecraft:wolf_variant", WolfVariant => {
+		wild_texture: String,
+		tame_texture: String,
+		angry_texture: String,
+		biomes: String // todo: this can be a String or List of tags
 	}
+	
+	// todo: painting variant, then other variants?
 );
 
 #[cfg(test)]

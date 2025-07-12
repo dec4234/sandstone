@@ -1,13 +1,13 @@
 //! Implementation of https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html
 
-use crate::protocol::serialization::McSerialize;
-use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
-use std::ops::Range;
+use crate::protocol::serialization::McSerialize;
+use crate::protocol::serialization::McSerializer;
+use crate::protocol::serialization::SerializingResult;
 use sandstone_derive::{McDeserialize, McSerialize};
+use std::ops::Range;
 
 /// A BitSet is a bitmask datatype of infinite size. It is stored as a Vec of u64
 #[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq, Eq)]
@@ -24,6 +24,7 @@ impl BitSet {
 		}
 	}
 
+	/// Get the value of a specific bit in the BitSet
 	pub fn get_bit(&self, index: usize) -> bool {
 		let (byte_index, bit_index) = (index / 64, index % 64);
 		if byte_index >= self.bits.len() {
@@ -32,6 +33,7 @@ impl BitSet {
 		self.bits[byte_index] & (1 << bit_index) != 0
 	}
 
+	/// Set a specific bit in the BitSet to true (1) or false (0)
 	pub fn set_bit(&mut self, index: usize, value: bool) {
 		let (byte_index, bit_index) = (index / 64, index % 64);
 		if byte_index >= self.bits.len() {
@@ -43,19 +45,22 @@ impl BitSet {
 			self.bits[byte_index] &= !(1 << bit_index);
 		}
 	}
-	
+
+	/// Set all bits in the BitSet to true (1)
 	pub fn set_all(&mut self) {
 		for byte in &mut self.bits {
 			*byte = u64::MAX;
 		}
 	}
-	
+
+	/// Flip all bits in the BitSet (0 becomes 1, 1 becomes 0)
 	pub fn flip(&mut self) {
 		for byte in &mut self.bits {
 			*byte = !*byte;
 		}
 	}
-	
+
+	/// Create a slice of some subset of the BitSet
 	pub fn slice(&self, range: Range<usize>) -> BitSet {
 		let start = range.start / 64;
 		let end = (range.end + 63) / 64;
@@ -68,12 +73,14 @@ impl BitSet {
 		Self { bits }
 	}
 
+	/// Clear all bits in the BitSet (set all bits to false)
 	pub fn clear_all(&mut self) {
 		for byte in &mut self.bits {
 			*byte = 0;
 		}
 	}
 
+	/// Clear a specific bit in the BitSet (set it to false)
 	pub fn clear(&mut self, index: usize) {
 		let (byte_index, bit_index) = (index / 64, index % 64);
 		if byte_index < self.bits.len() {
@@ -81,32 +88,35 @@ impl BitSet {
 		}
 	}
 
+	/// Get the number of bits in the BitSet
 	pub fn size(&self) -> usize {
 		self.bits.len() * 64
 	}
-	
+
+	/// Or the bits of this BitSet with another BitSet, modifying this BitSet in place
 	pub fn or(&mut self, other: &BitSet) {
 		for (a, b) in self.bits.iter_mut().zip(other.bits.iter()) {
 			*a |= *b;
 		}
 	}
-	
+
+	/// And the bits of this BitSet with another BitSet, modifying this BitSet in place
 	pub fn and(&mut self, other: &BitSet) {
 		for (a, b) in self.bits.iter_mut().zip(other.bits.iter()) {
 			*a &= *b;
 		}
 	}
-	
+
+	/// Xor the bits of this BitSet with another BitSet, modifying this BitSet in place
 	pub fn xor(&mut self, other: &BitSet) {
 		for (a, b) in self.bits.iter_mut().zip(other.bits.iter()) {
 			*a ^= *b;
 		}
 	}
-	
+
+	/// Negate the bits of this BitSet, modifying this BitSet in place
 	pub fn not(&mut self) {
-		for byte in &mut self.bits {
-			*byte = !*byte;
-		}
+		self.flip();
 	}
 }
 

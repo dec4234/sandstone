@@ -81,6 +81,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				array: PrefixedArray<ProtocolPropertyElement>
 			},
 			SetCompression, SetCompressionPacket, 0x03 => {
+				#[doc = "The threshold for compression, in bytes. If the packet size is larger than this, it will be compressed."]
 				threshold: VarInt
 			},
 			LoginPluginRequest, LoginPluginRequestPacket, 0x04 => {
@@ -93,7 +94,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			}
 		},
 		SERVER => {
-			LoginStart, LoginStartPacket, 0x00 => {
+			LoginStart, LoginStartPacket, 0x00 #[doc = "Initiate the login procedure for a client."] => {
 				username: String,
 				uuid: Uuid
 			},
@@ -193,10 +194,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				light: LightData
 			},
 			LoginInfo, LoginInfoPacket, 0x2B => {
+				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
 				entity_id: i32,
 				is_hardcore: bool,
 				dimension_names: PrefixedArray<String>,
 				max_players: VarInt,
+				#[doc = "Render distance of the server in chunks. The client may use any value less than or equal to this value."]
 				render_distance: VarInt,
 				simulation_distance: VarInt,
 				reduced_debug_info: bool,
@@ -207,8 +210,11 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				hashed_seed: i64,
 				gamemode: PlayerGamemode,
 				previous_gamemode: PlayerGamemode,
+				#[doc = "When the world is a debug world"]
 				is_debug: bool,
+				#[doc = "When the world is superflat"]
 				is_flat: bool,
+				#[doc = "When true, saves details about the player's death location."]
 				has_death_location: bool,
 				#[mc(deserialize_if = has_death_location)]
 				death_dimension_name: Option<String>,

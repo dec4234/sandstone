@@ -8,8 +8,8 @@ use std::str::FromStr;
 use uuid::Uuid;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
-use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 
 const SEGMENT_INT: i32 = 0x7F;
 const SEGMENT_LONG: i64 = 0x7F;
@@ -156,7 +156,7 @@ impl McDeserialize for VarInt {
 
 		let var = VarInt::from_slice(&bytes)?;
 
-		return Ok(var);
+		Ok(var)
 	}
 }
 
@@ -209,11 +209,11 @@ impl VarLong {
 			}
 		}
 
-		return Ok(VarLong(i));
+		Ok(VarLong(i))
 	}
 
 	pub fn new_from_bytes(bytes: Vec<u8>) -> Result<Self, SerializingErr> { // cannot use SerializingResult
-		return VarLong::from_slice(bytes.as_slice());
+		VarLong::from_slice(bytes.as_slice())
 	}
 
 	/// Convert the VarLong into a Vec of bytes which can be serialized, or converted back to a VarLong using `from_slice`.
@@ -239,13 +239,11 @@ impl VarLong {
 			};
 		}
 
-		return vec;
+		vec
 	}
 
 	pub fn bytes(i: i64) -> Vec<u8> {
-		let var = VarLong(i);
-
-		return var.to_bytes();
+		VarLong(i).to_bytes()
 	}
 }
 
@@ -313,7 +311,7 @@ impl McDeserialize for VarLong {
 
 		let var = VarLong::from_slice(&bytes)?;
 
-		return Ok(var);
+		Ok(var)
 	}
 }
 
@@ -377,10 +375,10 @@ mod tests {
 
 	#[test]
 	fn basic_varlong_writing() {
-		assert!(VarLong::from_slice(&[255, 1]).unwrap().to_bytes() == vec![255, 1]);
-		assert!(VarLong::from_slice(&[255, 255, 255, 255, 7]).unwrap().to_bytes() == vec![255, 255, 255, 255, 7]);
-		assert!(VarLong::from_slice(&[255, 255, 255, 255, 255, 255, 255, 255, 255, 1]).unwrap().to_bytes() == vec![255, 255, 255, 255, 255, 255, 255, 255, 255, 1]);
-		assert!(VarLong::from_slice(&[128, 128, 128, 128, 248, 255, 255, 255, 255, 1]).unwrap().to_bytes() == vec![128, 128, 128, 128, 248, 255, 255, 255, 255, 1]);
+		assert_eq!(VarLong::from_slice(&[255, 1]).unwrap().to_bytes(), vec![255, 1]);
+		assert_eq!(VarLong::from_slice(&[255, 255, 255, 255, 7]).unwrap().to_bytes(), vec![255, 255, 255, 255, 7]);
+		assert_eq!(VarLong::from_slice(&[255, 255, 255, 255, 255, 255, 255, 255, 255, 1]).unwrap().to_bytes(), vec![255, 255, 255, 255, 255, 255, 255, 255, 255, 1]);
+		assert_eq!(VarLong::from_slice(&[128, 128, 128, 128, 248, 255, 255, 255, 255, 1]).unwrap().to_bytes(), vec![128, 128, 128, 128, 248, 255, 255, 255, 255, 1]);
 	}
 
 	#[test]
@@ -436,9 +434,9 @@ mod tests {
 	
 	#[test]
 	fn test_zero_handling() {
-		assert!(VarInt::from_slice(&[221, 199, 1, 0]).unwrap() == VarInt(25565));
-		assert!(VarInt::from_slice(&[255, 255, 127, 0]).unwrap() == VarInt(2097151));
-		assert!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap() == VarInt(-1));
-		assert!(VarInt::from_slice(&[128, 128, 128, 128, 8]).unwrap() == VarInt(-2147483648));
+		assert_eq!(VarInt::from_slice(&[221, 199, 1, 0]).unwrap(), VarInt(25565));
+		assert_eq!(VarInt::from_slice(&[255, 255, 127, 0]).unwrap(), VarInt(2097151));
+		assert_eq!(VarInt::from_slice(&[255, 255, 255, 255, 15]).unwrap(), VarInt(-1));
+		assert_eq!(VarInt::from_slice(&[128, 128, 128, 128, 8]).unwrap(), VarInt(-2147483648));
 	}
 }
