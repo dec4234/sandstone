@@ -1,11 +1,12 @@
 [workspace]
 members = [
     "sandstone",
-    "examples/status_handler",
-    "sandstone/src/sandstone-derive", "examples/login-handler",
-    "sandstone/src/util/mojang-api"
+    "sandstone/src/sandstone-derive",
+    "sandstone/src/util/mojang-api",
+    "examples/server/status_handler",
+    "examples/server/login_handler",
 ]
-default-members = ["sandstone", "examples/*", "sandstone/src/sandstone-derive"]
+default-members = ["sandstone", "examples/server/*", "sandstone/src/sandstone-derive"]
 
 resolver = "2"
 

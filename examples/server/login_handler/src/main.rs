@@ -1,18 +1,26 @@
 //! https://minecraft.wiki/w/Java_Edition_protocol/FAQ#What%27s_the_normal_login_sequence_for_a_client%3F
 
-use log::{debug, LevelFilter};
+use log::{LevelFilter, debug};
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
 
 use sandstone::game::player::PlayerGamemode;
-use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::client::CraftClient;
-use sandstone::protocol::game::info::registry::registry::{DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType};
+use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
+use sandstone::protocol::game::info::registry::registry::{
+    DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType,
+};
+use sandstone::protocol::game::info::registry::registry_generator;
 use sandstone::protocol::packets::packet_definer::PacketState;
-use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, RegistryDataPacket, StatusResponsePacket, SyncPlayerPositionPacket};
+use sandstone::protocol::packets::{
+    ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket,
+    Packet, RegistryDataPacket, StatusResponsePacket, SyncPlayerPositionPacket,
+};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
-use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
+use sandstone::protocol::status::{
+    DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler,
+};
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use sandstone::util::java::bitfield::BitField;
@@ -20,12 +28,18 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
-    SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();
+    SimpleLogger::new()
+        .with_level(LevelFilter::Trace)
+        .init()
+        .unwrap();
     debug!("Starting server");
 
     let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
-    let mut response = StatusResponseSpec::new(ProtocolVerison::V1_21, "&a&lThis is a test description &b§kttt");
+    let mut response = StatusResponseSpec::new(
+        ProtocolVerison::V1_21,
+        "&a&lThis is a test description &b§kttt",
+    );
     response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
 
     loop {
@@ -33,10 +47,18 @@ async fn main() {
 
         let mut client = CraftClient::from_connection(socket).unwrap();
 
-        DefaultHandshakeHandler::handle_handshake(&mut client).await.unwrap();
+        DefaultHandshakeHandler::handle_handshake(&mut client)
+            .await
+            .unwrap();
 
         if client.packet_state == PacketState::STATUS {
-            DefaultStatusHandler::handle_status(&mut client, StatusResponsePacket::new(response.clone()), DefaultPingHandler).await.unwrap();
+            DefaultStatusHandler::handle_status(
+                &mut client,
+                StatusResponsePacket::new(response.clone()),
+                DefaultPingHandler,
+            )
+            .await
+            .unwrap();
             continue;
         }
 
@@ -55,10 +77,14 @@ async fn main() {
                 continue;
             }
         }
-        
-        let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), "TestUser".to_string(), PrefixedArray::new(vec![])));
+
+        let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(
+            Uuid::new_v4(),
+            "TestUser".to_string(),
+            PrefixedArray::new(vec![]),
+        ));
         client.send_packet(login_success).await.unwrap();
-        
+
         let login_ack = client.receive_packet().await.unwrap();
         match login_ack {
             Packet::LoginAcknowledged(..) => {
@@ -71,21 +97,25 @@ async fn main() {
                 continue;
             }
         }
-        
-        let packs = Packet::ClientboundKnownPacks(ClientboundKnownPacksPacket::new(PrefixedArray::new(vec![])));
+
+        let packs = Packet::ClientboundKnownPacks(ClientboundKnownPacksPacket::new(
+            PrefixedArray::new(vec![]),
+        ));
         client.send_packet(packs).await.unwrap();
-        
+
         debug!("Sent clientbound known packs to {}", client);
-        
+
         loop {
             let packs = client.receive_packet().await.unwrap();
             match packs {
-                Packet::ServerboundPluginMessage(..) => { // optional: before known packs
+                Packet::ServerboundPluginMessage(..) => {
+                    // optional: before known packs
                     debug!("Received plugin message from {}", client);
                     debug!("Plugin message: {:?}", packs);
                     continue;
                 }
-                Packet::ClientInformation(..) => { // optional: before known packs
+                Packet::ClientInformation(..) => {
+                    // optional: before known packs
                     debug!("Received client information from {}", client);
                     debug!("Client information: {:?}", packs);
                     continue;
@@ -102,20 +132,16 @@ async fn main() {
             }
         }
 
-        // todo: fix registry, currently causes protocol error
-        let p = Packet::RegistryData(RegistryDataPacket::new(RegistryDataPacketInternal {
-            registry_id: "minecraft:dimension_type".to_string(),
-            num_entries: VarInt(1),
-            entries: vec![RegistryEntry::new("minecraft:overworld".to_string(), Some(RegistryType::DimensionType(DimensionType::default())))]
-        }));
+        // send all registry packets
+        for p in registry_generator::default() {
+            client.send_packet(p).await.unwrap();
+        }
 
-        client.send_packet(p).await.unwrap();
-        
         let packet = Packet::FinishConfiguration(FinishConfigurationPacket::new());
         client.send_packet(packet).await.unwrap();
-        
+
         debug!("Sent finish configuration to {}", client);
-        
+
         let ack = client.receive_packet().await.unwrap();
         match ack {
             Packet::AcknowledgeFinishConfiguration(..) => {
@@ -127,20 +153,53 @@ async fn main() {
                 continue;
             }
         }
-        
+
         client.change_state(PacketState::PLAY);
-        
-        let login = Packet::LoginInfo(LoginInfoPacket::new(0, false, PrefixedArray::new(vec!["minecraft:world".to_string()]), 2.into(), 0.into(), 0.into(), false, false, false,
-        VarInt(0), "minecraft:world".to_string(), 0i64, PlayerGamemode::SURVIVAL, PlayerGamemode::SURVIVAL, false, true, false, None, None, VarInt(0), VarInt(2), false));
+
+        let login = Packet::LoginInfo(LoginInfoPacket::new(
+            0,
+            false,
+            PrefixedArray::new(vec!["minecraft:world".to_string()]),
+            2.into(),
+            0.into(),
+            0.into(),
+            false,
+            false,
+            false,
+            VarInt(0),
+            "minecraft:world".to_string(),
+            0i64,
+            PlayerGamemode::SURVIVAL,
+            PlayerGamemode::SURVIVAL,
+            false,
+            true,
+            false,
+            None,
+            None,
+            VarInt(0),
+            VarInt(2),
+            false,
+        ));
         client.send_packet(login).await.unwrap();
-        
+
         debug!("Sent login info to {}", client);
-        
-        let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(VarInt(2), 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, BitField::new(0)));
+
+        let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(
+            VarInt(2),
+            0.0,
+            10.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            BitField::new(0),
+        ));
         client.send_packet(sync).await.unwrap();
-        
+
         debug!("Sent sync player position to {}", client);
-        
+
         let telep = client.receive_packet().await.unwrap();
         match telep {
             Packet::ConfirmTeleport(..) => {
@@ -152,7 +211,7 @@ async fn main() {
                 continue;
             }
         }
-        
+
         let setpos = client.receive_packet().await.unwrap();
         match setpos {
             Packet::SetPlayerPositionRotation(..) => {

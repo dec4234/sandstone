@@ -2,14 +2,14 @@
 [![Crates.io](https://img.shields.io/crates/v/sandstone)](https://crates.io/crates/sandstone)
 [![Docs.rs](https://docs.rs/sandstone/badge.svg)](https://docs.rs/sandstone)
 
-sandstone is a **Minecraft: Java Edition** networking library. It is not a server implementation, but rather a library that can be used to create your own server-sided software.
+sandstone is a **Minecraft: Java Edition** networking library. It is not a server or client implementation, but rather a library that can be used to create your own servers or cleints.
 The ultimate goal is to use this library in a future implementation of a Minecraft: Java Edition server
 in Rust. 
 
 **This project will be a continuous work in progress, and may see months of no activity.**
 
 This library is provided as a structured baseline and as an open source software solution for anyone looking
-to create specialized **Minecraft: Java Edition** servers. It is built with convenient optimizations and abstractions in mind. 
+to create specialized **Minecraft: Java Edition** software. It is built with convenient optimizations and abstractions in mind. 
 
 The library currently has a fully custom packet serializer and deserializer, as well as a client connection handler.
 
@@ -43,7 +43,13 @@ async fn main() {
 Which produces this...<br>
 <a href="https://gyazo.com/b9b3907a5f3c62898e06b8634cbe8b9f"><img src="https://i.gyazo.com/b9b3907a5f3c62898e06b8634cbe8b9f.gif" alt="Image from Gyazo" width="618"/></a>
 
-More examples can be found in the [examples/](examples) folder.
+### More examples can be found in the [examples/](examples) folder.
+
+## Project Goals
+Here is an outline of the major project goals for sandstone.
+- Create a full wrapper for the Minecraft: Java Edition protocol, both for the client and server.
+- Rigorous testing of all aspects of the protocol to ensure parity with the vanilla client and server.
+- Extremely detailed documentation for all library functions, with examples for all major functions.
 
 ## TODO
 The actual TODO list is massive, but here are the current priorities for the project.
@@ -61,12 +67,13 @@ The actual TODO list is massive, but here are the current priorities for the pro
 - [ ] Begin basic login procedure handler?
 - [ ] Compression support
 - [ ] Encryption support
+- [ ] Client-side networking
 - [ ] Begin server structure 
 - [ ] Documentation
-  - [ ] Give explainer line for every file
+  - [x] Give explainer line for every file
   - [ ] Document all public functions
     - [ ] Better examples and documentation for packet reading
-  - [ ] Copyright notices
+  - [ ] License notices in all files
 
 ## Disclaimer
 Please note that this project is under heavy development and functions might not be heavily optimized yet.<br>
