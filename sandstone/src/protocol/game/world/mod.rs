@@ -1,17 +1,18 @@
 //! World data structures
 
-use crate::protocol::serialization::SerializingResult;
-use crate::protocol::serialization::McSerialize;
-use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
-use sandstone_derive::{McDeserialize, McSerialize};
+use crate::protocol::serialization::McSerialize;
+use crate::protocol::serialization::McSerializer;
+use crate::protocol::serialization::SerializingResult;
+use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::game_types::Position;
+use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 pub mod chunk;
 
-#[derive(McSerialize, McDeserialize, Debug, Copy, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Copy, Clone)]
 pub struct BlockPos {
 	pub x: i32,
 	pub y: i32,
@@ -34,7 +35,7 @@ impl From<Position> for BlockPos {
 	}
 }
 
-#[derive(McSerialize, McDeserialize, Debug, Copy, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Copy, Clone)]
 pub struct ChunkPos {
 	pub x: i32,
 	pub z: i32,

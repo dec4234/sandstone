@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 
@@ -191,6 +192,12 @@ impl McDeserialize for NbtTag {
 		let ty = u8::mc_deserialize(deserializer)?;
 
 		NbtTag::deserialize_specific(deserializer, ty)
+	}
+}
+
+impl McDefault for NbtTag {
+	fn mc_default() -> Self {
+		NbtTag::String("default".to_string())
 	}
 }
 
@@ -409,6 +416,18 @@ impl McDeserialize for NbtCompound {
 		}
 		
 		Ok(compound)
+	}
+}
+
+impl McDefault for NbtCompound {
+	fn mc_default() -> Self {
+		let mut compound = NbtCompound::new_no_name();
+
+		compound.add("default_string", "default_value");
+		compound.add("default_int", 42);
+		compound.add("default_float", 3.14f32);
+
+		compound
 	}
 }
 

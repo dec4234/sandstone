@@ -1,13 +1,14 @@
 //! Protocol player state information
 
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
-use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::testing::McDefault;
 use crate::util::java::bitset::BitSet;
-use sandstone_derive::{McDeserialize, McSerialize};
+use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
 pub struct PackedPlayerInfoUpdate {
@@ -31,7 +32,13 @@ impl PackedPlayerInfoUpdate {
     }
 }
 
-#[derive(McSerialize, Debug, Clone, Hash, PartialEq)]
+impl McDefault for PackedPlayerInfoUpdate {
+    fn mc_default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
 pub enum PlayerInfoUpdateType {
     AddPlayer,
     InitializeChat,

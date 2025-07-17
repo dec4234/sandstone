@@ -2,10 +2,10 @@
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::serialize_primitives;
-use sandstone_derive::{McDeserialize, McSerialize};
-use zerocopy::{FromBytes, FromZeroes};
+use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 impl McSerialize for String {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
@@ -172,7 +172,7 @@ impl<T: McDeserialize> McDeserialize for Box<T> {
 }
 
 /// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array. This is a protocol type.
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, FromBytes, FromZeroes, Clone)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub struct PrefixedArray<T: McSerialize + McDeserialize> {
 	pub(crate) vec: Vec<T>
 }
@@ -255,7 +255,16 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedOptional<T> {
 	}
 }
 
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+impl <T: McSerialize + McDeserialize + McDefault> McDefault for PrefixedOptional<T> {
+	fn mc_default() -> Self {
+		PrefixedOptional {
+			is_present: true,
+			value: Some(T::mc_default())
+		}
+	}
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ProtocolPropertyElement {
 	pub name: String,
 	pub value: String,

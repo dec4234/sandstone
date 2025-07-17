@@ -10,6 +10,14 @@ use syn::{
 
 /// Derive the `McSerialize` trait for a struct. This implies that all fields of the struct also
 /// implement `McSerialize`.
+///
+/// ```rust,ignore
+/// #[derive(McSerialize)]
+/// struct MyStruct {
+///   field1: u32,
+///   field2: bool,
+/// }
+/// ```
 #[proc_macro_derive(McSerialize)]
 pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -110,10 +118,20 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
 }
 
 /// Derive the `McDeserialize` trait for a struct. This implies that all fields of the struct also implement
-/// `McDeserialize`. 
+/// `McDeserialize`.
 /// 
 /// This macro supports the `#[mc(deserialize_if = ...)]` attribute on fields, which allows for conditional
 /// deserialization of Option<T> fields according to if another boolean field is true.
+///
+/// ```rust,ignore
+/// #[derive(McDeserialize)]
+/// struct MyStruct {
+///   field1: u32,
+///   field2: bool,
+///   #[mc(deserialize_if = field2)]
+///   field3: Option<u64>,
+/// }
+/// ```
 #[proc_macro_derive(McDeserialize, attributes(mc))]
 pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -334,6 +352,88 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
             }
         }
 	};
+
+    TokenStream::from(expanded)
+}
+
+/// Derive the `McDefault` trait for a struct. This trait provides a default value for the struct,
+/// which can be used for automated packet testing.
+#[proc_macro_derive(McDefault)]
+pub fn derive_mc_default(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    let mc_default_impl = match &input.data {
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => {
+                let default_fields = fields.named.iter().map(|field| {
+                    let field_name = field.ident.as_ref().unwrap();
+                    quote! { #field_name: McDefault::mc_default() }
+                });
+                quote! {
+                    Self {
+                        #(#default_fields),*
+                    }
+                }
+            }
+            Fields::Unnamed(fields) => {
+                let default_fields = fields.unnamed.iter().map(|_field| {
+                    quote! { McDefault::mc_default() }
+                });
+                quote! {
+                    Self(
+                        #(#default_fields),*
+                    )
+                }
+            }
+            Fields::Unit => quote! { Self },
+        },
+        Data::Enum(data_enum) => {
+            let first_variant = data_enum.variants.iter().next().expect("Enum must have at least one variant");
+            let variant_ident = &first_variant.ident;
+
+            match &first_variant.fields {
+                Fields::Named(fields) => {
+                    let default_fields = fields.named.iter().map(|field| {
+                        let field_name = &field.ident;
+                        quote! { #field_name: McDefault::mc_default() }
+                    });
+                    quote! {
+                        Self::#variant_ident {
+                            #(#default_fields),*
+                        }
+                    }
+                }
+                Fields::Unnamed(fields) => {
+                    let default_fields = fields.unnamed.iter().map(|_field| {
+                        quote! { McDefault::mc_default() }
+                    });
+                    quote! {
+                        Self::#variant_ident(
+                            #(#default_fields),*
+                        )
+                    }
+                }
+                Fields::Unit => {
+                    quote! {
+                        Self::#variant_ident
+                    }
+                }
+            }
+        }
+        Data::Union(_) => {
+            // You could return a compile error instead if desired
+            panic!("#[derive(McDefault)] is not supported for unions");
+        }
+    };
+
+    let expanded = quote! {
+        impl McDefault for #name {
+            fn mc_default() -> Self {
+                #mc_default_impl
+            }
+        }
+    };
 
     TokenStream::from(expanded)
 }

@@ -66,7 +66,7 @@ mod macros {
             $(
                 $(
                     $(
-                        #[derive(Debug, Clone, PartialEq, sandstone_derive::McDeserialize, sandstone_derive::McSerialize)]
+                        #[derive(Debug, Clone, PartialEq, sandstone_derive::McDeserialize, sandstone_derive::McSerialize, sandstone_derive::McDefault)]
                         $(#[$struct_meta])*
                         pub struct $name_body { // The body struct of the packet
                             $(

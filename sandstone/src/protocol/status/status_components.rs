@@ -1,18 +1,22 @@
+//! Status protocol components.
+
+use crate::protocol::testing::McDefault;
 use std::io::Cursor;
 
-use base64::Engine;
-use base64::engine::general_purpose;
-use image::{DynamicImage, ImageFormat};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::protocol::packets::StatusResponsePacket;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::protocol_verison::ProtocolVerison;
+use base64::engine::general_purpose;
+use base64::Engine;
+use image::{DynamicImage, ImageFormat};
+use sandstone_derive::McDefault;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// A prepared response to a status request from a client. This provides useful functions for building
 /// the complicated nested structure of the status response.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 pub struct StatusResponseSpec {
 	version: VersionInfo,
@@ -130,13 +134,13 @@ impl From<StatusResponseSpec> for StatusResponsePacket {
 /// Represents the version information for the server. The `name` of the version can be anything you want.
 /// The `protocol` must be a valid protocol version number, and must match the protocol version of the
 /// connecting client.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VersionInfo {
 	name: String,
 	protocol: i16,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerInfo {
 	max: i32,
 	online: i32,
@@ -154,13 +158,13 @@ impl PlayerInfo {
 }
 
 /// Represents the description/MOTD of the server, which is displayed in the server list.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DescriptionInfo { // TODO: update to chat thing?
 	text: String,
 }
 
 /// Represents a single entry in the player list sample response, seen when the user hovers over the player count.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerSample {
 	name: String,
 	id: String,

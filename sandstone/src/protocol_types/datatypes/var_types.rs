@@ -6,7 +6,6 @@ use std::fmt::{Display, Error, Formatter};
 use std::str::FromStr;
 
 use uuid::Uuid;
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{
@@ -24,9 +23,7 @@ pub(crate) const CONTINUE_BYTE: u8 = 0x80; // 10000000
 /// A VarInt is a packaged i32. It is represented in a more compressed (on average) byte format than
 /// a typical i32. The most significant bit of each byte is used to indicate if there are more bytes
 /// to be read, up to a max of 5.
-#[derive(
-    Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy,
-)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy, )]
 #[repr(C)] // TODO: maybe remove
 pub struct VarInt(pub i32);
 
@@ -186,9 +183,7 @@ impl From<&[u8]> for VarInt {
 /// A VarLong is a packaged i64. It is represented in a more compressed (on average) byte format than
 /// a typical i64. The most significant bit of each byte is used to indicate if there are more bytes
 /// to be read, up to a max of 10.
-#[derive(
-    Debug, Ord, PartialOrd, Eq, PartialEq, Hash, AsBytes, FromBytes, FromZeroes, Clone, Copy,
-)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy, )]
 #[repr(C)] // TODO: maybe remove
 pub struct VarLong(pub i64);
 

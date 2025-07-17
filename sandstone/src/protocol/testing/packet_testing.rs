@@ -1,6 +1,8 @@
-use crate::protocol::packets::{DisconnectPacket, LoginPluginResponsePacket, Packet};
+//! Tests basic packet serialization and deserialization functionality.
+
 use crate::protocol::packets::packet_component::LoginPluginSpec;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
+use crate::protocol::packets::{DisconnectPacket, LoginPluginResponsePacket, Packet};
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::chat::TextComponent;
 

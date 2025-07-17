@@ -9,12 +9,13 @@ use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::registry_entry;
-use sandstone_derive::McSerialize;
+use sandstone_derive::{McDefault, McSerialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(McDefault, Debug, Clone, PartialEq)]
 pub struct RegistryDataPacketInternal {
 	/// The registry type this data is for, e.g. "minecraft:dimension_type"
 	pub registry_id: String, 
@@ -54,7 +55,7 @@ impl McDeserialize for RegistryDataPacketInternal {
 	}
 }
 
-#[derive(McSerialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, Debug, Clone, PartialEq)]
 pub struct RegistryEntry {
 	/// The ID of the registry entry, e.g. "minecraft:overworld"
 	pub id: String,
@@ -102,7 +103,7 @@ macro_rules! registry_entry {
 		),*
 	) => {
 		$(
-			#[derive(Debug, Clone, PartialEq)]
+			#[derive(McDefault, Debug, Clone, PartialEq)]
 			pub struct $lib_name {
 				$(
 					pub $field_name: $field_type,
@@ -155,7 +156,7 @@ macro_rules! registry_entry {
 			}
 		)*
 		
-		#[derive(Debug, Clone, PartialEq)]
+		#[derive(McDefault, Debug, Clone, PartialEq)]
 		pub enum RegistryType {
 			$($lib_name($lib_name)),*
 		}

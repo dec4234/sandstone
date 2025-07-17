@@ -21,7 +21,6 @@ hex = "0.4.3"
 serde_json = "1.0.140"
 serde = {version = "1.0.219", features = ["derive"]}
 uuid = {version = "1.16.0", features = ["v4"]}
-zerocopy = {version = "0.7.35", features = ["derive", "byteorder"]}
 base64 = "0.22.1"
 log = "0.4.27"
 image = {version = "0.25.6", features = ["default", "png"]}

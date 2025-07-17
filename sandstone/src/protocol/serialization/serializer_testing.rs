@@ -1,6 +1,6 @@
-//! The purpose of this file is to test random nesting of enums and structs for serialization and deserialization
-use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+//! Test random nesting of enums and structs for serialization and deserialization
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 
 enum Group {
@@ -127,10 +127,10 @@ impl McDeserialize for StringMix {
 
 #[cfg(test)]
 mod tests {
-	use crate::protocol::packets::{HandshakingPacket, Packet};
 	use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
+	use crate::protocol::packets::{HandshakingPacket, Packet};
 	use crate::protocol::serialization::serializer_testing::{Group, StringMix, VarIntMix};
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 	use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 
 	#[test]

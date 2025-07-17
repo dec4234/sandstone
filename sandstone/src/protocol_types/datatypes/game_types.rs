@@ -1,16 +1,16 @@
 //! Types found in game such as position, etc.
 
+use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::McDeserialize;
+use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
-use crate::protocol::serialization::McDeserialize;
-use crate::protocol::serialization::McDeserializer;
-use crate::protocol::serialization::serializer_error::SerializingErr;
-use zerocopy::{FromBytes, FromZeroes};
-use sandstone_derive::{McDeserialize, McSerialize};
+use crate::protocol::testing::McDefault;
+use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 /// A Minecraft position, internally represented as a 64-bit integer.
-#[derive(McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, FromBytes, FromZeroes, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub struct Position {
 	data: u64
 }
@@ -47,7 +47,7 @@ impl Position {
 /// Represents a packed i64 (long) that contains block or biome data. See 
 /// https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Data_Array_format for more info. This
 /// matches the spec for packed data after 1.16
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 pub struct PackedEntries {
 	data: i64,
 	/// The number of bits allocated to each entry

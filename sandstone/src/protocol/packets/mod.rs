@@ -20,6 +20,7 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol::status::status_components::StatusResponseSpec;
+use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::var_types::VarInt;

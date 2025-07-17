@@ -6,6 +6,7 @@ use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::testing::McDefault;
 use sandstone_derive::{McDeserialize, McSerialize};
 use std::ops::Range;
 
@@ -46,6 +47,15 @@ impl BitSet {
 		}
 	}
 
+	/// Set the first u64 value in the BitSet to the given value.
+	pub fn add_val(&mut self, value: u64) {
+		if self.bits.is_empty() {
+			self.bits.push(value);
+		} else {
+			self.bits[0] = value;
+		}
+	}
+	
 	/// Set all bits in the BitSet to true (1)
 	pub fn set_all(&mut self) {
 		for byte in &mut self.bits {
@@ -117,6 +127,16 @@ impl BitSet {
 	/// Negate the bits of this BitSet, modifying this BitSet in place
 	pub fn not(&mut self) {
 		self.flip();
+	}
+}
+
+impl McDefault for BitSet {
+	fn mc_default() -> Self {
+		let mut bit = Self::new(6);
+		
+		bit.add_val(u64::mc_default());
+		
+		bit
 	}
 }
 

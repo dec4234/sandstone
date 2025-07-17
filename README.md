@@ -2,7 +2,7 @@
 [![Crates.io](https://img.shields.io/crates/v/sandstone)](https://crates.io/crates/sandstone)
 [![Docs.rs](https://docs.rs/sandstone/badge.svg)](https://docs.rs/sandstone)
 
-sandstone is a **Minecraft: Java Edition** networking library. It is not a server or client implementation, but rather a library that can be used to create your own servers or cleints.
+sandstone is a **Minecraft: Java Edition** networking library. It is not a server or client implementation, but rather a library that can be used to create your own servers or clients.
 The ultimate goal is to use this library in a future implementation of a Minecraft: Java Edition server
 in Rust. 
 

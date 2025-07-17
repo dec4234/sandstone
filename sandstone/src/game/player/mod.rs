@@ -4,9 +4,10 @@ use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
-use sandstone_derive::McSerialize;
+use crate::protocol::testing::McDefault;
+use sandstone_derive::{McDefault, McSerialize};
 
-#[derive(McSerialize, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
 #[repr(i8)]
 pub enum PlayerGamemode {
 	UNDEFINED = -1,

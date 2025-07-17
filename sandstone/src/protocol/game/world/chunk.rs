@@ -2,6 +2,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format
 
+use crate::protocol::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::McDeserialize;
@@ -9,22 +10,22 @@ use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::game_types::PackedEntries;
-use crate::protocol_types::datatypes::var_types::VarInt;
-use sandstone_derive::{McDeserialize, McSerialize};
-use crate::protocol::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
+use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 /// Chunk Data field as defined in https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ChunkData {
 	pub heightmaps: PrefixedArray<Heightmap>,
 	pub data: ChunkByteData,
 	pub block_entities: PrefixedArray<BlockEntity>,
 }
 
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct LightData {
 	pub sky_light_mask: BitSet,
 	pub block_light_mask: BitSet,
@@ -37,7 +38,7 @@ pub struct LightData {
 /// The length of the inner array is always 2048; There is 1 array for each bit set to true in the block 
 /// light mask, starting with the lowest value. Half a byte per light value. Acceptable light values are
 /// 0-15
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct LightArray {
 	pub data: PrefixedArray<u8>
 }
@@ -94,7 +95,7 @@ impl LightArray {
 
 /// An array of 24 chunk sections, containing the block data for a single chunk. This is serialized to/from
 /// a byte array.
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 pub struct ChunkByteData {
 	/// This array is NOT length-prefixed. The number of elements in the array is calculated based on the world's height. 
 	/// Sections are sent bottom-to-top. The world height changes based on the dimension. 
@@ -131,7 +132,7 @@ impl McDeserialize for ChunkByteData {
 	}
 }
 
-#[derive(McSerialize, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
 pub struct ChunkSection {
 	/// Number of non-air blocks present in the chunk section. "Non-air" is defined as any fluid and block other than air, cave air, and void air
 	pub block_count: i16,
@@ -155,7 +156,7 @@ impl McDeserialize for ChunkSection {
 	}
 }
 
-#[derive(McSerialize, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
 pub struct PalletedContainer {
 	pub bits_per_entry: u8,
 	pub palette: PalleteFormat,
@@ -184,13 +185,13 @@ impl PalletedContainer {
 }
 
 /// Used to determine which palette format to use based on the Bits Per Entry
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 pub enum PaletteFormatType {
 	BLOCKS,
 	BIOMES
 }
 
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 pub enum PalleteFormat {
 	SingleValued(VarInt),
 	Indirect(IndirectFormat),
@@ -248,7 +249,7 @@ pub struct IndirectFormat {
 	pub array: Vec<VarInt>
 }
 
-#[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
 pub struct Heightmap {
 	typ: VarInt,
 	length: VarInt,
@@ -256,7 +257,7 @@ pub struct Heightmap {
 }
 
 /// A block entity is something like a chest or other block which has NBT.
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct BlockEntity {
 	pub packed_xz: PackedXZ,
 	pub y: i16,
@@ -265,7 +266,7 @@ pub struct BlockEntity {
 }
 
 /// Relative coordinates within a chunk. Each x and z value has valid values 0-15
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct PackedXZ {
 	data: u8,
 }

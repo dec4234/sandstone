@@ -1,6 +1,9 @@
-use sandstone_derive::{McDeserialize, McSerialize};
-use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+//! Tests the functionality of the 'McDeserialize' and 'McSerialize' derive macros.
+
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::testing::McDefault;
+use sandstone_derive::{McDeserialize, McSerialize};
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestPacket {
@@ -12,7 +15,7 @@ pub struct TestPacket {
 #[cfg(test)]
 mod tests {
 	use crate::protocol::serialization::{McDeserialize, McSerialize};
-	
+
 	#[test]
 	fn test_serialize_deserialize() {
 		let packet = super::TestPacket { field1: true, field2: Some("hello".to_string()) };

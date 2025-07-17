@@ -1,12 +1,13 @@
 //! A bit field is a fixed length primitive unsigned or signed integer that packs its data into 
 //! individual bits.
 
-use std::ops::{BitAnd, BitOr, Not, Shl, Shr, Sub};
-use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::McDeserialize;
+use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
-use crate::protocol::serialization::McDeserializer;
+use crate::protocol::serialization::SerializingResult;
+use crate::protocol::testing::McDefault;
+use std::ops::{BitAnd, BitOr, Not, Shl, Shr, Sub};
 
 /// A simple bit field internally represented as any primitive signed or unsigned integer.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -66,6 +67,12 @@ impl <'a, T: BitFieldInteger + McSerialize + McDeserialize> McDeserialize for Bi
 		let bits = T::mc_deserialize(deserializer)?;
 		
 		Ok(Self { bits })
+	}
+}
+
+impl <T: BitFieldInteger + McSerialize + McDeserialize + McDefault> McDefault for BitField<T> {
+	fn mc_default() -> Self {
+		BitField::new(T::mc_default())
 	}
 }
 

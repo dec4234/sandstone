@@ -3,4 +3,4 @@ pub mod status;
 pub mod serialization;
 pub mod game;
 
-mod testing;
+pub mod testing;
