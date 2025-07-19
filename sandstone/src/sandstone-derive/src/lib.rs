@@ -422,7 +422,6 @@ pub fn derive_mc_default(input: TokenStream) -> TokenStream {
             }
         }
         Data::Union(_) => {
-            // You could return a compile error instead if desired
             panic!("#[derive(McDefault)] is not supported for unions");
         }
     };

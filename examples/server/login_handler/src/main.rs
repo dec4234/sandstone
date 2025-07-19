@@ -6,15 +6,12 @@ use tokio::net::TcpListener;
 
 use sandstone::game::player::PlayerGamemode;
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
-use sandstone::network::client::CraftClient;
-use sandstone::protocol::game::info::registry::registry::{
-	DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType,
-};
+use sandstone::network::CraftConnection;
 use sandstone::protocol::game::info::registry::registry_generator;
 use sandstone::protocol::packets::packet_definer::PacketState;
 use sandstone::protocol::packets::{
 	ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket,
-	Packet, RegistryDataPacket, StatusResponsePacket, SyncPlayerPositionPacket,
+	Packet, StatusResponsePacket, SyncPlayerPositionPacket,
 };
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
@@ -45,7 +42,7 @@ async fn main() {
 	loop {
 		let (socket, _) = server.accept().await.unwrap();
 
-		let mut client = CraftClient::from_connection(socket).unwrap();
+		let mut client = CraftConnection::from_connection(socket).unwrap();
 
 		DefaultHandshakeHandler::handle_handshake(&mut client)
 			.await
@@ -133,6 +130,7 @@ async fn main() {
 		}
 
 		// send all registry packets
+		debug!("Sending registry packets to {}", client);
 		for p in registry_generator::default() {
 			client.send_packet(p).await.unwrap();
 		}

@@ -10,7 +10,7 @@
 
 use crate::game::player::PlayerGamemode;
 use crate::packets;
-use crate::protocol::game::info::registry::registry::RegistryDataPacketInternal;
+use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RemoveResourcePackSpec, ResourcePackEntry};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};

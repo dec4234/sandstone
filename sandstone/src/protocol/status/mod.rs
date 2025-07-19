@@ -7,10 +7,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use log::{debug, trace};
 
 use crate::network::client::client_handlers::{HandshakeHandler, PingHandler, StatusHandler};
-use crate::network::client::CraftClient;
 use crate::network::network_error::NetworkError;
-use crate::protocol::packets::{Packet, PingResponsePacket, StatusResponsePacket};
+use crate::network::CraftConnection;
 use crate::protocol::packets::packet_definer::PacketState;
+use crate::protocol::packets::{Packet, PingResponsePacket, StatusResponsePacket};
 use crate::protocol_types::datatypes::var_types::VarInt;
 
 pub mod status_components;
@@ -19,7 +19,7 @@ pub mod status_components;
 pub struct DefaultStatusHandler;
 
 impl StatusHandler for DefaultStatusHandler {
-	async fn handle_status<P: PingHandler>(connection: &mut CraftClient, status_response: StatusResponsePacket, _ping_handler: P) -> Result<(), NetworkError> {
+	async fn handle_status<P: PingHandler>(connection: &mut CraftConnection, status_response: StatusResponsePacket, _ping_handler: P) -> Result<(), NetworkError> {
 		if connection.packet_state != PacketState::STATUS {
 			return Err(NetworkError::InvalidPacketState);
 		}
@@ -62,7 +62,7 @@ impl StatusHandler for DefaultStatusHandler {
 pub struct DefaultPingHandler;
 
 impl PingHandler for DefaultPingHandler {
-	async fn handle_ping(connection: &mut CraftClient) -> Result<(), NetworkError> {
+	async fn handle_ping(connection: &mut CraftConnection) -> Result<(), NetworkError> {
 		if connection.packet_state != PacketState::STATUS {
 			return Err(NetworkError::InvalidPacketState);
 		}
@@ -95,7 +95,7 @@ impl PingHandler for DefaultPingHandler {
 pub struct DefaultHandshakeHandler;
 
 impl HandshakeHandler for DefaultHandshakeHandler {
-	async fn handle_handshake(client: &mut CraftClient) -> Result<(), NetworkError> {
+	async fn handle_handshake(client: &mut CraftConnection) -> Result<(), NetworkError> {
 		if client.packet_state != PacketState::HANDSHAKING {
 			return Err(NetworkError::InvalidPacketState);
 		}
