@@ -1,11 +1,13 @@
 //! Defines key macros, traits and enums used to describe packets.
 
-/// Defines the DESTINATION of the packet. So a packet that is C -> S would be `PacketDirection::SERVER`
+/// Defines the DESTINATION of the packet. So a packet that is C -> S would be `PacketDirection::SERVER`.
+///
+/// In the context of initiating a 'CraftConnection', this is the type of client that is being created.
+/// So if you are creating a client that connects to a server, you would use `PacketDirection::CLIENT`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum PacketDirection {
 	SERVER,
 	CLIENT,
-	BIDIRECTIONAL // are there any?
 }
 
 /// Used to help discern the type of packet being received. Note that different states could have
@@ -26,6 +28,7 @@ impl PacketState {
         match id {
             1 => Some(PacketState::STATUS),
             2 => Some(PacketState::LOGIN),
+            3 => Some(PacketState::TRANSFER),
             _ => None // others are unknown at this time
         }
     }
@@ -35,6 +38,7 @@ impl PacketState {
         match self {
             PacketState::STATUS => Some(1),
             PacketState::LOGIN => Some(2),
+            PacketState::TRANSFER => Some(3),
             _ => None
         }
     }
@@ -42,7 +46,7 @@ impl PacketState {
 
 #[macro_use]
 mod macros {
-    /// This is the complex macro used to define every packet in the game. First, we it define the packet with all of its fields,
+    /// Internal Only. This is the complex macro used to define every packet in the game. First, we it define the packet with all of its fields,
     /// then it adds it to a central enum. This enum is used to deserialize the raw incoming packets from a connection since otherwise
     /// we can only determine the packet based on the id and current state of the connection.
     /// 
@@ -180,7 +184,7 @@ mod macros {
                         }
                     )*
                     
-                    return Err(SerializingErr::UniqueFailure("Could not find matching type.".to_string()));
+                    return Err(SerializingErr::UniqueFailure(format!("Could not find matching packet for direction {:?} and state {:?} with packet id '0x{:X}'.", packet_direction, state, packet_id.0)));
                 }
             }
         };

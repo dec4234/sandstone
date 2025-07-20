@@ -18,5 +18,12 @@ versions!(ProtocolVerison, i16 => {
     V1_18, 758, "1.18.2",
     V1_19, 762, "1.19.4",
     V1_20, 766, "1.20.6",
-    V1_21, 772, "1.21.7"
+    V1_21, 772, "1.21.8"
 });
+
+impl ProtocolVerison {
+    /// Returns the most recent protocol version supported by the library.
+    pub fn most_recent() -> ProtocolVerison {
+        ProtocolVerison::V1_21
+    }
+}

@@ -15,7 +15,7 @@ use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, RemoveResourcePackSpec, ResourcePackEntry};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::serializer_types::{PrefixedArray, ProtocolPropertyElement};
+use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional, ProtocolPropertyElement};
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
@@ -121,7 +121,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			ConfigCookieRequest, ConfigCookieRequestPacket, 0x00 => {
 				key: String
 			},
-			PluginMessage, PluginMessagePacket, 0x01 => {
+			ClientboundPluginMessage, ClientboundPluginMessagePacket, 0x01 => {
 				channel: String,
 				data: Vec<u8>
 			},
@@ -172,6 +172,10 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				enable_text_filtering: bool,
 				allow_server_listing: bool,
 				particle_status: VarInt
+			},
+			CookieResponse, CookieResponsePacket, 0x01 => {
+				key: String,
+				payload: PrefixedOptional<PrefixedArray<u8>>
 			},
 			ServerboundPluginMessage, ServerboundPluginMessagePacket, 0x02 => {
 				channel: String,

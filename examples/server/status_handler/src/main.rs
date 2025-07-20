@@ -4,6 +4,7 @@ use tokio::net::TcpListener;
 
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::CraftConnection;
+use sandstone::protocol::packets::packet_definer::PacketDirection;
 use sandstone::protocol::packets::StatusResponsePacket;
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::status::{
@@ -33,7 +34,7 @@ async fn main() {
     loop {
         let (socket, _) = server.accept().await.unwrap();
 
-        let mut client = CraftConnection::from_connection(socket).unwrap();
+        let mut client = CraftConnection::from_connection(socket, PacketDirection::SERVER).unwrap();
 
         let mut response = StatusResponseSpec::new(
             ProtocolVerison::V1_21,

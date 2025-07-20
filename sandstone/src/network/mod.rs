@@ -2,7 +2,7 @@
 //! 
 //! This includes data types, serializers, packet implementations and client & server handlers.
 //! 
-//! See the documentation for the `client` and `server` modules for more information on how to use the network API.
+//! See the documentation for the [client](client) and [server](server) modules for more information on how to use the network API.
 
 use crate::network::network_error::NetworkError;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
@@ -21,6 +21,7 @@ pub mod network_error;
 pub mod client;
 pub mod server;
 
+/// The maximum size of a packet in bytes.
 const PACKET_MAX_SIZE: usize = 2097151;
 // max of 3 byte VarInt
 /// The bit that indicates if a VarInt is continuing into another byte.
@@ -35,13 +36,15 @@ pub struct CraftConnection {
 	pub(crate) socket_addr: SocketAddr,
 	pub packet_state: PacketState,
 	pub compression_threshold: Option<i32>,
-	pub protocol_version: Option<VarInt>
-	// todo: packet direction?
+	pub protocol_version: Option<VarInt>,
+	pub client_type: PacketDirection,
 }
 
 impl CraftConnection {
 	/// Create a new `CraftClient` from a `TcpStream`. This will set the `TcpStream` to use `nodelay` and return an error if it fails to do so.
-	pub fn from_connection(tcp_stream: TcpStream) -> Result<Self, NetworkError> {
+	/// 
+	/// Set client_type to `PacketDirection::CLIENT` if this is a client, or `PacketDirection::SERVER` if this is a server's connection to a client.
+	pub fn from_connection(tcp_stream: TcpStream, client_type: PacketDirection) -> Result<Self, NetworkError> {
 		tcp_stream.set_nodelay(true)?; // disable Nagle's algorithm - according to WIKI specs
 
 		Ok(Self {
@@ -49,7 +52,8 @@ impl CraftConnection {
 			tcp_stream,
 			packet_state: PacketState::HANDSHAKING,
 			compression_threshold: None,
-			protocol_version: None
+			protocol_version: None,
+			client_type,
 		})
 	}
 
@@ -131,7 +135,7 @@ impl CraftConnection {
 		// TODO: decompress & decrypt here
 
 		let mut deserializer = McDeserializer::new(&buffer);
-		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
+		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, self.client_type)?;
 
 		Ok(packet)
 	}

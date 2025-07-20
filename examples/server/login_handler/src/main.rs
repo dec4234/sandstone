@@ -8,7 +8,7 @@ use sandstone::game::player::PlayerGamemode;
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::info::registry::registry_generator;
-use sandstone::protocol::packets::packet_definer::PacketState;
+use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use sandstone::protocol::packets::{
 	ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket,
 	Packet, StatusResponsePacket, SyncPlayerPositionPacket,
@@ -42,7 +42,7 @@ async fn main() {
 	loop {
 		let (socket, _) = server.accept().await.unwrap();
 
-		let mut client = CraftConnection::from_connection(socket).unwrap();
+		let mut client = CraftConnection::from_connection(socket, PacketDirection::SERVER).unwrap();
 
 		DefaultHandshakeHandler::handle_handshake(&mut client)
 			.await
