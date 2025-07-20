@@ -6,6 +6,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 use uuid::Uuid;
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::datatypes::var_types::VarInt;
 
@@ -15,13 +16,6 @@ pub struct LoginPluginSpec {
 	pub(crate) success: bool,
 	#[mc(deserialize_if = success)]
 	pub(crate) data: Option<Vec<u8>>,
-}
-
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RemoveResourcePackSpec {
-	pub(crate) has_uuid: bool,
-	#[mc(deserialize_if = has_uuid)]
-	pub(crate) uuid: Option<Uuid>,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -49,4 +43,10 @@ pub struct ResourcePackEntry {
 	pub namespace: String,
 	pub id: String,
 	pub version: String
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct TagArray {
+	pub identifier: String,
+	pub payload: PrefixedArray<VarInt>
 }

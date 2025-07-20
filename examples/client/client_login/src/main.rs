@@ -1,7 +1,8 @@
 use log::{debug, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::{HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet};
+use sandstone::protocol::packets::{HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
+use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use simple_logger::SimpleLogger;
@@ -15,7 +16,7 @@ use uuid::Uuid;
 #[tokio::main]
 async fn main() {
     SimpleLogger::new()
-        .with_level(LevelFilter::Trace)
+        .with_level(LevelFilter::Debug)
         .init()
         .unwrap();
     debug!("Starting client");
@@ -79,11 +80,42 @@ async fn main() {
                 break;
             }
             _ => {
-                debug!("Received unexpected packet: {:?}", packet);
-                break;
+                panic!("Received unexpected packet: {:?}", packet);
             }
         }
     }
+
+    let serverbound_known_packs = Packet::ServerboundKnownPacks(ServerboundKnownPacksPacket {
+        entries: PrefixedArray::new(vec![]),
+    });
+
+    debug!("Sending serverbound known packs: {:?}", serverbound_known_packs);
+    client.send_packet(serverbound_known_packs).await.unwrap();
+
+    loop {
+        let packet = client.receive_packet().await.unwrap();
+
+        match packet {
+            Packet::RegistryData(pack) => {
+                debug!("Received registry data: {:?}", pack);
+
+                continue;
+            }
+            Packet::UpdateTags(_) => {
+                debug!("Received update tags: {:?}", packet);
+                continue;
+            }
+            Packet::FinishConfiguration(_) => {
+                debug!("Received finish configuration packet: {:?}", packet);
+                break;
+            }
+            _ => {
+                panic!("Received unexpected packet: {:?}", packet);
+            }
+        }
+    }
+
+    //client.change_state(PacketState::PLAY);
 
     // todo: registry data right after
 }

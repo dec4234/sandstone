@@ -173,6 +173,8 @@ mod macros {
 
                                                 if let Ok(a) = a {
                                                     return Ok(Packet::$name(a));
+                                                } else {
+                                                    return Err(SerializingErr::DeserializationError(format!("Failed to deserialize packet {:?} with id '0x{:X}'", stringify!($name), packet_id.0)));
                                                 }
                                             }
                                         )*
@@ -184,7 +186,7 @@ mod macros {
                         }
                     )*
                     
-                    return Err(SerializingErr::UniqueFailure(format!("Could not find matching packet for direction {:?} and state {:?} with packet id '0x{:X}'.", packet_direction, state, packet_id.0)));
+                    return Err(SerializingErr::NoKnownPacket(format!("Could not find matching packet for destination {:?} and state {:?} with packet id '0x{:X}'", packet_direction, state, packet_id.0)));
                 }
             }
         };

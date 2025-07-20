@@ -40,6 +40,10 @@ pub enum SerializingErr {
 	NbtMissingField(String),
 	#[error("Nbt input is missing a field: {0}")]
 	MissingField(String),
+	#[error("Failed to find packet: {0}")]
+	NoKnownPacket(String),
+	#[error("Failed to deserialize: {0}")]
+	DeserializationError(String),
 }
 
 impl PartialEq for SerializingErr {
