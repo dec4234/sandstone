@@ -1,16 +1,16 @@
 //! The purpose of this file is to define the custom integer types for the Minecraft protocol, VarInt and VarLong.
 //! See more details here: https://wiki.vg/Protocol#VarInt_and_VarLong
 
-use std::fmt;
-use std::fmt::{Display, Error, Formatter};
-use std::str::FromStr;
-
-use uuid::Uuid;
-
+use crate::network::network_error::NetworkError;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{
     McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult,
 };
+use std::fmt;
+use std::fmt::{Display, Error, Formatter};
+use std::str::FromStr;
+use tokio::net::TcpStream;
+use uuid::Uuid;
 
 const SEGMENT_INT: i32 = 0x7F;
 const SEGMENT_LONG: i64 = 0x7F;
@@ -63,6 +63,37 @@ impl VarInt {
         }
 
         Ok(VarInt(i))
+    }
+
+    /// Extract a VarInt from a TcpStream. This reads the bytes until it finds a byte that does not have the continue bit set.
+    ///
+    /// This is usually used for reading the packet length VarInt from the start of a packet.
+    pub fn from_tcp_stream(stream: &TcpStream) -> Result<Self, NetworkError> {
+        let mut vec = Vec::with_capacity(3);
+
+        loop {
+            let var_buffer = &mut [0u8; 1];
+            let len = stream.try_read(var_buffer)?;
+
+            if len == 0 {
+                return Err(NetworkError::NoDataReceived);
+            }
+
+            let b = var_buffer[0];
+
+            if b & crate::network::CONTINUE_BIT == 0 {
+                vec.push(b);
+                break;
+            } else {
+                vec.push(b);
+
+                if vec.len() > 3 {
+                    return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
+                }
+            }
+        }
+
+        Ok(VarInt::from_slice(&vec)?)
     }
 
     /// Convert the VarInt into a Vec of bytes which can be serialized, or converted back to a VarInt using `from_slice`.

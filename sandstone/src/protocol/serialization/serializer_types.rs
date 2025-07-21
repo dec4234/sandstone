@@ -4,7 +4,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use crate::serialize_primitives;
+use crate::{protocol, serialize_primitives};
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 impl McSerialize for String {
@@ -177,6 +177,12 @@ pub struct PrefixedArray<T: McSerialize + McDeserialize> {
 	pub(crate) vec: Vec<T>
 }
 
+impl<T: protocol::serialization::McDeserialize + protocol::serialization::McSerialize> PrefixedArray<T> {
+	pub fn slice(&self) -> &[T] {
+		&self.vec
+	}
+}
+
 impl<T: McSerialize + McDeserialize> PrefixedArray<T> {
 	pub fn new(vec: Vec<T>) -> Self {
 		Self {
@@ -213,6 +219,16 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 pub struct PrefixedOptional<T: McSerialize + McDeserialize> {
 	pub(crate) is_present: bool,
 	pub(crate) value: Option<T>
+}
+
+impl<T: protocol::serialization::McDeserialize + protocol::serialization::McSerialize> PrefixedOptional<T> {
+	pub fn is_present(&self) -> bool {
+		self.is_present
+	}
+
+	pub fn value(&self) -> Option<&T> {
+		self.value.as_ref()
+	}
 }
 
 impl<T: McSerialize + McDeserialize> PrefixedOptional<T> {

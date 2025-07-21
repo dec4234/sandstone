@@ -5,6 +5,7 @@ members = [
     "sandstone/src/util/mojang-api",
     "examples/server/status_handler",
     "examples/server/login_handler", "examples/client/client_login",
+    "data/registry_data"
 ]
 default-members = ["sandstone", "examples/server/*", "sandstone/src/sandstone-derive"]
 

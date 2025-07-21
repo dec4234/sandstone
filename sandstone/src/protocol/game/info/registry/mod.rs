@@ -22,7 +22,7 @@ pub mod registry_generator;
 pub struct RegistryDataPacketInternal {
 	/// The registry type this data is for, e.g. "minecraft:dimension_type"
 	pub registry_id: String,
-	pub num_entries: VarInt,
+	pub num_entries: VarInt, // can't use PrefixedArray because we have custom deserialization
 	pub entries: Vec<RegistryEntry>
 }
 

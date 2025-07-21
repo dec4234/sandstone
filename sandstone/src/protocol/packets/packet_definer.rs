@@ -173,8 +173,8 @@ mod macros {
 
                                                 if let Ok(a) = a {
                                                     return Ok(Packet::$name(a));
-                                                } else {
-                                                    return Err(SerializingErr::DeserializationError(format!("Failed to deserialize packet {:?} with id '0x{:X}'", stringify!($name), packet_id.0)));
+                                                } else if let Err(e) = a {
+                                                    return Err(SerializingErr::DeserializationError(format!("Failed to deserialize packet {:?} with id '0x{:X}' with message: '{}'", stringify!($name), packet_id.0, e)));
                                                 }
                                             }
                                         )*

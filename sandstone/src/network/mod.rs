@@ -8,7 +8,7 @@ use crate::network::network_error::NetworkError;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::Packet;
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
 use log::{debug, trace};
@@ -25,15 +25,15 @@ pub mod server;
 const PACKET_MAX_SIZE: usize = 2097151;
 // max of 3 byte VarInt
 /// The bit that indicates if a VarInt is continuing into another byte.
-const CONTINUE_BIT: u8 = 0b10000000;
+pub(crate) const CONTINUE_BIT: u8 = 0b10000000;
 
 /// This represents an active Minecraft protocol connection. Either from a client to the server or
 /// from the server to a client. This is possible because they are functionally the same.
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct CraftConnection {
-	pub(crate) tcp_stream: TcpStream,
-	pub(crate) socket_addr: SocketAddr,
+	pub tcp_stream: TcpStream,
+	pub socket_addr: SocketAddr,
 	pub packet_state: PacketState,
 	pub compression_threshold: Option<i32>,
 	pub protocol_version: Option<VarInt>,
@@ -74,7 +74,7 @@ impl CraftConnection {
 	// TODO: could use a good optimization pass - reduce # of copies, ideally to 0
 	/// Receive a minecraft packet from the client. This will block until a packet is received. This removes data from the TCP buffer
 	pub async fn receive_packet(&mut self) -> Result<Packet, NetworkError> {
-		let mut vec = Vec::with_capacity(3);
+		let mut vec = Vec::with_capacity(3); //todo: replace with VarInt::from_tcp_stream
 
 		// read varint for length
 		loop {
@@ -143,32 +143,7 @@ impl CraftConnection {
 	/// Try to receive a packet from the buffer without blocking. This will return 'NoDataReceived'
 	/// if no data is available.
 	pub fn try_receive_packet(&mut self) -> Result<Packet, NetworkError> {
-		let mut vec = vec![];
-
-		// read varint for length
-		loop {
-			let var_buffer = &mut [0u8; 1];
-			let len = self.tcp_stream.try_read(var_buffer)?;
-
-			if len == 0 {
-				return Err(NetworkError::NoDataReceived);
-			}
-
-			let b = var_buffer[0];
-
-			if b & CONTINUE_BIT == 0 {
-				vec.push(b);
-				break;
-			} else {
-				vec.push(b);
-
-				if vec.len() > 3 {
-					return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
-				}
-			}
-		}
-
-		let vari = VarInt::from_slice(&vec)?;
+		let vari = VarInt::from_tcp_stream(&self.tcp_stream)?;
 		let varbytes = vari.to_bytes();
 
 		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
@@ -211,6 +186,22 @@ impl CraftConnection {
 
 		Ok(packet)
 
+	}
+
+	pub async fn receive_direct<T: McSerialize + McDeserialize>(&mut self) -> Result<T, NetworkError> {
+		self.receive_with_length(size_of::<T>()).await
+	}
+
+	pub async fn receive_with_length<T: McSerialize + McDeserialize>(&mut self, size: usize) -> Result<T, NetworkError> {
+		let mut buffer = vec![0; size];
+		let length = self.tcp_stream.read_exact(&mut buffer).await;
+		if let Err(e) = length {
+			return Err(NetworkError::IOError(e));
+		}
+		trace!("Received direct from {} : {:?}", self, &buffer);
+		let mut deserializer = McDeserializer::new(&buffer);
+		let packet = T::mc_deserialize(&mut deserializer)?;
+		Ok(packet)
 	}
 
 	/// Peek the next packet in the queue without removing it. This will block until a packet is received.

@@ -1,0 +1,14 @@
+[package]
+name = "registry_data"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sandstone = {path = "../../sandstone"}
+sandstone-derive = {path = "../../sandstone/src/sandstone-derive"}
+tokio = {version = "1.45.0", features = ["full", "macros"]}
+simple_logger = "5.0.0"
+log = "0.4.27"
+uuid = { version = "1.16.0", features = ["v4"] }
+serde_json = {version = "1.0.141", features = ["default"]}
+serde = {version = "1.0.219", features = ["derive"]}

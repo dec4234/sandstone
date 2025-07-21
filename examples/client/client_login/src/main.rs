@@ -1,4 +1,4 @@
-use log::{debug, LevelFilter};
+use log::{debug, error, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use sandstone::protocol::packets::{HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
@@ -93,29 +93,31 @@ async fn main() {
     client.send_packet(serverbound_known_packs).await.unwrap();
 
     loop {
-        let packet = client.receive_packet().await.unwrap();
+        let packet = client.receive_packet().await;
 
-        match packet {
-            Packet::RegistryData(pack) => {
-                debug!("Received registry data: {:?}", pack);
+        if let Ok(packet) = packet {
+            match packet {
+                Packet::RegistryData(pack) => {
+                    debug!("Received registry data: {:?}", pack);
 
-                continue;
+                    continue;
+                }
+                Packet::UpdateTags(_) => {
+                    debug!("Received update tags: {:?}", packet);
+                    continue;
+                }
+                Packet::FinishConfiguration(_) => {
+                    debug!("Received finish configuration packet: {:?}", packet);
+                    break;
+                }
+                _ => {
+                    panic!("Received unexpected packet: {:?}", packet);
+                }
             }
-            Packet::UpdateTags(_) => {
-                debug!("Received update tags: {:?}", packet);
-                continue;
-            }
-            Packet::FinishConfiguration(_) => {
-                debug!("Received finish configuration packet: {:?}", packet);
-                break;
-            }
-            _ => {
-                panic!("Received unexpected packet: {:?}", packet);
-            }
+        } else {
+            error!("Failed to receive packet: {:?}", packet);
         }
     }
 
     //client.change_state(PacketState::PLAY);
-
-    // todo: registry data right after
 }
