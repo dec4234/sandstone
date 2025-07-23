@@ -114,7 +114,7 @@ async fn main() {
 
         match client.receive_with_length::<RawPacket<RegPacket>>(length.0 as usize).await {
             Ok(raw) => {
-                let regpacket = raw.data;
+                /*let regpacket = raw.data;
 
                 let id = regpacket.id.clone();
 
@@ -128,7 +128,7 @@ async fn main() {
                 // Serialize to JSON and write to file
                 let json = serde_json::to_string_pretty(&regpacket).unwrap();
                 fs::write(&filename, json).unwrap();
-                debug!("Saved raw packet for {} to {}", id, filename);
+                debug!("Saved raw packet for {} to {}", id, filename);*/
             }
             Err(e) => {
                 error!("Failed to receive raw packet: {:?}", e);

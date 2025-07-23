@@ -240,9 +240,33 @@ registry_entry!(
 		tame_texture: String,
 		angry_texture: String,
 		biomes: String // todo: this can be a String or List of tags
+	},
+	"minecraft:pig_variant", PigVariant => {
+		model: Option<String>,
+		asset_id: String
+	},
+	"minecraft:wolf_sound_variant", WolfSoundVariant => {
+		pant_sound: String,
+		hurt_sound: String,
+		growl_sound: String,
+		whine_sound: String,
+		death_sound: String,
+		ambient_sound: String
+	},
+	"minecraft:frog_variant", FrogVariant => {
+		asset_id: String
+	},
+	"minecraft:cat_variant", CatVariant => {
+		asset_id: String
+	},
+	"minecraft:cow_variant", CowVariant => {
+		asset_id: String,
+		model: Option<String>
+	},
+	"minecraft:chicken_variant", ChickenVariant => {
+		asset_id: String,
+		model: Option<String>
 	}
-
-	// todo: painting variant, then other variants?
 );
 
 #[cfg(test)]

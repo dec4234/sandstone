@@ -1,11 +1,10 @@
 //! An NBT implementation without support for sNBT (string NBT). See 
 //! [here](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/NBT) for more information.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Index;
-
-use serde::{Deserialize, Serialize};
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
@@ -396,6 +395,7 @@ impl McDeserialize for NbtCompound {
 		let t = u8::mc_deserialize(deserializer)?;
 
 		if t != 10 {
+			//trace!("Past 20 and next 20 bytes: {:?}", deserializer.data[(deserializer.index-20)..deserializer.index+20]);
 			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {} instead", t)));
 		}
 		

@@ -1,7 +1,7 @@
 //! Define the default values for the different registry entries according to the defaults generally
 //! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
 
-use crate::protocol::game::info::registry::{BannerPattern, DimensionType, WolfVariant};
+use crate::protocol::game::info::registry::{BannerPattern, CatVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PigVariant, WolfSoundVariant, WolfVariant};
 
 impl Default for DimensionType {
 	fn default() -> Self {
@@ -44,6 +44,62 @@ impl Default for WolfVariant {
 			tame_texture: "minecraft:entity/wolf/wolf_woods_tame".to_string(),
 			angry_texture: "minecraft:entity/wolf/wolf_woods_angry".to_string(),
 			biomes: "minecraft:forest".to_string(),
+		}
+	}
+}
+
+impl Default for PigVariant {
+	fn default() -> Self {
+		Self {
+			model: None,
+			asset_id: "minecraft:entity/pig/warm_pig".to_string(),
+		}
+	}
+}
+
+impl Default for WolfSoundVariant {
+	fn default() -> Self {
+		Self {
+			pant_sound: "minecraft:entity.wolf.pant".to_string(),
+			hurt_sound: "minecraft:entity.wolf.hurt".to_string(),
+			growl_sound: "minecraft:entity.wolf.growl".to_string(),
+			whine_sound: "minecraft:entity.wolf.whine".to_string(),
+			death_sound: "minecraft:entity.wolf.death".to_string(),
+			ambient_sound: "minecraft:entity.wolf.ambient".to_string(),
+		}
+	}
+}
+
+impl Default for FrogVariant {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:entity/frog/warm_frog".to_string(),
+		}
+	}
+}
+
+impl Default for CatVariant {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:entity/cat/black".to_string(),
+		}
+	}
+}
+
+impl Default for CowVariant {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:entity/cow/warm_cow".to_string(),
+			model: Some("warm".to_string()),
+		}
+	}
+}
+
+impl Default for ChickenVariant {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:entity/chicken/warm_chicken".to_string(),
+			model: None,
 		}
 	}
 }
