@@ -3,9 +3,9 @@
 #[cfg(test)]
 mod test {
 	use crate::protocol::serialization::serializer_error::SerializingErr;
-	use sandstone_derive::{AsNbt, FromNbt};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 	use crate::protocol_types::datatypes::nbt::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
+	use sandstone_derive::{AsNbt, FromNbt};
 
 	/// Test standard serialization of a NbtCompound.
 	#[test]
@@ -227,5 +227,12 @@ mod test {
 		
 		let test2: OptionTestStruct = nbt.into();
 		assert_eq!(test, test2);
+	}
+
+	#[test]
+	fn test_deserialize_from_bytes() {
+		let mut deserializer = McDeserializer::new(&[10, 0, 11, 100, 101, 115, 99, 114, 105, 112, 116, 105, 111, 110, 8, 0, 9, 116, 114, 97, 110, 115, 108, 97, 116, 101, 0]);
+		let compound = NbtTag::mc_deserialize(&mut deserializer).expect("Failed to deserialize NBT from bytes");
+		println!("{:?}", compound);
 	}
 }

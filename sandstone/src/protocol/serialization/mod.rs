@@ -162,6 +162,15 @@ impl <'a> McDeserializer<'a> {
 			None
 		}
 	}
+	
+	/// Peek at the next byte in the buffer without modifying the index or consuming the byte.
+	pub fn peek_byte(&self) -> Option<u8> {
+		if self.index < self.data.len() {
+			Some(self.data[self.index])
+		} else {
+			None
+		}
+	}
 
 	/// Increment the index of this McDeserializer by the amount specified
 	pub fn increment(&mut self, amount: usize) {
@@ -203,6 +212,15 @@ impl <'a> McDeserializer<'a> {
 		self.index += end;
 
 		ret
+	}
+
+	/// Create a sub-slice of the data, before and after the current index. Useful for debugging.
+	/// Set start rel to the number of bytes before the current index, and end rel to the number of bytes after the current index.
+	pub fn subset(&self, mut start_rel: usize, mut end_rel: usize) -> &[u8] {
+		start_rel = self.index.saturating_sub(start_rel);
+		end_rel = self.index.saturating_add(end_rel);
+
+		&self.data[start_rel..end_rel]
 	}
 }
 

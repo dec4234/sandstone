@@ -1,16 +1,16 @@
 //! An NBT implementation without support for sNBT (string NBT). See 
 //! [here](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/NBT) for more information.
 
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::ops::Index;
-
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::{list_nbtvalue, primvalue_nbtvalue};
+use log::debug;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::ops::Index;
 
 /// The various tags or data types that could be present inside of an NBT compound
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -128,7 +128,7 @@ impl NbtTag {
 			},
 
 			10 => { // compound
-				Ok(NbtTag::Compound(NbtCompound::mc_deserialize(deserializer)?))
+				Ok(NbtTag::Compound(NbtCompound::from_no_tag(deserializer)?))
 			}
 
 			_ => Err(SerializingErr::UniqueFailure("Could not identify tag type".to_string())),
@@ -348,6 +348,27 @@ impl NbtCompound {
 		Ok(compound)
 	}
 
+	/// Deserialize a compound's contents immediately without looking for a root name or tag id.
+	pub fn from_no_tag<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, NbtCompound> {
+		let mut compound = NbtCompound::new_no_name();
+
+		loop {
+			let tag = deserializer.pop();
+
+			if tag.is_none() || tag.unwrap() == 0 { // END Tag
+				break;
+			}
+
+			let name_length = u16::mc_deserialize(deserializer)?;
+			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
+
+			let tag = NbtTag::deserialize_specific(deserializer, tag.unwrap())?;
+			compound.add(name, tag);
+		}
+
+		Ok(compound)
+	}
+
 	fn serialize_tags(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		for (name, tag) in self.map.iter() {
 			serializer.serialize_u8(tag.get_type_id());
@@ -392,30 +413,14 @@ impl McSerialize for NbtCompound {
 impl McDeserialize for NbtCompound {
 	/// Deserialize a compound without a root name, such as network NBT or compounds in compounds.
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		let t = u8::mc_deserialize(deserializer)?;
+		let t = u8::mc_deserialize(deserializer)?; // todo: debug here
 
 		if t != 10 {
-			//trace!("Past 20 and next 20 bytes: {:?}", deserializer.data[(deserializer.index-20)..deserializer.index+20]);
+			debug!("Nearby bytes: {:?}", deserializer.subset(50, 15));
 			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {} instead", t)));
 		}
 		
-		let mut compound = NbtCompound::new_no_name();
-		
-		loop {
-			let tag = deserializer.pop();
-			
-			if tag.is_none() || tag.unwrap() == 0 { // END Tag
-				break;
-			}
-			
-			let name_length = u16::mc_deserialize(deserializer)?;
-			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
-			
-			let tag = NbtTag::deserialize_specific(deserializer, tag.unwrap())?;
-			compound.add(name, tag);
-		}
-		
-		Ok(compound)
+		Self::from_no_tag(deserializer)
 	}
 }
 
