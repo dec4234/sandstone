@@ -4,6 +4,7 @@
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::nbt::nbt::NbtTag::List;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 use log::debug;
@@ -257,15 +258,45 @@ impl From<NbtTag> for Option<String> {
 	}
 }
 
-/*impl<T: Into<NbtTag>> From<Vec<T>> for NbtTag {
+impl<T: Into<NbtTag>> From<Vec<T>> for NbtTag {
 	fn from(value: Vec<T>) -> Self {
-		if let Ok(l) = NbtList::from_vec(value) {
-			NbtTag::List(l)
-		} else {
-			NbtTag::None
+		let tags: Vec<NbtTag> = value.into_iter().map(Into::into).collect();
+		match NbtList::from_vec(tags) {
+			Ok(list) => List(list),
+			Err(_) => NbtTag::None,
 		}
 	}
-}*/
+}
+
+impl<T: From<NbtTag>> From<NbtTag> for Vec<T> {
+	fn from(value: NbtTag) -> Self {
+		match value {
+			NbtTag::ByteArray(list) => {
+				list.list.into_iter().map(|b| T::from(NbtTag::Byte(b))).collect()
+			}
+			List(list) => {
+				// if its, NbtTag::None, don't add it to the list
+				list.list.into_iter().filter_map(|tag| {
+					if tag == NbtTag::None || tag == NbtTag::End {
+						None
+					} else {
+						Some(T::from(tag))
+					}
+				}).collect()
+			}
+			NbtTag::IntArray(list) => {
+				list.list.into_iter().map(|i| T::from(NbtTag::Int(i))).collect()
+			}
+			NbtTag::LongArray(list) => {
+				list.list.into_iter().map(|l| T::from(NbtTag::Long(l))).collect()
+			}
+			_ => {
+				debug!("Cannot convert NbtTag {:?} to Vec<T>", value);
+				vec![]
+			}
+		}
+	}
+}
 
 primvalue_nbtvalue!(
     (i8, Byte),

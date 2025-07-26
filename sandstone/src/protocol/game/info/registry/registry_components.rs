@@ -1,3 +1,5 @@
+//! Complex and nested registry components. Like biome effects, music data, etc.
+
 use crate::protocol::game::info::registry::McDeserialize;
 use crate::protocol::game::info::registry::McDeserializer;
 use crate::protocol::game::info::registry::McSerialize;
@@ -13,8 +15,8 @@ use serde::{Deserialize, Serialize};
 /// Used for some sections of registry components such as painting_variant
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct NbtTranslateColor {
-	pub translate: String,
 	pub color: Option<String>,
+	pub translate: String,
 }
 
 /// Used for "minecraft:worldgen/biome" registry component
@@ -24,7 +26,7 @@ pub struct BiomeEffects {
 	foliage_color: i32,
 	grass_color: i32,
 	mood_sound: BiomeMood,
-	//music: Vec<BiomeMusic>,
+	music: Vec<BiomeMusicData>,
 	music_volume: f32,
 	sky_color: i32,
 	water_color: i32,
@@ -33,14 +35,23 @@ pub struct BiomeEffects {
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct BiomeMood {
-	offset: f64,
 	block_search_extent: i32,
+	offset: f64,
+	sound: String,
 	tick_delay: i32,
-	sound: String
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct BiomeMusicData {
+	data: BiomeMusic,
+	weight: i32
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct BiomeMusic {
-
+	max_delay: i32,
+	min_delay: i32,
+	replace_current_music: bool,
+	sound: String,
 }
 

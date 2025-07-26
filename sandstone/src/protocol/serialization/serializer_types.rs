@@ -5,9 +5,9 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::{protocol, serialize_primitives};
-use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 impl McSerialize for String {
+	/// Serializes a String as a VarInt length prefix followed by the UTF-8 bytes of the string.
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		VarInt(self.len() as i32).mc_serialize(serializer)?;
 		serializer.serialize_bytes(self.as_bytes());
@@ -40,6 +40,7 @@ impl McSerialize for &str {
 }
 
 impl McSerialize for bool {
+	/// Serializes a bool as a single byte, 1 for true and 0 for false.
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match *self {
 			true => {serializer.serialize_u8(1)}
@@ -66,13 +67,14 @@ serialize_primitives!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64
 
 #[macro_use]
 mod macros {
-	/// Used to implement McSerialize and McDeserialize for primitive types. These are ultimately
+	/// Internal Only. Used to implement McSerialize and McDeserialize for primitive types. These are ultimately
 	/// the basis for all other types used in Rust.
 	#[macro_export]
 	macro_rules! serialize_primitives {
         ($($t: ty),*) => {
             $(
             impl McSerialize for $t {
+				/// Get the primitive type as a set of big endian bytes and serialize it to the serializer.
                 fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
                     for b in self.to_be_bytes() {
                         serializer.serialize_u8(b);
@@ -83,6 +85,8 @@ mod macros {
             }
 
             impl McDeserialize for $t {
+				/// Deserialize a primitive type from the deserializer. This assumes that the primitive type is of
+				/// fixed size and is in big-endian format.
                 fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
                     if deserializer.data.len() == 0 {
                         return Err(SerializingErr::InputEnded);
@@ -132,6 +136,7 @@ impl<T: McDeserialize> McDeserialize for Vec<T> {
 
 
 impl<T: McSerialize> McSerialize for Option<T> {
+	/// Ensure that you mean to use this rather than a [PrefixedOptional<T>] This is a simple serialization
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
 		match self {
 			Some(item) => {
@@ -145,10 +150,7 @@ impl<T: McSerialize> McSerialize for Option<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Option<T> {
-	/// Special Deserialization note for Options: The protocol uses Options in some places, usually preceded
-	/// by a boolean indicating if the option is present. In order to handle these cases in a packet,
-	/// you must make a custom struct for at least the Option field and the accompanying boolean field, and
-	/// place them in the correct order in the packet. See [crate::protocol::packets::LoginPropertyElement] as an example.
+	/// Ensure that you mean to use this rather than a [PrefixedOptional<T>].
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
 		if deserializer.is_at_end() {
 			return Ok(None);
@@ -215,17 +217,20 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 	}
 }
 
+/// An Optional<T> with a bool prefix indicating if the value is present. This is a protocol type.
+/// This has started to replace most occurrences of Option<T> in the protocol, as it is more explicit.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrefixedOptional<T: McSerialize + McDeserialize> {
 	pub(crate) is_present: bool,
 	pub(crate) value: Option<T>
 }
 
-impl<T: protocol::serialization::McDeserialize + protocol::serialization::McSerialize> PrefixedOptional<T> {
+impl<T: McDeserialize + McSerialize> PrefixedOptional<T> {
 	pub fn is_present(&self) -> bool {
 		self.is_present
 	}
 
+	/// The equivalent Option<T>
 	pub fn value(&self) -> Option<&T> {
 		self.value.as_ref()
 	}
@@ -278,11 +283,4 @@ impl <T: McSerialize + McDeserialize + McDefault> McDefault for PrefixedOptional
 			value: Some(T::mc_default())
 		}
 	}
-}
-
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct ProtocolPropertyElement {
-	pub name: String,
-	pub value: String,
-	pub signature: PrefixedOptional<String>
 }

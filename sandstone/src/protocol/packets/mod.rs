@@ -15,7 +15,7 @@ use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, ResourcePackEntry, TagArray};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional, ProtocolPropertyElement};
+use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
@@ -25,6 +25,7 @@ use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitfield::BitField;
+use packet_component::ProtocolPropertyElement;
 use sandstone_derive::mc;
 use uuid::Uuid;
 

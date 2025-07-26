@@ -6,7 +6,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 use uuid::Uuid;
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::serializer_types::PrefixedArray;
+use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::datatypes::var_types::VarInt;
 
@@ -49,4 +49,11 @@ pub struct ResourcePackEntry {
 pub struct TagArray {
 	pub identifier: String,
 	pub payload: PrefixedArray<VarInt>
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ProtocolPropertyElement {
+	pub name: String,
+	pub value: String,
+	pub signature: PrefixedOptional<String>
 }

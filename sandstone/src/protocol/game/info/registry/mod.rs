@@ -276,7 +276,7 @@ registry_entry!(
 	},
 	"minecraft:worldgen/biome", Biome => {
 		downfall: f32,
-		has_precipitation: bool,
+		has_precipitation: bool, // note that bools will be shown as "Byte" in JSON form of nbt
 		temperature: f32,
 		temperature_modifier: Option<String>
 	}

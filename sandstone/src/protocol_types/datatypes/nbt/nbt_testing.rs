@@ -235,10 +235,67 @@ mod test {
 		assert_eq!(test, test2);
 	}
 
+	/// Test how bytes are deserialized directly from NbtTag. Previously, the NbtTag and NbtCompound would both
+	/// try to pull the compound id (10) and then deserialize the tags, which would cause an off by-one error.
 	#[test]
-	fn test_deserialize_from_bytes() {
+	fn test_deserialize_compound_via_nbttag() {
 		let mut deserializer = McDeserializer::new(&[10, 0, 11, 100, 101, 115, 99, 114, 105, 112, 116, 105, 111, 110, 8, 0, 9, 116, 114, 97, 110, 115, 108, 97, 116, 101, 0]);
-		let compound = NbtTag::mc_deserialize(&mut deserializer).expect("Failed to deserialize NBT from bytes");
-		println!("{:?}", compound);
+		NbtTag::mc_deserialize(&mut deserializer).expect("Failed to deserialize NBT from bytes");
+
+		let mut compound = NbtCompound::new_no_name();
+		compound.add("translate", "translate".to_string());
+		let mut compound2 = NbtCompound::new_no_name();
+		compound2.add("some_key", "some_value".to_string());
+		compound.add("compound", compound2);
+
+		let mut serializer = McSerializer::new();
+		compound.mc_serialize(&mut serializer).expect("Failed to serialize NBT to bytes");
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		// NbtTag assumes that the root compound has no name
+		let deserialized = NbtTag::mc_deserialize(&mut deserializer).expect("Failed to deserialize NBT from bytes");
+		assert_eq!(deserialized, NbtTag::Compound(compound));
+	}
+
+	/// Test that NbtList can be converted to and from Vec<T> types.
+	#[test]
+	fn test_list_conversions() {
+		let v = vec![1i8, 2, 3, 4, 5];
+		let nbt_list = NbtTag::from(v.clone());
+		let deserialized: Vec<i8> = nbt_list.into();
+		assert_eq!(deserialized, v);
+
+		let v = vec![13, 42, 99];
+		let nbt_list = NbtTag::from(v.clone());
+		let deserialized: Vec<i32> = nbt_list.into();
+		assert_eq!(deserialized, v);
+
+		let v = vec![1i64, 2, 3, 4, 5];
+		let nbt_list = NbtTag::from(v.clone());
+		let deserialized: Vec<i64> = nbt_list.into();
+		assert_eq!(deserialized, v);
+
+		let v = vec![ListTestStruct { i: 1, str: "one".to_string() }, ListTestStruct { i: 2, str: "two".to_string() }];
+		let nbt_list = NbtTag::from(v.clone());
+		let deserialized: Vec<ListTestStruct> = nbt_list.into();
+		assert_eq!(deserialized, v);
+	}
+
+	#[derive(FromNbt, AsNbt, Debug, PartialEq, Clone)]
+	pub struct ListTestStruct {
+		i: i32,
+		str: String,
+	}
+
+	/// Tests that NbtCompound can be serialized to and deserialized from JSON.
+	#[test]
+	fn test_nbt_json() {
+		let mut compound = NbtCompound::new(Some("TestCompound"));
+		compound.add("i8", 123i8);
+		compound.add("i16", 1234i16);
+		compound.add("bool", true);
+		compound.add("str", "hello".to_string());
+		let json = serde_json::to_string(&compound).expect("Failed to serialize NBT to JSON");
+		let deserialized: NbtCompound = serde_json::from_str(&json).expect("Failed to deserialize NBT from JSON");
+		assert_eq!(compound, deserialized);
 	}
 }
