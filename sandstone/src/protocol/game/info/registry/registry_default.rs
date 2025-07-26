@@ -40,10 +40,9 @@ impl Default for BannerPattern {
 impl Default for WolfVariant {
 	fn default() -> Self {
 		Self {
-			wild_texture: "minecraft:entity/wolf/wolf_woods".to_string(),
-			tame_texture: "minecraft:entity/wolf/wolf_woods_tame".to_string(),
-			angry_texture: "minecraft:entity/wolf/wolf_woods_angry".to_string(),
-			biomes: "minecraft:forest".to_string(),
+			wild: "minecraft:entity/wolf/wolf_woods".to_string(),
+			tame: "minecraft:entity/wolf/wolf_woods_tame".to_string(),
+			angry: "minecraft:entity/wolf/wolf_woods_angry".to_string()
 		}
 	}
 }

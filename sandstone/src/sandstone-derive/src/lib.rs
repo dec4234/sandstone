@@ -297,6 +297,12 @@ pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
                 self.as_nbt()
             }
         }
+
+        impl Into<NbtTag> for #struct_name {
+            fn into(self) -> NbtTag {
+                NbtTag::Compound(self.as_nbt())
+            }
+        }
         
         // Provide explicitly named function for clarity
         impl #struct_name {
@@ -343,6 +349,15 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
 				}
 			}
 		}
+
+        impl ::std::convert::From<NbtTag> for #struct_name {
+            fn from(value: NbtTag) -> Self {
+                match value {
+                    NbtTag::Compound(nbt) => nbt.into(),
+                    _ => panic!("Expected NbtTag::Compound, found {:?}", value),
+                }
+            }
+        }
         
         // Provide explicitly named function for clarity
         impl #struct_name {

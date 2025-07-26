@@ -3,6 +3,7 @@
 //! Registry data structures for specific details about biomes, dimensions, datapacks, etc.
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
+use crate::protocol::game::info::registry::registry_components::NbtTranslateColor;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -17,6 +18,7 @@ use sandstone_derive::{McDefault, McSerialize};
 
 pub mod registry_default;
 pub mod registry_generator;
+pub mod registry_components;
 
 #[derive(McDefault, Debug, Clone, PartialEq)]
 pub struct RegistryDataPacketInternal {
@@ -209,6 +211,17 @@ registry_entry!(
 		asset_id: String,
 		translation_key: String
 	},
+	"minecraft:cat_variant", CatVariant => {
+		asset_id: String
+	},
+	"minecraft:chicken_variant", ChickenVariant => {
+		asset_id: String,
+		model: Option<String>
+	},
+	"minecraft:cow_variant", CowVariant => {
+		asset_id: String,
+		model: Option<String>
+	},
 	"minecraft:dimension_type", DimensionType => {
 		fixed_time: Option<i64>,
 		has_skylight: i8,
@@ -229,21 +242,24 @@ registry_entry!(
 		monster_spawn_light_level: i32,
 		monster_spawn_block_light_limit: i32
 	},
-	"minecraft:worldgen/biome", Biome => {
-		has_precipitation: bool,
-		temperature: f32,
-		temperature_modifier: Option<String>,
-		downfall: f32
+	"minecraft:frog_variant", FrogVariant => {
+		asset_id: String
 	},
-	"minecraft:wolf_variant", WolfVariant => {
-		wild_texture: String,
-		tame_texture: String,
-		angry_texture: String,
-		biomes: String // todo: this can be a String or List of tags
+	"minecraft:painting_variant", PaintingVariant => {
+		asset_id: String,
+		author: NbtTranslateColor,
+		height: i32,
+		title: NbtTranslateColor,
+		width: i32
 	},
 	"minecraft:pig_variant", PigVariant => {
-		model: Option<String>,
-		asset_id: String
+		asset_id: String,
+		model: Option<String>
+	},
+	"minecraft:trim_pattern", TrimPattern => {
+		asset_id: String,
+		decal: i8,
+		description: NbtTranslateColor
 	},
 	"minecraft:wolf_sound_variant", WolfSoundVariant => {
 		pant_sound: String,
@@ -253,20 +269,18 @@ registry_entry!(
 		death_sound: String,
 		ambient_sound: String
 	},
-	"minecraft:frog_variant", FrogVariant => {
-		asset_id: String
+	"minecraft:wolf_variant", WolfVariant => {
+		angry: String,
+		tame: String,
+		wild: String
 	},
-	"minecraft:cat_variant", CatVariant => {
-		asset_id: String
-	},
-	"minecraft:cow_variant", CowVariant => {
-		asset_id: String,
-		model: Option<String>
-	},
-	"minecraft:chicken_variant", ChickenVariant => {
-		asset_id: String,
-		model: Option<String>
+	"minecraft:worldgen/biome", Biome => {
+		downfall: f32,
+		has_precipitation: bool,
+		temperature: f32,
+		temperature_modifier: Option<String>
 	}
+
 );
 
 #[cfg(test)]

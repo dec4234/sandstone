@@ -95,7 +95,7 @@ impl NbtTag {
 	}
 	
 	/// Given the type ID, deserialize the corresponding NbtTag.
-	pub fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
+	fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
 		match ty {
 			// Primitives
 			0 => Ok(NbtTag::End),
@@ -177,7 +177,7 @@ impl McSerialize for NbtTag {
 				b.mc_serialize(serializer)?
 			}
 			NbtTag::Compound(c) => {
-				c.mc_serialize(serializer)?
+				c.serialize_no_tag(serializer)?
 			}
 			_ => {} // do nothing for None
 		}
@@ -257,6 +257,16 @@ impl From<NbtTag> for Option<String> {
 	}
 }
 
+/*impl<T: Into<NbtTag>> From<Vec<T>> for NbtTag {
+	fn from(value: Vec<T>) -> Self {
+		if let Ok(l) = NbtList::from_vec(value) {
+			NbtTag::List(l)
+		} else {
+			NbtTag::None
+		}
+	}
+}*/
+
 primvalue_nbtvalue!(
     (i8, Byte),
     (i16, Short),
@@ -275,8 +285,8 @@ list_nbtvalue!(
 /// Effectively a map of NbtTagLegacys
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct NbtCompound {
-	pub(crate) map: HashMap<String, NbtTag>,
 	pub(crate) root_name: Option<String>,
+	pub(crate) map: HashMap<String, NbtTag>,
 }
 
 impl NbtCompound {
@@ -349,7 +359,7 @@ impl NbtCompound {
 	}
 
 	/// Deserialize a compound's contents immediately without looking for a root name or tag id.
-	pub fn from_no_tag<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, NbtCompound> {
+	fn from_no_tag<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, NbtCompound> {
 		let mut compound = NbtCompound::new_no_name();
 
 		loop {
@@ -369,12 +379,27 @@ impl NbtCompound {
 		Ok(compound)
 	}
 
+	/// Serialize the compound without a leading tag byte.
+	fn serialize_no_tag(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+		// only serialize root name if present (non-network compound tag or pre 1.20.2)
+		if let Some(root_name) = &self.root_name {
+			(root_name.len() as u16).mc_serialize(serializer)?;
+			serializer.serialize_bytes(root_name.as_bytes());
+		}
+
+		self.serialize_tags(serializer)?;
+		Ok(())
+	}
+
+	/// Serialize only the tags mapped inside of a compound.
 	fn serialize_tags(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		for (name, tag) in self.map.iter() {
-			serializer.serialize_u8(tag.get_type_id());
-			(name.as_bytes().len() as u16).mc_serialize(serializer)?;
-			serializer.serialize_bytes(name.as_bytes());
-			tag.mc_serialize(serializer)?;
+			if *tag != NbtTag::None && *tag != NbtTag::End {
+				serializer.serialize_u8(tag.get_type_id());
+				(name.as_bytes().len() as u16).mc_serialize(serializer)?;
+				serializer.serialize_bytes(name.as_bytes());
+				tag.mc_serialize(serializer)?;
+			}
 		}
 		serializer.serialize_u8(0); // end tag
 		Ok(())
@@ -399,14 +424,7 @@ impl McSerialize for NbtCompound {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		10u8.mc_serialize(serializer)?;
 		
-		// only serialize root name if present (non-network compound tag or pre 1.20.2)
-		if let Some(root_name) = &self.root_name {
-			(root_name.len() as u16).mc_serialize(serializer)?;
-			serializer.serialize_bytes(root_name.as_bytes());
-		}
-
-		self.serialize_tags(serializer)?;
-		Ok(())
+		self.serialize_no_tag(serializer)
 	}
 }
 

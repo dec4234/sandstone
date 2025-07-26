@@ -1,3 +1,5 @@
+//! Collect registry data and save it as JSON files for development purposes.
+
 use log::{debug, error, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
@@ -22,9 +24,8 @@ use std::time::Duration;
 use tokio::net::TcpStream;
 use uuid::Uuid;
 
-/// This demonstrates the login sequence from a client perspective.
-///
-/// View the README for more information on how to run this example.
+/// This collects registry data sent by the server to the client during the login process and saves
+/// it as JSON files in the `reg_data` directory.
 #[tokio::main]
 async fn main() {
     SimpleLogger::new()

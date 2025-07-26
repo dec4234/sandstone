@@ -128,7 +128,13 @@ mod test {
 		compound.mc_serialize(&mut serializer).unwrap();
 
 		let mut deserializer = McDeserializer::new(&serializer.output);
-		NbtTag::mc_deserialize(&mut deserializer).expect_err("No tag should be deserialized");
+		match NbtTag::mc_deserialize(&mut deserializer) {
+			Ok(NbtTag::Compound(c)) => {
+				assert_eq!(c["none"], NbtTag::None);
+				assert_eq!(c["abc123"], NbtTag::None);
+			},
+			_ => panic!("Expected NbtTag::Compound"),
+		}
 	}
 
 	/// Test struct for conversion to/from NbtCompound.
