@@ -44,8 +44,8 @@ mod macros {
             $(  
                 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
                 pub struct $fancyname {
+                    pub count: u32, // used for iterator
                     pub list: Vec<$t>,
-                    pub count: u32, // iterator
                 }
                 
                 impl $fancyname {

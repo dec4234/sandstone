@@ -55,3 +55,21 @@ pub struct BiomeMusic {
 	sound: String,
 }
 
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct ChatTypePart {
+	translation_key: String,
+	parameters: Vec<String>
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct ExitAction {
+	width: i32,
+	lavel: NbtTranslateColor
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct MonsterSpawnLightLevel {
+	min_inclusive: i32,
+	max_inclusive: i32,
+	r#type: String,
+}

@@ -107,8 +107,6 @@ async fn main() {
 
     debug!("Current dir is: {}", std::env::current_dir().unwrap().display());
 
-    let mut i = 0;
-
     loop {
         tokio::time::sleep(Duration::from_millis(100)).await;
         let length = VarInt::from_tcp_stream(&client.tcp_stream).unwrap();
@@ -128,15 +126,14 @@ async fn main() {
 
                 // Serialize to JSON and write to file
                 let json = serde_json::to_string_pretty(&regpacket).unwrap();
-                debug!("Saved raw packet for {} to {}", id, filename);
+                debug!("Saved registry data for {} to {}", id, filename);
                 fs::write(&filename, json).unwrap();
             }
-            Err(e) => {
-                error!("Failed to receive raw packet: {:?}", e);
+            Err(_) => {
+                debug!("Error received while parsing Registry Packet, assuming no more registry packets.");
+                break;
             }
         }
-
-        i += 1;
     }
 }
 

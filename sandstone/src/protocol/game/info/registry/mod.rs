@@ -1,9 +1,13 @@
 #![allow(non_snake_case)]
 
 //! Registry data structures for specific details about biomes, dimensions, datapacks, etc.
+//!
+//! This is information sent by the server to the client upon login to provide configuration details
+//! about various game elements.
+//!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::NbtTranslateColor;
+use crate::protocol::game::info::registry::registry_components::{ChatTypePart, ExitAction, NbtTranslateColor};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -203,8 +207,6 @@ macro_rules! registry_entry_optional {
 	};
 }
 
-//todo: https://minecraft.wiki/w/Mob_variant_definitions#Cat
-
 // https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 registry_entry!(
 	"minecraft:banner_pattern", BannerPattern => {
@@ -214,6 +216,10 @@ registry_entry!(
 	"minecraft:cat_variant", CatVariant => {
 		asset_id: String
 	},
+	"minecraft:chat_type", ChatType => {
+		chat: ChatTypePart,
+		narration: ChatTypePart
+	},
 	"minecraft:chicken_variant", ChickenVariant => {
 		asset_id: String,
 		model: Option<String>
@@ -222,25 +228,42 @@ registry_entry!(
 		asset_id: String,
 		model: Option<String>
 	},
+	"minecraft:damage_type", DamageType => {
+		death_message_type: Option<String>,
+		effects: Option<String>,
+		exhaustion: f32,
+		message_id: String,
+		scaling: String
+	},
+	"minecraft:dialog", Dialog => {
+		button_width: i32,
+		columns: i32,
+		dialogs: String,
+		exit_action: ExitAction,
+		external_title: NbtTranslateColor,
+		title: NbtTranslateColor,
+		r#type: String
+	},
 	"minecraft:dimension_type", DimensionType => {
+		ambient_light: f32,
+		bed_works: i8,
+		cloud_height: Option<i32>,
+		coordinate_scale: f64,
+		effects: String,
 		fixed_time: Option<i64>,
 		has_skylight: i8,
 		has_ceiling: i8,
-		ultrawarm: i8,
-		natural: i8,
-		coordinate_scale: f64,
-		bed_works: i8,
-		respawn_anchor_works: i8,
-		min_y: i32,
-		height: i32,
-		logical_height: i32,
-		infiniburn: String,
-		effects: String,
-		ambient_light: f32,
-		piglin_safe: i8,
 		has_raids: i8,
-		monster_spawn_light_level: i32,
-		monster_spawn_block_light_limit: i32
+		height: i32,
+		infiniburn: String,
+		logical_height: i32,
+		min_y: i32,
+		monster_spawn_block_light_limit: i32,
+		//monster_spawn_light_level: Union<'a, i32, MonsterSpawnLightLevel>, // todo
+		natural: i8,
+		piglin_safe: i8,
+		respawn_anchor_works: i8,
+		ultrawarm: i8
 	},
 	"minecraft:frog_variant", FrogVariant => {
 		asset_id: String
@@ -255,6 +278,10 @@ registry_entry!(
 	"minecraft:pig_variant", PigVariant => {
 		asset_id: String,
 		model: Option<String>
+	},
+	"minecraft:trim_material", TrimMaterial => {
+		asset_id: String,
+		description: NbtTranslateColor
 	},
 	"minecraft:trim_pattern", TrimPattern => {
 		asset_id: String,
