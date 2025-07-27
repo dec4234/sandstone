@@ -9,6 +9,7 @@ use crate::protocol::game::info::registry::SerializingErr;
 use crate::protocol::game::info::registry::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
+use sandstone_derive::nbt;
 use sandstone_derive::{AsNbt, FromNbt, McDefault, McDeserialize};
 use serde::{Deserialize, Serialize};
 
@@ -64,7 +65,35 @@ pub struct ChatTypePart {
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct ExitAction {
 	width: i32,
-	lavel: NbtTranslateColor
+	level: NbtTranslateColor
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct EnchantmentCost {
+	per_level_above_first: i32,
+	base: i32
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct Effects {
+	#[nbt(rename = "minecraft:attributes")]
+	attributes: Vec<MinecraftAttribute>,
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct MinecraftAttribute {
+	amount: AttributeModifier,
+	operation: String,
+	id: String,
+	attribute: String
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct AttributeModifier {
+	#[nbt(rename = "type")]
+	typ: String,
+	per_level_above_first: f32,
+	base: f32
 }
 
 /// Monster spawn light level can either be a single integer value or a range. This handles this disambiguation basically
@@ -76,6 +105,7 @@ pub struct MonsterSpawnLightLevel {
 	pub(crate) range: Option<MonsterSpawnLightLevelRange>,
 }
 
+// custom impl needed because its basically a Union<i32, MonsterSpawnLightLevelRange>
 impl From<MonsterSpawnLightLevel> for NbtCompound {
 	fn from(value: MonsterSpawnLightLevel) -> Self {
 		if value.isRange {
@@ -114,36 +144,12 @@ impl From<NbtTag> for MonsterSpawnLightLevel {
 	}
 }
 
-#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, McSerialize, McDeserialize)]
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct MonsterSpawnLightLevelRange {
 	min_inclusive: i32,
 	max_inclusive: i32,
-	r#type: String,
-}
-
-// we need these custom impls because of course the field name is "type" which is a reserved keyword in Rust
-impl From<NbtCompound> for MonsterSpawnLightLevelRange {
-	fn from(compound: NbtCompound) -> Self {
-		let min_inclusive: i32 = compound["min_inclusive"].clone().into();
-		let max_inclusive: i32 = compound["max_inclusive"].clone().into();
-		let r#type: String = compound["type"].clone().into();
-
-		MonsterSpawnLightLevelRange {
-			min_inclusive,
-			max_inclusive,
-			r#type,
-		}
-	}
-}
-
-impl Into<NbtCompound> for MonsterSpawnLightLevelRange {
-	fn into(self) -> NbtCompound {
-		let mut compound = NbtCompound::new_no_name();
-		compound.add("min_inclusive".to_string(), self.min_inclusive);
-		compound.add("max_inclusive".to_string(), self.max_inclusive);
-		compound.add("type".to_string(), self.r#type);
-		compound
-	}
+	#[nbt(rename = "type")]
+	typ: String,
 }
 
 #[cfg(test)]
@@ -162,7 +168,7 @@ mod tests {
 			range: Some(MonsterSpawnLightLevelRange {
 				min_inclusive: 0,
 				max_inclusive: 15,
-				r#type: "minecraft:light_range".to_string(),
+				typ: "minecraft:light_range".to_string(),
 			}),
 		};
 		compound.add("light".to_string(), light);

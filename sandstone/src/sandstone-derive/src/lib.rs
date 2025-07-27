@@ -4,9 +4,7 @@ use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::__private::Span;
 use syn::spanned::Spanned;
-use syn::{
-    parse_macro_input, Data, DeriveInput, Expr, Fields, GenericArgument, Ident, PathArguments, Type,
-};
+use syn::{parse_macro_input, Data, DeriveInput, Expr, Fields, GenericArgument, Ident, LitStr, PathArguments, Type};
 
 /// Derive the `McSerialize` trait for a struct. This implies that all fields of the struct also
 /// implement `McSerialize`.
@@ -119,7 +117,7 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
 
 /// Derive the `McDeserialize` trait for a struct. This implies that all fields of the struct also implement
 /// `McDeserialize`.
-/// 
+///
 /// This macro supports the `#[mc(deserialize_if = ...)]` attribute on fields, which allows for conditional
 /// deserialization of Option<T> fields according to if another boolean field is true.
 ///
@@ -176,29 +174,29 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
                     if let Some(cond) = condition {
                         // Validate that the field is an Option<T>
                         let inner_type = match current_ty {
-							Type::Path(type_path) => {
-								let segments = &type_path.path.segments;
-								if let Some(segment) = segments.last() { // Check the last segment instead of the first
-									if segment.ident == "Option" {
-										match &segment.arguments {
-											PathArguments::AngleBracketed(args) => {
-												if let Some(GenericArgument::Type(ty)) = args.args.first() {
-													ty
-												} else {
-													panic!("Option must have an inner type for field {}", field_name);
-												}
-											}
-											_ => panic!("Option must have angle bracketed arguments for field {}", field_name),
-										}
-									} else {
-										panic!("deserialize_if can only be applied to Option fields, but field {} is {}", field_name, segment.ident);
-									}
-								} else {
-									panic!("Invalid type path for field {}", field_name);
-								}
-							}
-							_ => panic!("deserialize_if can only be applied to Option fields with a type path for field {} and field type {}", field_name, current_ty.to_token_stream()),
-						};
+                            Type::Path(type_path) => {
+                                let segments = &type_path.path.segments;
+                                if let Some(segment) = segments.last() { // Check the last segment instead of the first
+                                    if segment.ident == "Option" {
+                                        match &segment.arguments {
+                                            PathArguments::AngleBracketed(args) => {
+                                                if let Some(GenericArgument::Type(ty)) = args.args.first() {
+                                                    ty
+                                                } else {
+                                                    panic!("Option must have an inner type for field {}", field_name);
+                                                }
+                                            }
+                                            _ => panic!("Option must have angle bracketed arguments for field {}", field_name),
+                                        }
+                                    } else {
+                                        panic!("deserialize_if can only be applied to Option fields, but field {} is {}", field_name, segment.ident);
+                                    }
+                                } else {
+                                    panic!("Invalid type path for field {}", field_name);
+                                }
+                            }
+                            _ => panic!("deserialize_if can only be applied to Option fields with a type path for field {} and field type {}", field_name, current_ty.to_token_stream()),
+                        };
 
                         // Conditional deserialization
                         init_stmts.push(quote! {
@@ -211,8 +209,8 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
                     } else {
                         // Regular deserialization
                         init_stmts.push(quote! {
-							let #field_name = <#current_ty as McDeserialize>::mc_deserialize(deserializer)?;
-						});
+                            let #field_name = <#current_ty as McDeserialize>::mc_deserialize(deserializer)?;
+                        });
                     }
 
                     field_names.push(quote! { #field_name });
@@ -224,8 +222,8 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
                     let field_type = &field.ty;
 
                     init_stmts.push(quote! {
-						let #field_ident = <#field_type as McDeserialize>::mc_deserialize(deserializer)?;
-					});
+                        let #field_ident = <#field_type as McDeserialize>::mc_deserialize(deserializer)?;
+                    });
 
                     field_names.push(quote! { #field_ident });
                 }
@@ -270,8 +268,13 @@ pub fn mc(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
 
+#[proc_macro_attribute]
+pub fn nbt(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
+
 /// Convert a struct to an NbtCompound using the `as_nbt` method.
-#[proc_macro_derive(AsNbt)]
+#[proc_macro_derive(AsNbt, attributes(nbt))]
 pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = input.ident;
@@ -283,11 +286,36 @@ pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
         panic!("AsNbt can only be derived for structs");
     };
 
-    let field_names = fields.iter().map(|f| {
-        let name = f.ident.as_ref().unwrap();
-        let name_str = name.to_string();
+    let field_additions = fields.iter().map(|f| {
+        let field_ident = f.ident.as_ref().unwrap();
+        let mut key = field_ident.to_string();
+
+        // Parse field attributes
+        for attr in &f.attrs {
+            if attr.path().is_ident("nbt") {
+                let mut rename_value: Option<String> = None;
+
+                // Parse nested attributes using parse_nested_meta
+                let _ = attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("rename") {
+                        // Get the value after `=`
+                        let value = meta.value()?;
+                        let lit: LitStr = value.parse()?;
+                        rename_value = Some(lit.value());
+                        Ok(())
+                    } else {
+                        Err(meta.error("unsupported nbt attribute"))
+                    }
+                });
+
+                if let Some(v) = rename_value {
+                    key = v;
+                }
+            }
+        }
+
         quote! {
-            compound.add(#name_str, self.#name.clone());
+            compound.add(#key, self.#field_ident.clone());
         }
     });
 
@@ -303,13 +331,11 @@ pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
                 NbtTag::Compound(self.as_nbt())
             }
         }
-        
-        // Provide explicitly named function for clarity
+
         impl #struct_name {
-            /// Convert the struct into an NbtCompound, adding all fields to the compound. Keys for the compound match the field names of the struct.
             pub fn as_nbt(&self) -> NbtCompound {
                 let mut compound = NbtCompound::new_no_name();
-                #(#field_names)*
+                #(#field_additions)*
                 compound
             }
         }
@@ -319,11 +345,8 @@ pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
 }
 
 /// Convert an NbtCompound into a struct using the `from_nbt` method.
-#[proc_macro_derive(FromNbt)]
+#[proc_macro_derive(FromNbt, attributes(nbt))]
 pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
-    use quote::quote;
-    use syn::{parse_macro_input, DeriveInput};
-
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = input.ident;
 
@@ -335,38 +358,61 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
 
     let field_initializers = fields.iter().map(|f| {
         let field_ident = f.ident.as_ref().unwrap();
-        let field_name = field_ident.to_string();
+        let mut key = field_ident.to_string();
+
+        // Parse field attributes
+        for attr in &f.attrs {
+            if attr.path().is_ident("nbt") {
+                let mut rename_value: Option<String> = None;
+
+                // Parse nested attributes using parse_nested_meta
+                let _ = attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("rename") {
+                        // Get the value after `=`
+                        let value = meta.value()?;
+                        let lit: LitStr = value.parse()?;
+                        rename_value = Some(lit.value());
+                        Ok(())
+                    } else {
+                        Err(meta.error("unsupported nbt attribute"))
+                    }
+                });
+
+                if let Some(v) = rename_value {
+                    key = v;
+                }
+            }
+        }
+
         quote! {
-			#field_ident: ::std::convert::From::from(nbt.map[#field_name].clone()),
-		}
+            #field_ident: ::std::convert::From::from(nbt.map[#key].clone()),
+        }
     });
 
     let expanded = quote! {
-		impl ::std::convert::From<NbtCompound> for #struct_name {
-			fn from(nbt: NbtCompound) -> Self {
-				Self {
-					#(#field_initializers)*
-				}
-			}
-		}
+        impl ::std::convert::From<NbtCompound> for #struct_name {
+            fn from(nbt: NbtCompound) -> Self {
+                Self {
+                    #(#field_initializers)*
+                }
+            }
+        }
 
         impl ::std::convert::From<NbtTag> for #struct_name {
             fn from(value: NbtTag) -> Self {
                 match value {
                     NbtTag::Compound(nbt) => nbt.into(),
-                    _ => panic!("Expected NbtTag::Compound, found {:?}", value),
+                    _ => panic!("Expected NbtTag::Compound"),
                 }
             }
         }
-        
-        // Provide explicitly named function for clarity
+
         impl #struct_name {
-            /// Convert the provided NbtCompound into the struct. If any non-optional fields are missing from the NbtCompound, an error will be returned.
             pub fn from_nbt(nbt: NbtCompound) -> Result<Self, SerializingErr> {
                 Ok(nbt.into())
             }
         }
-	};
+    };
 
     TokenStream::from(expanded)
 }

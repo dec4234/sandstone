@@ -7,7 +7,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::{ChatTypePart, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor};
+use crate::protocol::game::info::registry::registry_components::{ChatTypePart, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -264,6 +264,17 @@ registry_entry!(
 		piglin_safe: i8,
 		respawn_anchor_works: i8,
 		ultrawarm: i8
+	},
+	"minecraft:enchantment", Enchantment => {
+		anvil_cost: i32,
+		description: NbtTranslateColor,
+		
+		max_cost: EnchantmentCost,
+		max_level: i32,
+		min_cost: EnchantmentCost,
+		slots: Vec<String>,
+		supported_items: String,
+		weight: i32
 	},
 	"minecraft:frog_variant", FrogVariant => {
 		asset_id: String
