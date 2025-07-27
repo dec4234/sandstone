@@ -7,7 +7,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::{ChatTypePart, ExitAction, NbtTranslateColor};
+use crate::protocol::game::info::registry::registry_components::{ChatTypePart, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -259,7 +259,7 @@ registry_entry!(
 		logical_height: i32,
 		min_y: i32,
 		monster_spawn_block_light_limit: i32,
-		//monster_spawn_light_level: Union<'a, i32, MonsterSpawnLightLevel>, // todo
+		monster_spawn_light_level: MonsterSpawnLightLevel, // todo
 		natural: i8,
 		piglin_safe: i8,
 		respawn_anchor_works: i8,

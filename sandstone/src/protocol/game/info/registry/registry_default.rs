@@ -1,6 +1,7 @@
 //! Define the default values for the different registry entries according to the defaults generally
 //! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
 
+use crate::protocol::game::info::registry::registry_components::MonsterSpawnLightLevel;
 use crate::protocol::game::info::registry::{BannerPattern, CatVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PigVariant, WolfSoundVariant, WolfVariant};
 
 impl Default for DimensionType {
@@ -20,7 +21,7 @@ impl Default for DimensionType {
 			logical_height: 384,
 			min_y: -64,
 			monster_spawn_block_light_limit: 0,
-			//monster_spawn_light_level: 0,
+			monster_spawn_light_level: MonsterSpawnLightLevel::default(),
 			natural: 1,
 			piglin_safe: 0,
 			respawn_anchor_works: 0,
@@ -100,6 +101,16 @@ impl Default for ChickenVariant {
 		Self {
 			asset_id: "minecraft:entity/chicken/warm_chicken".to_string(),
 			model: None,
+		}
+	}
+}
+
+impl Default for MonsterSpawnLightLevel {
+	fn default() -> Self {
+		Self {
+			isRange: false,
+			level: Some(7),
+			range: None,
 		}
 	}
 }
