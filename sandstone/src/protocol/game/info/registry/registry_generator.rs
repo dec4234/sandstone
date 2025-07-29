@@ -1,8 +1,6 @@
 //! Generate registry packets necessary for a successful login.
 
-// https://mcasset.cloud/1.21-pre3/data/minecraft/wolf_variant
-
-use crate::protocol::game::info::registry::{CatVariant, CowVariant, DimensionType, RegistryDataPacketInternal, RegistryType};
+use crate::protocol::game::info::registry::{CatVariant, CowVariant, DimensionType, PaintingVariant, RegistryDataPacketInternal, RegistryType};
 use crate::protocol::game::info::registry::{FrogVariant, PigVariant, RegistryEntry, WolfSoundVariant, WolfVariant};
 use crate::protocol::packets::Packet;
 use crate::protocol::packets::RegistryDataPacket;
@@ -43,29 +41,31 @@ macro_rules! create_registry_packets {
 /// Generate the bare minimum registry packets needed for a successful login.
 ///
 /// Send these packets during the Registry Data phase of the login sequence.
-// painting_variant, wolf_variant
 pub fn default() -> Vec<Packet> {
     create_registry_packets!(
+		"minecraft:cat_variant" => {
+			"minecraft:black", RegistryType::CatVariant(CatVariant::default())
+		},
+		"minecraft:cow_variant" => {
+			"minecraft:warm", RegistryType::CowVariant(CowVariant::default())
+		},
         "minecraft:dimension_type" => {
             "minecraft:overworld", RegistryType::DimensionType(DimensionType::default())
         },
-        "minecraft:wolf_variant" => {
-            "minecraft:woods", RegistryType::WolfVariant(WolfVariant::default())
-        },
+		"minecraft:frog_variant" => {
+			"minecraft:warm", RegistryType::FrogVariant(FrogVariant::default())
+		},
+		"minecraft:painting_variant" => {
+			"minecraft:alban", RegistryType::PaintingVariant(PaintingVariant::default())
+		},
 		"minecraft:pig_variant" => {
 			"minecraft:warm", RegistryType::PigVariant(PigVariant::default())
 		},
 		"minecraft:wolf_sound_variant" => {
 			"minecraft:classic", RegistryType::WolfSoundVariant(WolfSoundVariant::default())
 		},
-		"minecraft:frog_variant" => {
-			"minecraft:warm", RegistryType::FrogVariant(FrogVariant::default())
-		},
-		"minecraft:cat_variant" => {
-			"minecraft:black", RegistryType::CatVariant(CatVariant::default())
-		},
-		"minecraft:cow_variant" => {
-			"minecraft:warm", RegistryType::CowVariant(CowVariant::default())
-		}
+		"minecraft:wolf_variant" => {
+            "minecraft:woods", RegistryType::WolfVariant(WolfVariant::default())
+        }
     )
 }

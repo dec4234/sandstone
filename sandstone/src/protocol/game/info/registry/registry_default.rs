@@ -1,8 +1,8 @@
 //! Define the default values for the different registry entries according to the defaults generally
 //! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
 
-use crate::protocol::game::info::registry::registry_components::MonsterSpawnLightLevel;
-use crate::protocol::game::info::registry::{BannerPattern, CatVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PigVariant, WolfSoundVariant, WolfVariant};
+use crate::protocol::game::info::registry::registry_components::{MonsterSpawnLightLevel, NbtTranslateColor};
+use crate::protocol::game::info::registry::{BannerPattern, CatVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigVariant, WolfSoundVariant, WolfVariant};
 
 impl Default for DimensionType {
 	fn default() -> Self {
@@ -45,6 +45,24 @@ impl Default for WolfVariant {
 			wild: "minecraft:entity/wolf/wolf_woods".to_string(),
 			tame: "minecraft:entity/wolf/wolf_woods_tame".to_string(),
 			angry: "minecraft:entity/wolf/wolf_woods_angry".to_string()
+		}
+	}
+}
+
+impl Default for PaintingVariant {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:alban".to_string(),
+			author: NbtTranslateColor {
+				translate: "painting.minecraft.alban.author".to_string(),
+				color: Some("gray".to_string())
+			},
+			height: 1,
+			title: NbtTranslateColor {
+				translate: "painting.minecraft.alban.title".to_string(),
+				color: Some("yellow".to_string())
+			},
+			width: 1,
 		}
 	}
 }

@@ -297,8 +297,7 @@ pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
 
                 // Parse nested attributes using parse_nested_meta
                 let _ = attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("rename") {
-                        // Get the value after `=`
+                    if meta.path.is_ident("rename") { // basically `#[nbt(rename = "new_name")]`
                         let value = meta.value()?;
                         let lit: LitStr = value.parse()?;
                         rename_value = Some(lit.value());

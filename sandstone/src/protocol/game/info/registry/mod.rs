@@ -7,7 +7,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::{ChatTypePart, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor};
+use crate::protocol::game::info::registry::registry_components::{ChatTypePart, Effects, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -265,10 +265,10 @@ registry_entry!(
 		respawn_anchor_works: i8,
 		ultrawarm: i8
 	},
-	"minecraft:enchantment", Enchantment => {
+	"minecraft:enchantment", Enchantment => { // todo: complex nested structure
 		anvil_cost: i32,
 		description: NbtTranslateColor,
-		
+		effects: Effects,
 		max_cost: EnchantmentCost,
 		max_level: i32,
 		min_cost: EnchantmentCost,

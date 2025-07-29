@@ -77,23 +77,67 @@ pub struct EnchantmentCost {
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct Effects {
 	#[nbt(rename = "minecraft:attributes")]
-	attributes: Vec<MinecraftAttribute>,
+	attributes: Vec<EnchantmentAttribute>,
+	#[nbt(rename = "minecraft:damage")]
+	damage: Vec<EffectsAttribute>,
+	#[nbt(rename = "minecraft:post_attack")]
+	post_attack: Vec<EffectsAttribute>,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
-pub struct MinecraftAttribute {
+pub struct EnchantmentAttribute {
 	amount: AttributeModifier,
-	operation: String,
+	attribute: String,
 	id: String,
-	attribute: String
+	operation: String,
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct AttributeModifierValue {
+	min_duration: Option<f32>,
+	max_amplifier: Option<f32>,
+	min_amplifier: Option<f32>,
+	//max_duration: Option<AttributeModifier>, // todo
+	to_apply: Option<String>,
+	#[nbt(rename = "type")]
+	typ: String,
+	//value: Option<AttributeModifier>,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct AttributeModifier {
+	base: f32,
+	per_level_above_first: f32,
 	#[nbt(rename = "type")]
 	typ: String,
-	per_level_above_first: f32,
-	base: f32
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct EffectsAttribute {
+	affected: Option<String>,
+	effect: AttributeModifierValue,
+	enchanted: Option<String>,
+	requirements: EffectRequirements,
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct EffectRequirements {
+	condition: String,
+	entity: String,
+	predicate: EffectPredicate
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct EffectPredicate {
+	#[nbt(rename = "type")]
+	typ: String,
+	tags: Vec<DamageTag>
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct DamageTag {
+	expected: bool,
+	id: String,
 }
 
 /// Monster spawn light level can either be a single integer value or a range. This handles this disambiguation basically

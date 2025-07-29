@@ -316,6 +316,7 @@ list_nbtvalue!(
 /// Effectively a map of NbtTagLegacys
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct NbtCompound {
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub(crate) root_name: Option<String>,
 	pub(crate) map: HashMap<String, NbtTag>,
 }
