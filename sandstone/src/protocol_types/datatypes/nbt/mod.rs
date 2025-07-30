@@ -1,8 +1,9 @@
+//! Create macros used to generate NbtTag trait implementations for primitive types and list types.
+
 pub mod nbt;
 mod nbt_testing;
 mod snbt_testing;
 pub mod nbt_error;
-pub mod nbt_reader;
 
 #[macro_use]
 mod macros {
@@ -44,6 +45,7 @@ mod macros {
             $(  
                 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
                 pub struct $fancyname {
+                    #[serde(skip_serializing)]
                     pub count: u32, // used for iterator
                     pub list: Vec<$t>,
                 }

@@ -154,7 +154,7 @@ async fn main() {
 
 		client.change_state(PacketState::PLAY);
 
-		let login = Packet::LoginInfo(LoginInfoPacket::new(
+		let login = Packet::LoginInfo(LoginInfoPacket::new( //todo: fix this
 			0,
 			false,
 			PrefixedArray::new(vec!["minecraft:world".to_string()]),

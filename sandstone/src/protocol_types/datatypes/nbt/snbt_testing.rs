@@ -1,3 +1,6 @@
+//! TODO: need to pick this up again.
+//! Conversion functionality to and from NBT to sNBT.
+
 #![allow(unused_imports)]
 
 use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};

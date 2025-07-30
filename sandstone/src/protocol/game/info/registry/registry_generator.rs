@@ -1,6 +1,6 @@
 //! Generate registry packets necessary for a successful login.
 
-use crate::protocol::game::info::registry::{CatVariant, CowVariant, DimensionType, PaintingVariant, RegistryDataPacketInternal, RegistryType};
+use crate::protocol::game::info::registry::{CatVariant, ChickenVariant, CowVariant, DimensionType, PaintingVariant, RegistryDataPacketInternal, RegistryType};
 use crate::protocol::game::info::registry::{FrogVariant, PigVariant, RegistryEntry, WolfSoundVariant, WolfVariant};
 use crate::protocol::packets::Packet;
 use crate::protocol::packets::RegistryDataPacket;
@@ -45,6 +45,9 @@ pub fn default() -> Vec<Packet> {
     create_registry_packets!(
 		"minecraft:cat_variant" => {
 			"minecraft:black", RegistryType::CatVariant(CatVariant::default())
+		},
+		"minecraft:chicken_variant" => {
+			"minecraft:warm", RegistryType::ChickenVariant(ChickenVariant::default())
 		},
 		"minecraft:cow_variant" => {
 			"minecraft:warm", RegistryType::CowVariant(CowVariant::default())

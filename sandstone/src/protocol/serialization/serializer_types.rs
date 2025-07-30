@@ -4,7 +4,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use crate::{protocol, serialize_primitives};
+use crate::serialize_primitives;
 
 impl McSerialize for String {
 	/// Serializes a String as a VarInt length prefix followed by the UTF-8 bytes of the string.
@@ -179,7 +179,7 @@ pub struct PrefixedArray<T: McSerialize + McDeserialize> {
 	pub(crate) vec: Vec<T>
 }
 
-impl<T: protocol::serialization::McDeserialize + protocol::serialization::McSerialize> PrefixedArray<T> {
+impl<T: McDeserialize + McSerialize> PrefixedArray<T> {
 	pub fn slice(&self) -> &[T] {
 		&self.vec
 	}

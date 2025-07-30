@@ -545,15 +545,7 @@ impl NbtList {
 			return Err(NbtError::EndTagNotAllowedInList);
 		}
 
-		if self.type_id == 0 {
-			self.type_id = tag.get_type_id();
-		} else if self.type_id != tag.get_type_id() {
-			return Err(NbtError::MismatchedTypes);
-		}
-
-		self.list.push(tag);
-
-		Ok(())
+		self.add_tag(tag)
 	}
 
 	#[inline]
@@ -624,7 +616,7 @@ impl McDeserialize for NbtList {
 
 impl From<NbtTag> for NbtList {
 	fn from(tag: NbtTag) -> Self {
-		if let NbtTag::List(l) = tag {
+		if let List(l) = tag {
 			l
 		} else {
 			panic!("Cannot convert non-list tag to list");

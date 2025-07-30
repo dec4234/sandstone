@@ -64,10 +64,12 @@ impl McSerializer {
 		}
 	}
 
+	/// Serialize a Vec of bytes and fix it to the end of the internal buffer.
 	pub fn serialize_vec(&mut self, vec: Vec<u8>) {
 		self.serialize_bytes(&vec);
 	}
 
+	/// Add a single byte to the end of the internal buffer.
 	pub fn serialize_u8(&mut self, b: u8) {
 		self.output.push(b);
 	}
@@ -117,6 +119,7 @@ pub struct McDeserializer<'a> {
 }
 
 impl <'a> McDeserializer<'a> {
+	/// Create a new McDeserializer from a slice of bytes.
 	pub fn new(data: &'a [u8]) -> Self {
 		Self {
 			data,
@@ -185,10 +188,12 @@ impl <'a> McDeserializer<'a> {
 		}
 	}
 
+	/// Return true if the current index is at the end of the data buffer.
 	pub fn is_at_end(&self) -> bool {
 		self.index >= self.data.len()
 	}
 
+	/// Set the internal index back to the start of the data buffer.
 	pub fn reset(&mut self) {
 		self.index = 0;
 	}

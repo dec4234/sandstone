@@ -1,7 +1,10 @@
-use std::fmt::{Debug};
+//! Error types that may occur when serializing or deserializing NBT data.
+
+use std::fmt::Debug;
 
 use thiserror::Error;
 
+/// Represents errors that can occur during NBT serialization or deserialization.
 #[derive(Error, Debug, Clone, Hash, PartialEq, Eq)]
 pub enum NbtError {
 	#[error("Input ended prematurely")]

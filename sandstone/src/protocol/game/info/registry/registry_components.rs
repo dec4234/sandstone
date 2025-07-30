@@ -23,130 +23,130 @@ pub struct NbtTranslateColor {
 /// Used for "minecraft:worldgen/biome" registry component
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct BiomeEffects {
-	fog_color: i32,
-	foliage_color: i32,
-	grass_color: i32,
-	mood_sound: BiomeMood,
-	music: Vec<BiomeMusicData>,
-	music_volume: f32,
-	sky_color: i32,
-	water_color: i32,
-	water_fog_color: i32,
+	pub fog_color: i32,
+	pub foliage_color: i32,
+	pub grass_color: i32,
+	pub mood_sound: BiomeMood,
+	pub music: Vec<BiomeMusicData>,
+	pub music_volume: f32,
+	pub sky_color: i32,
+	pub water_color: i32,
+	pub water_fog_color: i32,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct BiomeMood {
-	block_search_extent: i32,
-	offset: f64,
-	sound: String,
-	tick_delay: i32,
+	pub block_search_extent: i32,
+	pub offset: f64,
+	pub sound: String,
+	pub tick_delay: i32,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct BiomeMusicData {
-	data: BiomeMusic,
-	weight: i32
+	pub data: BiomeMusic,
+	pub weight: i32
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct BiomeMusic {
-	max_delay: i32,
-	min_delay: i32,
-	replace_current_music: bool,
-	sound: String,
+	pub max_delay: i32,
+	pub min_delay: i32,
+	pub replace_current_music: bool,
+	pub sound: String,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct ChatTypePart {
-	translation_key: String,
-	parameters: Vec<String>
+	pub translation_key: String,
+	pub parameters: Vec<String>
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct ExitAction {
-	width: i32,
-	level: NbtTranslateColor
+	pub width: i32,
+	pub level: NbtTranslateColor
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct EnchantmentCost {
-	per_level_above_first: i32,
-	base: i32
+	pub per_level_above_first: i32,
+	pub base: i32
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct Effects {
 	#[nbt(rename = "minecraft:attributes")]
-	attributes: Vec<EnchantmentAttribute>,
+	pub attributes: Vec<EnchantmentAttribute>,
 	#[nbt(rename = "minecraft:damage")]
-	damage: Vec<EffectsAttribute>,
+	pub damage: Vec<EffectsAttribute>,
 	#[nbt(rename = "minecraft:post_attack")]
-	post_attack: Vec<EffectsAttribute>,
+	pub post_attack: Vec<EffectsAttribute>,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct EnchantmentAttribute {
-	amount: AttributeModifier,
-	attribute: String,
-	id: String,
-	operation: String,
+	pub amount: AttributeModifier,
+	pub attribute: String,
+	pub id: String,
+	pub operation: String,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct AttributeModifierValue {
-	min_duration: Option<f32>,
-	max_amplifier: Option<f32>,
-	min_amplifier: Option<f32>,
-	//max_duration: Option<AttributeModifier>, // todo
-	to_apply: Option<String>,
+	pub min_duration: Option<f32>,
+	pub max_amplifier: Option<f32>,
+	pub min_amplifier: Option<f32>,
+	//pub max_duration: Option<AttributeModifier>, // todo
+	pub to_apply: Option<String>,
 	#[nbt(rename = "type")]
-	typ: String,
-	//value: Option<AttributeModifier>,
+	pub typ: String,
+	//pub value: Option<AttributeModifier>,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct AttributeModifier {
-	base: f32,
-	per_level_above_first: f32,
+	pub base: f32,
+	pub per_level_above_first: f32,
 	#[nbt(rename = "type")]
-	typ: String,
+	pub typ: String,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct EffectsAttribute {
-	affected: Option<String>,
-	effect: AttributeModifierValue,
-	enchanted: Option<String>,
-	requirements: EffectRequirements,
+	pub affected: Option<String>,
+	pub effect: AttributeModifierValue,
+	pub enchanted: Option<String>,
+	pub requirements: EffectRequirements,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct EffectRequirements {
-	condition: String,
-	entity: String,
-	predicate: EffectPredicate
+	pub condition: String,
+	pub entity: String,
+	pub predicate: EffectPredicate
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct EffectPredicate {
 	#[nbt(rename = "type")]
-	typ: String,
-	tags: Vec<DamageTag>
+	pub typ: String,
+	pub tags: Vec<DamageTag>
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct DamageTag {
-	expected: bool,
-	id: String,
+	pub expected: bool,
+	pub id: String,
 }
 
 /// Monster spawn light level can either be a single integer value or a range. This handles this disambiguation basically
 /// like a union.
 #[derive(McDefault, Debug, Clone, PartialEq, McSerialize, McDeserialize)]
 pub struct MonsterSpawnLightLevel {
-	pub(crate) isRange: bool,
-	pub(crate) level: Option<i32>,
-	pub(crate) range: Option<MonsterSpawnLightLevelRange>,
+	pub isRange: bool,
+	pub level: Option<i32>,
+	pub range: Option<MonsterSpawnLightLevelRange>,
 }
 
 // custom impl needed because its basically a Union<i32, MonsterSpawnLightLevelRange>
@@ -190,10 +190,17 @@ impl From<NbtTag> for MonsterSpawnLightLevel {
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct MonsterSpawnLightLevelRange {
-	min_inclusive: i32,
-	max_inclusive: i32,
+	pub min_inclusive: i32,
+	pub max_inclusive: i32,
 	#[nbt(rename = "type")]
-	typ: String,
+	pub typ: String,
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct WolfVariantAssets {
+	pub angry: String,
+	pub tame: String,
+	pub wild: String
 }
 
 #[cfg(test)]

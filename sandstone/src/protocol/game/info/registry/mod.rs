@@ -7,7 +7,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::{ChatTypePart, Effects, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor};
+use crate::protocol::game::info::registry::registry_components::{ChatTypePart, Effects, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, WolfVariantAssets};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -308,9 +308,7 @@ registry_entry!(
 		ambient_sound: String
 	},
 	"minecraft:wolf_variant", WolfVariant => {
-		angry: String,
-		tame: String,
-		wild: String
+		assets: WolfVariantAssets
 	},
 	"minecraft:worldgen/biome", Biome => {
 		downfall: f32,
