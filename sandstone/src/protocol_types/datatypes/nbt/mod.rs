@@ -1,5 +1,7 @@
 //! Create macros used to generate NbtTag trait implementations for primitive types and list types.
 
+#![allow(clippy::from_over_into)]
+
 pub mod nbt;
 mod nbt_testing;
 mod snbt_testing;
@@ -17,21 +19,25 @@ mod macros {
                     NbtTag::$name(self)
                 }
             }
-        
-            impl From<NbtTag> for $t {
-                fn from(tag: NbtTag) -> Self {
+
+            impl TryFrom<NbtTag> for $t {
+                type Error = $crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+
+                fn try_from(tag: NbtTag) -> Result<Self, Self::Error> {
                     match tag {
-                        NbtTag::$name(val) => val,
-                        _ => panic!("Invalid conversion")
+                        NbtTag::$name(val) => Ok(val),
+                        _ => Err($crate::protocol_types::datatypes::nbt::nbt_error::NbtError::InvalidType)
                     }
                 }
             }
-            
-            impl From<NbtTag> for Option<$t> {
-                fn from(tag: NbtTag) -> Self {
+
+            impl TryFrom<NbtTag> for Option<$t> {
+                type Error = $crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+
+                fn try_from(tag: NbtTag) -> Result<Self, Self::Error> {
                     match tag {
-                        NbtTag::$name(val) => Some(val),
-                        _ => None
+                        NbtTag::$name(val) => Ok(Some(val)),
+                        _ => Ok(None)
                     }
                 }
             }
@@ -107,12 +113,14 @@ mod macros {
                         NbtTag::$name(self)
                     }
                 }
-            
-                impl From<NbtTag> for $fancyname {
-                    fn from(tag: NbtTag) -> Self {
+
+                impl TryFrom<NbtTag> for $fancyname {
+                    type Error = $crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+
+                    fn try_from(tag: NbtTag) -> Result<Self, Self::Error> {
                         match tag {
-                            NbtTag::$name(val) => val,
-                            _ => panic!("Invalid conversion")
+                            NbtTag::$name(val) => Ok(val),
+                            _ => Err($crate::protocol_types::datatypes::nbt::nbt_error::NbtError::InvalidType)
                         }
                     }
                 }

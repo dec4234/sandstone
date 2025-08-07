@@ -16,9 +16,12 @@ use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
+use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::registry_entry;
-use sandstone_derive::{McDefault, McSerialize};
+use sandstone_derive::AsNbt;
+use sandstone_derive::{FromNbt, McDefault, McSerialize};
 
 pub mod registry_default;
 pub mod registry_generator;
@@ -112,7 +115,8 @@ macro_rules! registry_entry {
 		),*
 	) => {
 		$(
-			#[derive(McDefault, Debug, Clone, PartialEq)]
+			/// Automatically generated registry entry body packet.
+			#[derive(McDefault, Debug, Clone, PartialEq, FromNbt, AsNbt)]
 			pub struct $lib_name {
 				$(
 					pub $field_name: $field_type,
@@ -125,34 +129,12 @@ macro_rules! registry_entry {
 						$($field_name,)*
 					}
 				}
-
-				/// Convert from NBT to the registry entry. Useful for deserializing from a RegistryDataPacket.
-				pub fn from_nbt(nbt: &NbtCompound) -> Result<Self, SerializingErr> {
-					Ok(Self {
-						$(
-							$field_name: nbt.map.get(stringify!($field_name))
-								.ok_or_else(|| SerializingErr::NbtMissingField(stringify!($field_name).to_string()))?
-								.clone().into(),
-						)*
-					})
-				}
-
-				/// Convert the registry entry to NBT. Useful for serializing to a RegistryDataPacket.
-				pub fn to_nbt(&self) -> NbtCompound {
-					let mut nbt = NbtCompound::new::<String>(None);
-
-					$(
-						nbt.add(stringify!($field_name), self.$field_name.clone());
-					)*
-
-					nbt
-				}
 			}
 
 			impl McSerialize for $lib_name {
 				/// Serialize the registry via NBT.
 				fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-					self.to_nbt().mc_serialize(serializer)
+					self.as_nbt().mc_serialize(serializer)
 				}
 			}
 
@@ -160,7 +142,7 @@ macro_rules! registry_entry {
 				/// Deserialize the registry via NBT.
 				fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 					let nbt = NbtCompound::mc_deserialize(deserializer)?;
-					Self::from_nbt(&nbt)
+					Ok(Self::try_from(nbt)?)
 				}
 			}
 		)*
@@ -176,8 +158,7 @@ macro_rules! registry_entry {
 				match registry_type.as_str() {
 					$(
 						$mc_name => {
-							let entry = $lib_name::mc_deserialize(deserializer)?;
-							Ok(RegistryType::$lib_name(entry))
+							Ok(RegistryType::$lib_name($lib_name::mc_deserialize(deserializer)?))
 						}
 					),*
 					_ => Err(SerializingErr::UniqueFailure(format!("Unknown registry type: {}", registry_type))),
@@ -281,7 +262,7 @@ registry_entry!(
 	},
 	"minecraft:painting_variant", PaintingVariant => {
 		asset_id: String,
-		author: NbtTranslateColor,
+		author: Option<NbtTranslateColor>,
 		height: i32,
 		title: NbtTranslateColor,
 		width: i32
@@ -291,8 +272,8 @@ registry_entry!(
 		model: Option<String>
 	},
 	"minecraft:trim_material", TrimMaterial => {
-		asset_id: String,
-		description: NbtTranslateColor
+		asset_name: String,
+		description: NbtTranslateColor //todo: continue
 	},
 	"minecraft:trim_pattern", TrimPattern => {
 		asset_id: String,
@@ -327,10 +308,10 @@ mod test {
 	#[test]
 	fn dimensiontype_asnbt() {
 		let dim = DimensionType::default();
-		let original = dim.to_nbt();
-		let from_nbt = DimensionType::from_nbt(&original).unwrap();
+		let original = dim.as_nbt();
+		let from_nbt = DimensionType::from_nbt(original.clone()).unwrap();
 		assert_eq!(dim, from_nbt);
-		let second = from_nbt.to_nbt();
+		let second = from_nbt.as_nbt();
 		assert_eq!(original, second);
 	}
 
@@ -340,7 +321,7 @@ mod test {
 		let mut serializer = McSerializer::new();
 		dim.mc_serialize(&mut serializer).unwrap();
 
-		println!("{:?}", dim.to_nbt());
+		println!("{:?}", dim.as_nbt());
 
 		let mut deserializer = McDeserializer::new(serializer.as_bytes());
 		println!("Deserializing: {:?}", deserializer.data);
@@ -390,7 +371,6 @@ mod test {
 		assert_eq!(deserialized.entries[0].id, "minecraft:overworld");
 
 		assert_eq!(entry, deserialized.entries[0]);
-
 	}
 
 	#[test]

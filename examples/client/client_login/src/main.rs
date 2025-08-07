@@ -1,7 +1,7 @@
-use log::{debug, error, LevelFilter};
+use log::{debug, error, trace, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::{HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
+use sandstone::protocol::packets::{AcknowledgeFinishConfigurationPacket, HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
@@ -98,7 +98,7 @@ async fn main() {
         if let Ok(packet) = packet {
             match packet {
                 Packet::RegistryData(pack) => {
-                    debug!("Received registry data: {:?}", pack);
+                    trace!("Received registry data: {:?}", pack);
 
                     continue;
                 }
@@ -119,5 +119,19 @@ async fn main() {
         }
     }
 
-    //client.change_state(PacketState::PLAY);
+    let ack_config = Packet::AcknowledgeFinishConfiguration(AcknowledgeFinishConfigurationPacket {});
+    debug!("Sending acknowledge finish configuration packet: {:?}", ack_config);
+    client.send_packet(ack_config).await.unwrap();
+
+    client.change_state(PacketState::PLAY);
+
+    let packet = client.receive_packet().await.unwrap();
+    match packet {
+        Packet::LoginInfo(l) => {
+            debug!("Received login info: {:?}", l);
+        }
+        _ => {
+            panic!("Expected acknowledge finish configuration, got: {:?}", packet);
+        }
+    }
 }

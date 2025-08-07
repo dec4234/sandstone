@@ -213,11 +213,13 @@ impl From<String> for NbtTag {
 	}
 }
 
-impl From<NbtTag> for String {
-	fn from(value: NbtTag) -> Self {
+impl TryFrom<NbtTag> for String {
+	type Error = NbtError;
+
+	fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
 		match value {
-			NbtTag::String(s) => s,
-			_ => panic!("Cannot convert non-string tag to string"),
+			NbtTag::String(s) => Ok(s),
+			_ => Err(NbtError::InvalidType),
 		}
 	}
 }
@@ -228,21 +230,22 @@ impl From<bool> for NbtTag {
 	}
 }
 
-impl From<NbtTag> for bool {
-	fn from(value: NbtTag) -> Self {
+impl TryFrom<NbtTag> for bool {
+	type Error = NbtError;
+
+	fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
 		match value {
-			NbtTag::Byte(b) => b != 0,
-			_ => panic!("Cannot convert non-byte tag to bool"),
+			NbtTag::Byte(b) => Ok(b != 0),
+			_ => Err(NbtError::InvalidType),
 		}
 	}
 }
 
 impl<T: Into<NbtTag>> From<Option<T>> for NbtTag {
 	fn from(value: Option<T>) -> Self {
-		if let Some(tag) = value {
-			tag.into()
-		} else {
-			NbtTag::None
+		match value {
+			Some(v) => v.into(),
+			None => NbtTag::None,
 		}
 	}
 }
@@ -250,10 +253,9 @@ impl<T: Into<NbtTag>> From<Option<T>> for NbtTag {
 // this is replicated for the other types in the primvalue_nbtvalue! macro
 impl From<NbtTag> for Option<String> {
 	fn from(value: NbtTag) -> Self {
-		if let NbtTag::String(s) = value {
-			Some(s)
-		} else {
-			None
+		match value {
+			NbtTag::String(s) => Some(s),
+			_ => None, // any other type is not convertible to Option<String>
 		}
 	}
 }
@@ -268,32 +270,43 @@ impl<T: Into<NbtTag>> From<Vec<T>> for NbtTag {
 	}
 }
 
-impl<T: From<NbtTag>> From<NbtTag> for Vec<T> {
-	fn from(value: NbtTag) -> Self {
+impl<T: TryFrom<NbtTag>> TryFrom<NbtTag> for Vec<T> where NbtError: From<<T as TryFrom<NbtTag>>::Error> {
+	type Error = NbtError;
+
+	fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
 		match value {
 			NbtTag::ByteArray(list) => {
-				list.list.into_iter().map(|b| T::from(NbtTag::Byte(b))).collect()
+				let mut vec = vec![];
+				for b in list.list {
+					vec.push(T::try_from(NbtTag::Byte(b))?);
+				}
+				Ok(vec)
 			}
 			List(list) => {
-				// if its, NbtTag::None, don't add it to the list
-				list.list.into_iter().filter_map(|tag| {
+				let mut vec = vec![];
+				for tag in list.list {
 					if tag == NbtTag::None || tag == NbtTag::End {
-						None
-					} else {
-						Some(T::from(tag))
+						continue;
 					}
-				}).collect()
+					vec.push(T::try_from(tag)?);
+				}
+				Ok(vec)
 			}
 			NbtTag::IntArray(list) => {
-				list.list.into_iter().map(|i| T::from(NbtTag::Int(i))).collect()
+				let mut vec = vec![];
+				for i in list.list {
+					vec.push(T::try_from(NbtTag::Int(i))?);
+				}
+				Ok(vec)
 			}
 			NbtTag::LongArray(list) => {
-				list.list.into_iter().map(|l| T::from(NbtTag::Long(l))).collect()
+				let mut vec = vec![];
+				for l in list.list {
+					vec.push(T::try_from(NbtTag::Long(l))?);
+				}
+				Ok(vec)
 			}
-			_ => {
-				debug!("Cannot convert NbtTag {:?} to Vec<T>", value);
-				vec![]
-			}
+			_ => Err(NbtError::InvalidType),
 		}
 	}
 }
@@ -354,6 +367,10 @@ impl NbtCompound {
 		}
 		
 		self.map.insert(name.into(), tag);
+	}
+
+	pub fn get<T: Into<String>>(&self, name: T) -> Option<&NbtTag> {
+		self.map.get(&name.into())
 	}
 
 	#[inline]
@@ -480,7 +497,7 @@ impl McDefault for NbtCompound {
 
 		compound.add("default_string", "default_value");
 		compound.add("default_int", 42);
-		compound.add("default_float", 3.14f32);
+		compound.add("default_float", 3.19f32);
 
 		compound
 	}
@@ -492,12 +509,13 @@ impl Into<NbtTag> for NbtCompound {
 	}
 }
 
-impl From<NbtTag> for NbtCompound {
-	fn from(tag: NbtTag) -> Self {
-		if let NbtTag::Compound(c) = tag {
-			c
-		} else {
-			panic!("Cannot convert non-compound tag to compound");
+impl TryFrom<NbtTag> for NbtCompound {
+	type Error = NbtError;
+
+	fn try_from(tag: NbtTag) -> Result<Self, Self::Error> {
+		match tag {
+			NbtTag::Compound(c) => Ok(c),
+			_ => Err(NbtError::InvalidType),
 		}
 	}
 }
@@ -614,18 +632,19 @@ impl McDeserialize for NbtList {
 	}
 }
 
-impl From<NbtTag> for NbtList {
-	fn from(tag: NbtTag) -> Self {
-		if let List(l) = tag {
-			l
-		} else {
-			panic!("Cannot convert non-list tag to list");
+impl TryFrom<NbtTag> for NbtList {
+	type Error = NbtError;
+
+	fn try_from(tag: NbtTag) -> Result<Self, Self::Error> {
+		match tag {
+			List(list) => Ok(list),
+			_ => Err(NbtError::InvalidType),
 		}
 	}
 }
 
 impl Into<NbtTag> for NbtList {
 	fn into(self) -> NbtTag {
-		NbtTag::List(self)
+		List(self)
 	}
 }

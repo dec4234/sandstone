@@ -55,10 +55,10 @@ impl Default for PaintingVariant {
 	fn default() -> Self {
 		Self {
 			asset_id: "minecraft:alban".to_string(),
-			author: NbtTranslateColor {
+			author: Some(NbtTranslateColor {
 				translate: "painting.minecraft.alban.author".to_string(),
 				color: Some("gray".to_string())
-			},
+			}),
 			height: 1,
 			title: NbtTranslateColor {
 				translate: "painting.minecraft.alban.title".to_string(),

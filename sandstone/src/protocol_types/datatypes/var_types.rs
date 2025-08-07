@@ -143,7 +143,7 @@ impl FromStr for VarInt {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let bytes = s.as_bytes();
 
-        if bytes.len() <= 0 || bytes.len() > 5 {
+        if bytes.is_empty() || bytes.len() > 5 {
             return Err(Error);
         }
 
@@ -168,7 +168,7 @@ impl McDeserialize for VarInt {
     fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, VarInt> {
         let mut bytes = Vec::with_capacity(5);
 
-        if deserializer.data.len() == 0 {
+        if deserializer.data.is_empty() {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
@@ -306,7 +306,7 @@ impl FromStr for VarLong {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let bytes = s.as_bytes();
 
-        if bytes.len() <= 0 || bytes.len() > 5 {
+        if bytes.is_empty() || bytes.len() > 5 {
             return Err(Error);
         }
 

@@ -223,10 +223,8 @@ impl CraftConnection {
 			if b[i - 1] & CONTINUE_BIT == 0 {
 				vari = VarInt::from_slice(&b)?;
 				break;
-			} else {
-				if i > 3 { // any varint over 3 bytes is either broken or too big for a packet
-					return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
-				}
+			} else if i > 3 { // any varint over 3 bytes is either broken or too big for a packet
+				return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
 			}
 
 			i += 1;

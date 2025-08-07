@@ -48,7 +48,7 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
         Data::Enum(enu) => {
             let mut match_arms = vec![];
 
-            for (_, variant) in enu.variants.iter().enumerate() {
+            for variant in enu.variants.iter() {
                 let variant_name = &variant.ident;
 
                 let pattern = match &variant.fields {
@@ -343,7 +343,7 @@ pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Convert an NbtCompound into a struct using the `from_nbt` method.
+/// Convert an NbtCompound into a struct using the `TryFrom` trait.
 #[proc_macro_derive(FromNbt, attributes(nbt))]
 pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -358,16 +358,14 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
     let field_initializers = fields.iter().map(|f| {
         let field_ident = f.ident.as_ref().unwrap();
         let mut key = field_ident.to_string();
+        let field_ty = &f.ty;
 
-        // Parse field attributes
+        // Parse rename attribute
         for attr in &f.attrs {
             if attr.path().is_ident("nbt") {
                 let mut rename_value: Option<String> = None;
-
-                // Parse nested attributes using parse_nested_meta
                 let _ = attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("rename") {
-                        // Get the value after `=`
                         let value = meta.value()?;
                         let lit: LitStr = value.parse()?;
                         rename_value = Some(lit.value());
@@ -376,39 +374,54 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
                         Err(meta.error("unsupported nbt attribute"))
                     }
                 });
-
                 if let Some(v) = rename_value {
                     key = v;
                 }
             }
         }
 
+        let key_str = key.clone();
+
         quote! {
-            #field_ident: ::std::convert::From::from(nbt.map[#key].clone()),
+            #field_ident: {
+                match nbt.get(#key_str) {
+                    Some(tag) => {
+                        <#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
+                            .map_err(|_| NbtError::InvalidType)?
+                    }
+                    None => {
+                        return Err(NbtError::MissingField(#key_str.to_string()));
+                    }
+                }
+            },
         }
     });
 
     let expanded = quote! {
-        impl ::std::convert::From<NbtCompound> for #struct_name {
-            fn from(nbt: NbtCompound) -> Self {
-                Self {
+        impl ::std::convert::TryFrom<NbtCompound> for #struct_name {
+            type Error = NbtError;
+
+            fn try_from(nbt: NbtCompound) -> Result<Self, Self::Error> {
+                Ok(Self {
                     #(#field_initializers)*
-                }
+                })
             }
         }
 
-        impl ::std::convert::From<NbtTag> for #struct_name {
-            fn from(value: NbtTag) -> Self {
+        impl ::std::convert::TryFrom<NbtTag> for #struct_name {
+            type Error = NbtError;
+
+            fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
                 match value {
-                    NbtTag::Compound(nbt) => nbt.into(),
-                    _ => panic!("Expected NbtTag::Compound"),
+                    NbtTag::Compound(nbt) => Self::try_from(nbt),
+                    _ => Err(NbtError::InvalidType),
                 }
             }
         }
 
         impl #struct_name {
-            pub fn from_nbt(nbt: NbtCompound) -> Result<Self, SerializingErr> {
-                Ok(nbt.into())
+            pub fn from_nbt(nbt: NbtCompound) -> Result<Self, NbtError> {
+                Self::try_from(nbt)
             }
         }
     };

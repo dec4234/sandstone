@@ -21,4 +21,8 @@ pub enum NbtError {
 	EndTagNotAllowedInList,
 	#[error("Incompatible types")]
 	IncompatibleTypes,
+	#[error("Invalid NBT type")]
+	InvalidType,
+	#[error("Missing field: {0}")]
+	MissingField(String),
 }

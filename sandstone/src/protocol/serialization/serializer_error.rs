@@ -5,6 +5,7 @@ use std::array::TryFromSliceError;
 use std::fmt::Debug;
 use std::string::FromUtf8Error;
 
+use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use thiserror::Error;
 
 /// A type that describes common errors encountered while serializing or deserializing network data.
@@ -37,13 +38,13 @@ pub enum SerializingErr {
 	#[error("The input data is not a valid enum value: {0}")]
 	InvalidEnumValue(i8),
 	#[error("Nbt input is missing a field: {0}")]
-	NbtMissingField(String),
-	#[error("Nbt input is missing a field: {0}")]
 	MissingField(String),
 	#[error("Failed to find packet: {0}")]
 	NoKnownPacket(String),
 	#[error("Failed to deserialize: {0}")]
 	DeserializationError(String),
+	#[error(transparent)]
+	NbtError(#[from] NbtError),
 }
 
 impl PartialEq for SerializingErr {

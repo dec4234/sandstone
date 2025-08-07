@@ -208,7 +208,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				dimension_names: PrefixedArray<String>,
 				max_players: VarInt,
 				#[doc = "Render distance of the server in chunks. The client may use any value less than or equal to this value."]
-				render_distance: VarInt,
+				view_distance: VarInt,
 				simulation_distance: VarInt,
 				reduced_debug_info: bool,
 				enable_respawn_screen: bool,

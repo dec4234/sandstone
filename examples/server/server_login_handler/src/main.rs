@@ -157,7 +157,7 @@ async fn main() {
 		let login = Packet::LoginInfo(LoginInfoPacket::new( //todo: fix this
 			0,
 			false,
-			PrefixedArray::new(vec!["minecraft:world".to_string()]),
+			PrefixedArray::new(vec!["minecraft:overworld".to_string()]),
 			2.into(),
 			0.into(),
 			0.into(),
@@ -165,7 +165,7 @@ async fn main() {
 			false,
 			false,
 			VarInt(0),
-			"minecraft:world".to_string(),
+			"minecraft:overworld".to_string(),
 			0i64,
 			PlayerGamemode::SURVIVAL,
 			PlayerGamemode::SURVIVAL,

@@ -2,9 +2,9 @@
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::serialization::serializer_error::SerializingErr;
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 	use crate::protocol_types::datatypes::nbt::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
+	use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 	use sandstone_derive::{AsNbt, FromNbt};
 
 	/// Test standard serialization of a NbtCompound.
@@ -151,7 +151,7 @@ mod test {
 		let test = TestStruct {
 			a: 42,
 			b: "Hello".to_string(),
-			c: 3.14,
+			c: 3.19,
 		};
 
 		let as_test = test.as_nbt();
@@ -166,14 +166,14 @@ mod test {
 		let test = TestStruct {
 			a: 42,
 			b: "Hello".to_string(),
-			c: 3.14,
+			c: 3.19,
 		};
 
 		let nbt: NbtCompound = test.into();
 
 		assert_eq!(nbt["a"], NbtTag::Int(42));
 		assert_eq!(nbt["b"], NbtTag::String("Hello".to_string()));
-		assert_eq!(nbt["c"], NbtTag::Double(3.14));
+		assert_eq!(nbt["c"], NbtTag::Double(3.19));
 	}
 
 	/// Test that an NbtCompound can be converted into a struct using the `from_nbt` function.
@@ -183,13 +183,13 @@ mod test {
 		
 		nbt.add("a", NbtTag::Int(42));
 		nbt.add("b", NbtTag::String("Hello".to_string()));
-		nbt.add("c", NbtTag::Double(3.14));
+		nbt.add("c", NbtTag::Double(3.19));
 
-		let test: TestStruct = nbt.into();
+		let test: TestStruct = nbt.try_into().unwrap();
 
 		assert_eq!(test.a, 42);
 		assert_eq!(test.b, "Hello");
-		assert_eq!(test.c, 3.14);
+		assert_eq!(test.c, 3.19);
 	}
 
 	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
@@ -213,7 +213,7 @@ mod test {
 		assert_eq!(nbt["b"], NbtTag::None);
 		assert_eq!(nbt["c"], NbtTag::None);
 		
-		let test2: OptionTestStruct = nbt.into();
+		let test2: OptionTestStruct = nbt.try_into().unwrap();
 		assert_eq!(test, test2);
 	}
 	
@@ -231,7 +231,7 @@ mod test {
 		assert_eq!(nbt["b"], NbtTag::String("Hello".to_string()));
 		assert_eq!(nbt["c"], NbtTag::Double(2.6));
 		
-		let test2: OptionTestStruct = nbt.into();
+		let test2: OptionTestStruct = nbt.try_into().unwrap();
 		assert_eq!(test, test2);
 	}
 
@@ -261,22 +261,22 @@ mod test {
 	fn test_list_conversions() {
 		let v = vec![1i8, 2, 3, 4, 5];
 		let nbt_list = NbtTag::from(v.clone());
-		let deserialized: Vec<i8> = nbt_list.into();
+		let deserialized: Vec<i8> = nbt_list.try_into().unwrap();
 		assert_eq!(deserialized, v);
 
 		let v = vec![13, 42, 99];
 		let nbt_list = NbtTag::from(v.clone());
-		let deserialized: Vec<i32> = nbt_list.into();
+		let deserialized: Vec<i32> = nbt_list.try_into().unwrap();
 		assert_eq!(deserialized, v);
 
 		let v = vec![1i64, 2, 3, 4, 5];
 		let nbt_list = NbtTag::from(v.clone());
-		let deserialized: Vec<i64> = nbt_list.into();
+		let deserialized: Vec<i64> = nbt_list.try_into().unwrap();
 		assert_eq!(deserialized, v);
 
 		let v = vec![ListTestStruct { i: 1, str: "one".to_string() }, ListTestStruct { i: 2, str: "two".to_string() }];
 		let nbt_list = NbtTag::from(v.clone());
-		let deserialized: Vec<ListTestStruct> = nbt_list.into();
+		let deserialized: Vec<ListTestStruct> = nbt_list.try_into().unwrap();
 		assert_eq!(deserialized, v);
 	}
 

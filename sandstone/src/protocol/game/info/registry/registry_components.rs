@@ -9,6 +9,7 @@ use crate::protocol::game::info::registry::SerializingErr;
 use crate::protocol::game::info::registry::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
+use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use sandstone_derive::nbt;
 use sandstone_derive::{AsNbt, FromNbt, McDefault, McDeserialize};
 use serde::{Deserialize, Serialize};
@@ -18,6 +19,15 @@ use serde::{Deserialize, Serialize};
 pub struct NbtTranslateColor {
 	pub color: Option<String>,
 	pub translate: String,
+}
+
+impl From<NbtTag> for Option<NbtTranslateColor> {
+	fn from(tag: NbtTag) -> Self {
+		match NbtTranslateColor::try_from(tag) {
+			Ok(value) => Some(value),
+			Err(_) => None,
+		}
+	}
 }
 
 /// Used for "minecraft:worldgen/biome" registry component
@@ -170,20 +180,22 @@ impl From<MonsterSpawnLightLevel> for NbtTag {
 	}
 }
 
-impl From<NbtTag> for MonsterSpawnLightLevel {
-	fn from(tag: NbtTag) -> Self {
+impl TryFrom<NbtTag> for MonsterSpawnLightLevel {
+	type Error = NbtError;
+
+	fn try_from(tag: NbtTag) -> Result<Self, Self::Error> {
 		match tag {
-			NbtTag::Int(level) => MonsterSpawnLightLevel {
+			NbtTag::Int(level) => Ok(MonsterSpawnLightLevel {
 				isRange: false,
 				level: Some(level),
 				range: None,
-			},
-			NbtTag::Compound(compound) => MonsterSpawnLightLevel {
+			}),
+			NbtTag::Compound(compound) => Ok(MonsterSpawnLightLevel {
 				isRange: true,
 				level: None,
-				range: Some(MonsterSpawnLightLevelRange::from(compound)),
-			},
-			_ => panic!("Invalid NbtTag for MonsterSpawnLightLevel"),
+				range: Some(MonsterSpawnLightLevelRange::try_from(compound)?),
+			}),
+			_ => Err(NbtError::InvalidType),
 		}
 	}
 }
