@@ -8,6 +8,9 @@
 //! All information for the packets is derived from the wiki. Consider supporting the wiki efforts.
 //! https://minecraft.wiki/w/Java_Edition_protocol
 
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::new_without_default)] // todo: maybe needs default?
+
 use crate::game::player::PlayerGamemode;
 use crate::packets;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;

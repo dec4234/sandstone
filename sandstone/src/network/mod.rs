@@ -63,7 +63,7 @@ impl CraftConnection {
 		packet.mc_serialize(&mut serializer)?;
 		let output = &serializer.output;
 
-		trace!("Sending to {} : {:?}", self, output);
+		trace!("Sending to {self} : {output:?}");
 
 		// TODO: compress & encrypt here
 
@@ -101,11 +101,8 @@ impl CraftConnection {
 		// could define &[u8] to max packet size but that seems like too much memory usage
 		let mut buffer = vec![0; length];
 
-		let mut i = 0;
-
-		for b in &vec {
+		for (i, b) in vec.iter().enumerate() {
 			buffer[i] = *b;
-			i += 1;
 		}
 
 		let length = self.tcp_stream.read(&mut buffer[vec.len()..]).await;
@@ -114,7 +111,7 @@ impl CraftConnection {
 			Ok(length) => {length}
 			Err(e) => {
 				if e.to_string().contains("An established connection was aborted by the software in your host machine") {
-					debug!("OS Error detected in packet receive, closing the connection: {}", e);
+					debug!("OS Error detected in packet receive, closing the connection: {e}");
 					self.close().await;
 					return Err(NetworkError::ConnectionAbortedLocally);
 				}
@@ -156,11 +153,8 @@ impl CraftConnection {
 		// could define &[u8] to max packet size but that seems like too much memory usage
 		let mut buffer = vec![0; length];
 
-		let mut i = 0;
-
-		for b in &varbytes {
+		for (i, b) in varbytes.iter().enumerate() {
 			buffer[i] = *b;
-			i += 1;
 		}
 
 		let length = self.tcp_stream.try_read(&mut buffer[varbytes.len()..]);
@@ -242,18 +236,15 @@ impl CraftConnection {
 		// could define &[u8] to max packet size but that seems like too much memory usage
 		let mut buffer = vec![0; length];
 
-		let mut i = 0;
-
-		for b in &varbytes {
+		for (i, b) in varbytes.iter().enumerate() {
 			buffer[i] = *b;
-			i += 1;
 		}
 
 		let length = self.tcp_stream.peek(&mut buffer[varbytes.len()..]).await;
 
 		if let Err(e) = length {
 			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
-				debug!("OS Error detected in packet receive, closing the connection: {}", e);
+				debug!("OS Error detected in packet receive, closing the connection: {e}");
 				self.close().await;
 				return Err(NetworkError::ConnectionAbortedLocally);
 			}
@@ -293,25 +284,25 @@ impl CraftConnection {
 
 	/// Shutdown the connection as soon as possible
 	pub async fn close(&mut self) -> bool {
-		debug!("Closing connection to {}", self);
+		debug!("Closing connection to {self}");
 		self.tcp_stream.shutdown().await.is_ok()
 	}
 
 	/// Get the protocol version of this client as a `ProtocolVersion` enum. This will return `None` if the
 	/// handshake has not been performed or if the protocol version number is not known to the library
 	pub fn get_client_version(&self) -> Option<ProtocolVerison> {
-		Some(ProtocolVerison::from(self.protocol_version?.0 as i16)?)
+		ProtocolVerison::from(self.protocol_version?.0 as i16)
 	}
 }
 
 impl Display for CraftConnection {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let s = if let Ok(addr) = self.tcp_stream.peer_addr() {
-			format!("{}", addr)
+			format!("{addr}")
 		} else {
 			"Unknown".to_string()
 		};
 
-		write!(f, "{}", format!("CraftConnection: {}", s))
+		write!(f, "{}", format!("CraftConnection: {s}"))
 	}
 }

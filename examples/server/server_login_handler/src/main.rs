@@ -59,18 +59,18 @@ async fn main() {
 			continue;
 		}
 
-		debug!("Beginning login sequence for {}", client);
+		debug!("Beginning login sequence for {client}");
 
 		let login_start = client.receive_packet().await.unwrap();
 		match login_start {
 			Packet::LoginStart(packet) => {
-				debug!("Received login start packet from {}", client);
-				debug!("Login start packet: {:?}", packet);
+				debug!("Received login start packet from {client}");
+				debug!("Login start packet: {packet:?}");
 
 				// todo: extract player details like username
 			}
 			_ => {
-				debug!("Expected login start packet, got {:?}", login_start);
+				debug!("Expected login start packet, got {login_start:?}");
 				continue;
 			}
 		}
@@ -85,12 +85,12 @@ async fn main() {
 		let login_ack = client.receive_packet().await.unwrap();
 		match login_ack {
 			Packet::LoginAcknowledged(..) => {
-				debug!("Received login acknowledged packet from {}", client);
-				debug!("Login acknowledged packet: {:?}", login_ack);
+				debug!("Received login acknowledged packet from {client}");
+				debug!("Login acknowledged packet: {login_ack:?}");
 				client.change_state(PacketState::CONFIGURATION);
 			}
 			_ => {
-				debug!("Expected login acknowledged, got {:?}", login_ack);
+				debug!("Expected login acknowledged, got {login_ack:?}");
 				continue;
 			}
 		}
@@ -100,37 +100,37 @@ async fn main() {
 		));
 		client.send_packet(packs).await.unwrap();
 
-		debug!("Sent clientbound known packs to {}", client);
+		debug!("Sent clientbound known packs to {client}");
 
 		loop {
 			let packs = client.receive_packet().await.unwrap();
 			match packs {
 				Packet::ServerboundPluginMessage(..) => {
 					// optional: before known packs
-					debug!("Received plugin message from {}", client);
-					debug!("Plugin message: {:?}", packs);
+					debug!("Received plugin message from {client}");
+					debug!("Plugin message: {packs:?}");
 					continue;
 				}
 				Packet::ClientInformation(..) => {
 					// optional: before known packs
-					debug!("Received client information from {}", client);
-					debug!("Client information: {:?}", packs);
+					debug!("Received client information from {client}");
+					debug!("Client information: {packs:?}");
 					continue;
 				}
 				Packet::ServerboundKnownPacks(..) => {
-					debug!("Received serverbound known packs from {}", client);
-					debug!("Serverbound known packs: {:?}", packs);
+					debug!("Received serverbound known packs from {client}");
+					debug!("Serverbound known packs: {packs:?}");
 					break;
 				}
 				_ => {
-					debug!("Expected serverbound known packs, got {:?}", packs);
+					debug!("Expected serverbound known packs, got {packs:?}");
 					break;
 				}
 			}
 		}
 
 		// send all registry packets
-		debug!("Sending registry packets to {}", client);
+		debug!("Sending registry packets to {client}");
 		for p in registry_generator::default() {
 			client.send_packet(p).await.unwrap();
 		}
@@ -138,16 +138,16 @@ async fn main() {
 		let packet = Packet::FinishConfiguration(FinishConfigurationPacket::new());
 		client.send_packet(packet).await.unwrap();
 
-		debug!("Sent finish configuration to {}", client);
+		debug!("Sent finish configuration to {client}");
 
 		let ack = client.receive_packet().await.unwrap();
 		match ack {
 			Packet::AcknowledgeFinishConfiguration(..) => {
-				debug!("Received acknowledge finish configuration from {}", client);
-				debug!("Acknowledge finish configuration: {:?}", ack);
+				debug!("Received acknowledge finish configuration from {client}");
+				debug!("Acknowledge finish configuration: {ack:?}");
 			}
 			_ => {
-				debug!("Expected acknowledge finish configuration, got {:?}", ack);
+				debug!("Expected acknowledge finish configuration, got {ack:?}");
 				continue;
 			}
 		}
@@ -155,32 +155,32 @@ async fn main() {
 		client.change_state(PacketState::PLAY);
 
 		let login = Packet::LoginInfo(LoginInfoPacket::new( //todo: fix this
-			0,
+			9,
 			false,
 			PrefixedArray::new(vec!["minecraft:overworld".to_string()]),
 			2.into(),
-			0.into(),
-			0.into(),
+			8.into(),
+			8.into(),
 			false,
-			false,
+			true,
 			false,
 			VarInt(0),
 			"minecraft:overworld".to_string(),
-			0i64,
+															-4546743471931916645i64,
 			PlayerGamemode::SURVIVAL,
-			PlayerGamemode::SURVIVAL,
+			PlayerGamemode::UNDEFINED,
 			false,
 			true,
 			false,
 			None,
 			None,
 			VarInt(0),
-			VarInt(2),
+			VarInt(63),
 			false,
 		));
 		client.send_packet(login).await.unwrap();
 
-		debug!("Sent login info to {}", client);
+		debug!("Sent login info to {client}");
 
 		let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(
 			VarInt(2),
@@ -196,16 +196,16 @@ async fn main() {
 		));
 		client.send_packet(sync).await.unwrap();
 
-		debug!("Sent sync player position to {}", client);
+		debug!("Sent sync player position to {client}");
 
 		let telep = client.receive_packet().await.unwrap();
 		match telep {
 			Packet::ConfirmTeleport(..) => {
-				debug!("Received teleport confirm from {}", client);
-				debug!("Teleport confirm: {:?}", telep);
+				debug!("Received teleport confirm from {client}");
+				debug!("Teleport confirm: {telep:?}");
 			}
 			_ => {
-				debug!("Expected teleport confirm, got {:?}", telep);
+				debug!("Expected teleport confirm, got {telep:?}");
 				continue;
 			}
 		}
@@ -213,11 +213,11 @@ async fn main() {
 		let setpos = client.receive_packet().await.unwrap();
 		match setpos {
 			Packet::SetPlayerPositionRotation(..) => {
-				debug!("Received set player position rotation from {}", client);
-				debug!("Set player position rotation: {:?}", setpos);
+				debug!("Received set player position rotation from {client}");
+				debug!("Set player position rotation: {setpos:?}");
 			}
 			_ => {
-				debug!("Expected set player position rotation, got {:?}", setpos);
+				debug!("Expected set player position rotation, got {setpos:?}");
 				continue;
 			}
 		}

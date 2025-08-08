@@ -183,19 +183,19 @@ pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
                                                 if let Some(GenericArgument::Type(ty)) = args.args.first() {
                                                     ty
                                                 } else {
-                                                    panic!("Option must have an inner type for field {}", field_name);
+                                                    panic!("Option must have an inner type for field {field_name}");
                                                 }
                                             }
-                                            _ => panic!("Option must have angle bracketed arguments for field {}", field_name),
+                                            _ => panic!("Option must have angle bracketed arguments for field {field_name}"),
                                         }
                                     } else {
-                                        panic!("deserialize_if can only be applied to Option fields, but field {} is {}", field_name, segment.ident);
+                                        panic!("deserialize_if can only be applied to Option fields, but field {field_name} is {}", segment.ident);
                                     }
                                 } else {
-                                    panic!("Invalid type path for field {}", field_name);
+                                    panic!("Invalid type path for field {field_name}");
                                 }
                             }
-                            _ => panic!("deserialize_if can only be applied to Option fields with a type path for field {} and field type {}", field_name, current_ty.to_token_stream()),
+                            _ => panic!("deserialize_if can only be applied to Option fields with a type path for field {field_name} and field type {}", current_ty.to_token_stream()),
                         };
 
                         // Conditional deserialization

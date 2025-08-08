@@ -23,10 +23,7 @@ pub struct NbtTranslateColor {
 
 impl From<NbtTag> for Option<NbtTranslateColor> {
 	fn from(tag: NbtTag) -> Self {
-		match NbtTranslateColor::try_from(tag) {
-			Ok(value) => Some(value),
-			Err(_) => None,
-		}
+		NbtTranslateColor::try_from(tag).ok()
 	}
 }
 

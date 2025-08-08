@@ -326,7 +326,7 @@ list_nbtvalue!(
     (i64, LongArray, NbtLongArray, 12)
 );
 
-/// Effectively a map of NbtTagLegacys
+/// Effectively a map of NbtTags
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct NbtCompound {
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -337,11 +337,7 @@ pub struct NbtCompound {
 impl NbtCompound {
 	/// Root name is only present if it is not the root compound of network NBT (1.20.2+).
 	pub fn new<T: Into<String>>(root_name: Option<T>) -> Self {
-		let option: Option<String> = if let Some(root_name) = root_name {
-			Some(root_name.into())
-		} else {
-			None
-		};
+		let option: Option<String> = root_name.map(|root_name| root_name.into());
 		
 		Self {
 			map: HashMap::new(),
@@ -383,7 +379,7 @@ impl NbtCompound {
 		let t = u8::mc_deserialize(deserializer)?;
 
 		if t != 10 {
-			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {} instead", t)));
+			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {t} instead")));
 		}
 
 		let name_length = u16::mc_deserialize(deserializer)?;
@@ -484,7 +480,7 @@ impl McDeserialize for NbtCompound {
 
 		if t != 10 {
 			debug!("Nearby bytes: {:?}", deserializer.subset(50, 15));
-			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {} instead", t)));
+			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {t} instead")));
 		}
 		
 		Self::from_no_tag(deserializer)
@@ -646,5 +642,21 @@ impl TryFrom<NbtTag> for NbtList {
 impl Into<NbtTag> for NbtList {
 	fn into(self) -> NbtTag {
 		List(self)
+	}
+}
+
+impl Default for NbtList {
+	fn default() -> Self {
+		NbtList::new()
+	}
+}
+
+impl McDefault for NbtList {
+	fn mc_default() -> Self {
+		let mut list = NbtList::new();
+
+		list.add_tag(NbtTag::mc_default()).expect("Mixed types in NbtList default");
+
+		list
 	}
 }
