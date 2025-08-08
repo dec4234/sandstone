@@ -37,7 +37,7 @@ async fn main() {
         let mut client = CraftConnection::from_connection(socket, PacketDirection::SERVER).unwrap();
 
         let mut response = StatusResponseSpec::new(
-            ProtocolVerison::V1_21,
+            ProtocolVerison::latest(),
             "&a&lThis is a test description &b§kttt",
         );
         response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);

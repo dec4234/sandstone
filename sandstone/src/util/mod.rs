@@ -1,9 +1,8 @@
+//! Important utility functions and macros used throughout the library.
+
 pub(crate) mod threadpool;
 pub mod encryption;
 pub mod java;
-/*
-Useful utilities for the library such as macro helpers and enum builders
- */
 
 #[macro_use]
 pub mod macros {
@@ -64,60 +63,6 @@ pub mod macros {
                         $($name::$na => $lit),*
                     }
                 }
-            }
-        };
-    }
-
-    /// Internal Only. Creates an enum of Minecraft versions with their protocol numbers and fancy names.
-    /// Provides convenient access methods much like [enumize!]
-    #[macro_export]
-    macro_rules! versions {
-        ($name: ident, $y: ty => {
-                $($na: ident, $lit: expr, $fancy: literal),*
-            }
-        )  => {
-            $crate::as_item!{
-                /// Protocol version describes each major version of Minecraft: Java Edition since 1.8.9 <br>
-                /// For each major version (ie. 1.8, 1.9, etc) the last released sub-version is used, since there
-                /// is no conceivable reason to use any of the previous sub-versions.<br>
-                /// Provided is also the protocol number associated with the last sub-version for that major version,
-                /// as well as the name typically associated with that version.
-                ///
-                /// Please keep in mind that while protocol numbers are provided back all the way to 1.8.9,
-                /// the library typically only supports the latest version of Minecraft: Java Edition.
-                #[derive(Clone, Copy, PartialEq)]
-                #[allow(non_snake_case)]
-                pub enum $name {
-                    $($na),*,
-                }
-            }
-
-            impl $name {
-                pub fn get_all() -> Vec<$name> {
-                    vec![$($name::$na),*,]
-                }
-
-                pub fn from(code: $y) -> Option<$name> where $y: PartialEq {
-                    for n in $name::get_all() {
-                        if n.get_version_number() == code {
-                            return Some(n);
-                        }
-                    }
-
-                    None
-                }
-
-                pub fn get_version_number(&self) -> $y {
-                    match self {
-                        $($name::$na => $lit),*
-                    }
-                }
-
-				pub fn get_fancy_name(&self) -> String {
-					match self {
-						$($name::$na => $fancy),*
-					}.to_string()
-				}
             }
         };
     }

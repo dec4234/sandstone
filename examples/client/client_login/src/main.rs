@@ -27,13 +27,13 @@ async fn main() {
     let mut client = CraftConnection::from_connection(socket, PacketDirection::CLIENT).unwrap();
 
     let handshake = Packet::Handshaking(HandshakingPacket {
-        protocol_version: VarInt(ProtocolVerison::most_recent().get_version_number() as i32),
+        protocol_version: VarInt(ProtocolVerison::latest().get_version_number() as i32),
         server_address: "127.0.0.1".to_string(),
         port: 25565,
         next_state: VarInt(2),
     });
 
-    debug!("Sending handshake packet: {:?}", handshake);
+    debug!("Sending handshake packet: {handshake:?}");
     client.send_packet(handshake).await.unwrap();
     
     let login_start = Packet::LoginStart(LoginStartPacket {
@@ -41,7 +41,7 @@ async fn main() {
         uuid: Uuid::from_str("ef39c197-3c3d-4776-a226-22096378a966").unwrap(),
     });
 
-    debug!("Sending login start packet: {:?}", login_start);
+    debug!("Sending login start packet: {login_start:?}");
     client.send_packet(login_start).await.unwrap();
 
     client.change_state(PacketState::LOGIN);
@@ -53,7 +53,7 @@ async fn main() {
             debug!("Login successful: UUID: {}, Username: {}", packet.uuid, packet.username);
         }
         _ => {
-            panic!("Unexpected packet received instead of login success: {:?}", login_success);
+            panic!("Unexpected packet received instead of login success: {login_success:?}");
         }
     }
 
@@ -68,19 +68,19 @@ async fn main() {
 
         match packet {
             Packet::ClientboundPluginMessage(_) => {
-                debug!("Received clientbound plugin message: {:?}", packet);
+                debug!("Received clientbound plugin message: {packet:?}");
                 continue;
             }
             Packet::FeatureFlags(_) => {
-                debug!("Received feature flags: {:?}", packet);
+                debug!("Received feature flags: {packet:?}");
                 continue;
             }
             Packet::ClientboundKnownPacks(_) => {
-                debug!("Received known packs: {:?}", packet);
+                debug!("Received known packs: {packet:?}");
                 break;
             }
             _ => {
-                panic!("Received unexpected packet: {:?}", packet);
+                panic!("Received unexpected packet: {packet:?}");
             }
         }
     }
@@ -89,7 +89,7 @@ async fn main() {
         entries: PrefixedArray::new(vec![]),
     });
 
-    debug!("Sending serverbound known packs: {:?}", serverbound_known_packs);
+    debug!("Sending serverbound known packs: {serverbound_known_packs:?}");
     client.send_packet(serverbound_known_packs).await.unwrap();
 
     loop {
@@ -98,29 +98,29 @@ async fn main() {
         if let Ok(packet) = packet {
             match packet {
                 Packet::RegistryData(pack) => {
-                    trace!("Received registry data: {:?}", pack);
+                    trace!("Received registry data: {pack:?}");
 
                     continue;
                 }
                 Packet::UpdateTags(_) => {
-                    debug!("Received update tags: {:?}", packet);
+                    debug!("Received update tags: {packet:?}");
                     continue;
                 }
                 Packet::FinishConfiguration(_) => {
-                    debug!("Received finish configuration packet: {:?}", packet);
+                    debug!("Received finish configuration packet: {packet:?}");
                     break;
                 }
                 _ => {
-                    panic!("Received unexpected packet: {:?}", packet);
+                    panic!("Received unexpected packet: {packet:?}");
                 }
             }
         } else {
-            error!("Failed to receive packet: {:?}", packet);
+            error!("Failed to receive packet: {packet:?}");
         }
     }
 
     let ack_config = Packet::AcknowledgeFinishConfiguration(AcknowledgeFinishConfigurationPacket {});
-    debug!("Sending acknowledge finish configuration packet: {:?}", ack_config);
+    debug!("Sending acknowledge finish configuration packet: {ack_config:?}");
     client.send_packet(ack_config).await.unwrap();
 
     client.change_state(PacketState::PLAY);
@@ -128,10 +128,10 @@ async fn main() {
     let packet = client.receive_packet().await.unwrap();
     match packet {
         Packet::LoginInfo(l) => {
-            debug!("Received login info: {:?}", l);
+            debug!("Received login info: {l:?}");
         }
         _ => {
-            panic!("Expected acknowledge finish configuration, got: {:?}", packet);
+            panic!("Expected acknowledge finish configuration, got: {packet:?}");
         }
     }
 }
