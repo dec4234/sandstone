@@ -11,7 +11,7 @@ use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
-use crate::protocol_types::datatypes::game_types::PackedEntries;
+use crate::protocol_types::datatypes::internal_types::PackedEntries;
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
@@ -200,17 +200,19 @@ pub enum PalleteFormat {
 
 impl McSerialize for PalleteFormat {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		Ok(match self {
-			PalleteFormat::SingleValued(value) => {
-				value.mc_serialize(serializer)?
-			}
-			PalleteFormat::Indirect(format) => {
-				format.mc_serialize(serializer)?
-			}
-			PalleteFormat::Direct => {
-				// nothing
-			}
-		})
+		match self {
+  			PalleteFormat::SingleValued(value) => {
+  				value.mc_serialize(serializer)?
+  			}
+  			PalleteFormat::Indirect(format) => {
+  				format.mc_serialize(serializer)?
+  			}
+  			PalleteFormat::Direct => {
+  				// nothing
+  			}
+  		};
+		
+  		Ok(())
 	}
 }
 

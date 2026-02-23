@@ -36,7 +36,7 @@ pub struct RegistryDataPacketInternal {
 }
 
 impl McSerialize for RegistryDataPacketInternal {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+	fn mc_serialize(&'_ self, serializer: &mut McSerializer) -> SerializingResult<'_, ()> {
 		self.registry_id.mc_serialize(serializer)?;
 		self.num_entries.mc_serialize(serializer)?;
 		self.entries.mc_serialize(serializer)?;
@@ -296,8 +296,11 @@ registry_entry!(
 		has_precipitation: bool, // note that bools will be shown as "Byte" in JSON form of nbt
 		temperature: f32,
 		temperature_modifier: Option<String>
+	},
+	"minecraft:zombie_nautilus_variant", ZombieNautilusVariant => {
+		model: Option<String>,
+		asset_id: String
 	}
-
 );
 
 #[cfg(test)]

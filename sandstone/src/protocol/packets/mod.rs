@@ -15,7 +15,7 @@ use crate::game::player::PlayerGamemode;
 use crate::packets;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, ResourcePackEntry, TagArray};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, ResourcePackEntry, TagArray};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -25,7 +25,8 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
-use crate::protocol_types::datatypes::game_types::Position;
+use crate::protocol_types::datatypes::game_types::{GameDifficulty, Position};
+use crate::protocol_types::datatypes::internal_types::Node;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitfield::BitField;
 use packet_component::ProtocolPropertyElement;
@@ -197,6 +198,18 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 	},
 	PLAY => {
 		CLIENT => {
+			ChangeDifficulty, ChangeDifficultyPacket, 0x0B => {
+				difficulty: GameDifficulty,
+				difficulty_locked: bool
+			},
+			CommandsGraph, CommandsGraphPacket, 0x0F => {
+				nodes: PrefixedArray<Node>,
+				root_index: VarInt
+			},
+			EntityEvent, EntityEventPacket, 0x22 => {
+				entity_id: i32,
+				entity_status: i8 // todo: create comprehensive enum https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses
+			},
 			ChunkDataUpdateLight, ChunkDataUpdateLightPacket, 0x27 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
 				x: i32,
 				y: i32,
@@ -204,7 +217,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				data: ChunkData,
 				light: LightData
 			},
-			LoginInfo, LoginInfoPacket, 0x2B => {
+			LoginInfo, LoginInfoPacket, 0x30 => {
 				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
 				entity_id: i32,
 				is_hardcore: bool,
@@ -235,8 +248,10 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				sea_level: VarInt,
 				enforces_secure_chat: bool
 			},
-			PlayerInfoUpdate, PlayerInfoUpdatePacket, 0x3F => {
-					
+			PlayerAbilities, PlayerAbilitiesPacket, 0x3E => {
+				flags: PlayerAbilityFlags,
+				flying_speed: f32,
+				fov_modifier: f32
 			},
 			SyncPlayerPosition, SyncPlayerPositionPacket, 0x41 => {
 				teleport_id: VarInt,
@@ -254,6 +269,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			SetCenterChunk, SetCenterChunkPacket, 0x57 => {
 				x: VarInt,
 				z: VarInt
+			},
+			SetHeldItem, SetHeldItemPacket, 0x67 => {
+				slot: VarInt
+			},
+			UpdateRecipes, UpdateRecipesPacket, 0x83 => {
+				recipes: PrefixedArray<String>
 			}
 		},
 		SERVER => {
@@ -268,6 +289,13 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				yaw: f32,
 				pitch: f32,
 				flags: BitField<i8>
+			},
+			PlayerLoaded, PlayerLoadedPacket, 0x2B => {
+				// none
+			},
+			ResourcePackResponse, ResourcePackResponsePacket, 0x30 => {
+				uuid: Uuid,
+				result: VarInt
 			}
 		}
 	}

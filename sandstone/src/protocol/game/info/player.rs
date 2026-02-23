@@ -15,6 +15,12 @@ pub struct PackedPlayerInfoUpdate {
     data: BitSet,
 }
 
+impl Default for PackedPlayerInfoUpdate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PackedPlayerInfoUpdate {
     pub fn new() -> Self {
         Self {

@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 #![allow(async_fn_in_trait)]
 #![allow(dead_code)]
+#![allow(elided_lifetimes_in_paths)]
 
 //! # Sandstone
 //! A Minecraft: Java Edition protocol library.

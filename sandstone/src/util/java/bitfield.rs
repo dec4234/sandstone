@@ -9,22 +9,28 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
 use std::ops::{BitAnd, BitOr, Not, Shl, Shr, Sub};
 
-/// A simple bit field internally represented as any primitive signed or unsigned integer.
+/// A simple bit field internally represented by any primitive signed or unsigned integer.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BitField<T: BitFieldInteger + McSerialize + McDeserialize> {
 	bits: T,
 }
 
 impl<T: BitFieldInteger + McSerialize + McDeserialize> BitField<T> {
+	/// Create a new BitField with the given starting value.
 	pub fn new(start: T) -> Self {
 		Self { bits: start }
 	}
 
+	/// Get the bit at a paritcular index in the BitField
 	pub fn get_bit(&self, index: usize) -> bool {
 		let mask = T::one() << index;
 		(self.bits & mask) != T::zero()
 	}
 
+	/// Set the bit at a particular location.
+	/// 
+	/// # Parameters
+	/// - value: true to set the bit to 1, false to set the bit to 0
 	pub fn set_bit(&mut self, index: usize, value: bool) {
 		let mask = T::one() << index;
 		if value {
@@ -34,18 +40,26 @@ impl<T: BitFieldInteger + McSerialize + McDeserialize> BitField<T> {
 		}
 	}
 
+	/// Set all bits in the bitfield to 1.
 	pub fn set_all(&mut self) {
 		self.bits = T::max_value();
 	}
 
+	/// Set all bits in the bitfield to 0.
 	pub fn clear_all(&mut self) {
 		self.bits = T::zero();
 	}
 
+	/// Flip all bits in the bitfield to their opposite value.
 	pub fn flip(&mut self) {
 		self.bits = !self.bits;
 	}
 
+	/// Given a particular start and end index, slice the bitfield into a sub-bitfield.
+	/// 
+	/// # Parameters
+	/// - start: The starting index (inclusive)
+	/// - end: The ending index (exclusive)
 	pub fn slice(&self, start: usize, end: usize) -> BitField<T> {
 		let width = end - start;
 		let mask = ((T::one() << width) - T::one()) << start;

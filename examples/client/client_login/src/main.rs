@@ -134,4 +134,27 @@ async fn main() {
             panic!("Expected acknowledge finish configuration, got: {packet:?}");
         }
     }
+
+    // optional packets
+    loop {
+        let packet = client.receive_packet().await.unwrap();
+
+        match packet {
+            Packet::ClientboundPluginMessage(_) => {
+                debug!("Received clientbound plugin message: {packet:?}");
+                continue;
+            }
+            Packet::FeatureFlags(_) => {
+                debug!("Received feature flags: {packet:?}");
+                continue;
+            }
+            Packet::ClientboundKnownPacks(_) => {
+                debug!("Received known packs: {packet:?}");
+                break;
+            }
+            _ => {
+                panic!("Received unexpected packet: {packet:?}");
+            }
+        }
+    }
 }

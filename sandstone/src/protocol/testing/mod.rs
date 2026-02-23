@@ -1,5 +1,7 @@
 #![allow(unused_imports)]
 
+//! Traits and implementations for testing packet serialization and deserialization.
+
 use crate::protocol;
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
@@ -15,6 +17,7 @@ mod derive_testing;
 /// This is different from the typical `Default` trait in Rust, as it returns more random and meaningful
 /// values.
 pub trait McDefault {
+	/// Return the default for a particular type, used for testing.
 	fn mc_default() -> Self;
 }
 

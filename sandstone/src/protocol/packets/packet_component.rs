@@ -9,6 +9,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::datatypes::var_types::VarInt;
+use crate::util::java::bitfield::BitField;
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoginPluginSpec {
@@ -56,4 +57,41 @@ pub struct ProtocolPropertyElement {
 	pub name: String,
 	pub value: String,
 	pub signature: PrefixedOptional<String>
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Eq)]
+pub struct PlayerAbilityFlags {
+	pub invulnerable: bool,
+	pub flying: bool,
+	pub allow_flying: bool,
+	pub creative_mode: bool
+}
+
+impl McSerialize for PlayerAbilityFlags {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		let mut field = BitField::new(0u8);
+		
+		field.set_bit(0, self.invulnerable);
+		field.set_bit(1, self.flying);
+		field.set_bit(2, self.allow_flying);
+		field.set_bit(3, self.creative_mode);
+		
+		field.mc_serialize(serializer)
+	}
+}
+
+impl McDeserialize for PlayerAbilityFlags {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized
+	{
+		let field = BitField::<u8>::mc_deserialize(deserializer)?;
+		
+		Ok(Self {
+			invulnerable: field.get_bit(0),
+			flying: field.get_bit(1),
+			allow_flying: field.get_bit(2),
+			creative_mode: field.get_bit(3)
+		})
+	}
 }

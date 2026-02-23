@@ -49,11 +49,7 @@ async fn main() {
 			.unwrap();
 
 		if client.packet_state == PacketState::STATUS {
-			DefaultStatusHandler::handle_status(
-				&mut client,
-				StatusResponsePacket::new(response.clone()),
-				DefaultPingHandler,
-			)
+			DefaultStatusHandler::handle_status(&mut client, StatusResponsePacket::new(response.clone()), DefaultPingHandler)
 				.await
 				.unwrap();
 			continue;

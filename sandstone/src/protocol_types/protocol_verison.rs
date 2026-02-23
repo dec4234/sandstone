@@ -74,7 +74,7 @@ versions!(ProtocolVerison, i16 => {
     V1_18, 758, "1.18.2",
     V1_19, 762, "1.19.4",
     V1_20, 766, "1.20.6",
-    V1_21, 772, "1.21.8"
+    V1_21, 774, "1.21.11"
 });
 
 impl ProtocolVerison {
@@ -92,7 +92,7 @@ mod tests {
 
         assert_eq!(ProtocolVerison::try_from(47).unwrap(), ProtocolVerison::V1_8);
         assert_eq!(ProtocolVerison::try_from(110).unwrap(), ProtocolVerison::V1_9);
-        assert_eq!(ProtocolVerison::try_from(772).unwrap(), ProtocolVerison::V1_21);
+        assert_eq!(ProtocolVerison::try_from(773).unwrap(), ProtocolVerison::V1_21);
         assert!(ProtocolVerison::try_from(999).is_err());
     }
 

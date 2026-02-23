@@ -2,7 +2,7 @@
 //! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
 
 use crate::protocol::game::info::registry::registry_components::{MonsterSpawnLightLevel, NbtTranslateColor, WolfVariantAssets};
-use crate::protocol::game::info::registry::{BannerPattern, CatVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigVariant, WolfSoundVariant, WolfVariant};
+use crate::protocol::game::info::registry::{BannerPattern, CatVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigVariant, WolfSoundVariant, WolfVariant, ZombieNautilusVariant};
 
 impl Default for DimensionType {
 	fn default() -> Self {
@@ -131,6 +131,15 @@ impl Default for MonsterSpawnLightLevel {
 			isRange: false,
 			level: Some(7),
 			range: None,
+		}
+	}
+}
+
+impl Default for ZombieNautilusVariant {
+	fn default() -> Self {
+		Self {
+			model: None,
+			asset_id: "minecraft:entity/nautilus/zombie_nautilus".to_string(),
 		}
 	}
 }

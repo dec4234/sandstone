@@ -138,11 +138,8 @@ impl<T: McDeserialize> McDeserialize for Vec<T> {
 impl<T: McSerialize> McSerialize for Option<T> {
 	/// Ensure that you mean to use this rather than a [PrefixedOptional<T>] This is a simple serialization
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
-		match self {
-			Some(item) => {
-				item.mc_serialize(serializer)?;
-			}
-			None => {}
+		if let Some(item) = self {
+			item.mc_serialize(serializer)?;
 		}
 
 		Ok(())
@@ -173,7 +170,8 @@ impl<T: McDeserialize> McDeserialize for Box<T> {
 	}
 }
 
-/// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array. This is a protocol type.
+/// # PrefixedArray (Protocol Type)
+/// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array.
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub struct PrefixedArray<T: McSerialize + McDeserialize> {
 	pub(crate) vec: Vec<T>
@@ -217,7 +215,8 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 	}
 }
 
-/// An Optional<T> with a bool prefix indicating if the value is present. This is a protocol type.
+/// # PrefixedOptional (Protocol Type)
+/// An Optional<T> with a bool prefix indicating if the value is present.
 /// This has started to replace most occurrences of Option<T> in the protocol, as it is more explicit.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrefixedOptional<T: McSerialize + McDeserialize> {
