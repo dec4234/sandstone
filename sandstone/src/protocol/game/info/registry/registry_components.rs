@@ -10,7 +10,6 @@ use crate::protocol::game::info::registry::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
-use sandstone_derive::nbt;
 use sandstone_derive::{AsNbt, FromNbt, McDefault, McDeserialize};
 use serde::{Deserialize, Serialize};
 

@@ -10,14 +10,14 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 #[derive(McDefault, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub enum SlotDisplay {
-	Empty = 0,
-	AnyFuel = 1,
-	Item(VarInt) = 2,
-	ItemStack = 3, //todo: Slot datatype
-	Tag(String) = 4,
-	SmithingingTrim(Box<SmithingTrimSlotData>) = 5,
-	WithRemainder(Box<WithRemainderSlotData>) = 6,
-	Composite(Box<CompositeSlotData>) = 7
+	Empty,
+	AnyFuel,
+	Item(VarInt),
+	ItemStack, //todo: SlotData datatype
+	Tag(String),
+	SmithingingTrim(Box<SmithingTrimSlotData>),
+	WithRemainder(Box<WithRemainderSlotData>),
+	Composite(Box<CompositeSlotData>)
 }
 
 // https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Slot_Display_structure
@@ -27,24 +27,31 @@ impl McSerialize for SlotDisplay {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 
 		match self {
-			SlotDisplay::Empty => 0i8,
-			SlotDisplay::AnyFuel => 1i8,
-			SlotDisplay::Item(id) => {
-				id.mc_serialize(serializer)?;
-				2i8
+			SlotDisplay::Empty => {
+				 0i8.mc_serialize(serializer)?;
 			},
-			SlotDisplay::ItemStack => 3i8,
+			SlotDisplay::AnyFuel => {
+				1i8.mc_serialize(serializer)?;
+			},
+			SlotDisplay::Item(id) => {
+				2i8.mc_serialize(serializer)?;
+				id.mc_serialize(serializer)?;
+			},
+			SlotDisplay::ItemStack => {
+				3i8.mc_serialize(serializer)?;
+			},
 			SlotDisplay::Tag(tag) => {
+				4i8.mc_serialize(serializer)?;
 				tag.mc_serialize(serializer)?;
-				4i8
+
 			},
 			SlotDisplay::SmithingingTrim(data) => {
+				5i8.mc_serialize(serializer)?;
 				data.mc_serialize(serializer)?;
-				5i8
 			},
 			SlotDisplay::WithRemainder(data) => {
+				6i8.mc_serialize(serializer)?;
 				data.mc_serialize(serializer)?;
-				6i8
 			},
 			SlotDisplay::Composite(data) => {
 				7i8.mc_serialize(serializer)?;
@@ -53,6 +60,23 @@ impl McSerialize for SlotDisplay {
 		}
 
 		Ok(())
+	}
+}
+
+impl McDeserialize for SlotDisplay {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let typ = i8::mc_deserialize(deserializer)?;
+		match typ {
+			0 => Ok(SlotDisplay::Empty),
+			1 => Ok(SlotDisplay::AnyFuel),
+			2 => Ok(SlotDisplay::Item(VarInt::mc_deserialize(deserializer)?)),
+			3 => Ok(SlotDisplay::ItemStack),
+			4 => Ok(SlotDisplay::Tag(String::mc_deserialize(deserializer)?)),
+			5 => Ok(SlotDisplay::SmithingingTrim(Box::new(SmithingTrimSlotData::mc_deserialize(deserializer)?))),
+			6 => Ok(SlotDisplay::WithRemainder(Box::new(WithRemainderSlotData::mc_deserialize(deserializer)?))),
+			7 => Ok(SlotDisplay::Composite(Box::new(CompositeSlotData::mc_deserialize(deserializer)?))),
+			_ => Err(SerializingErr::DeserializationError(format!("Invalid SlotDisplay type: {}", typ)))
+		}
 	}
 }
 
@@ -76,3 +100,11 @@ pub struct CompositeSlotData {
 }
 
 // TODO: https://minecraft.wiki/w/Java_Edition_protocol/Slot_data
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+pub struct SlotData {
+	pub item_count: VarInt,
+	pub item_id: Option<VarInt>,
+	pub components_to_add: Option<VarInt>,
+	pub components_to_remove: Option<VarInt>,
+	// todo: lot of work for the enum
+}

@@ -1,15 +1,16 @@
 //! Defines a lot of random components of network packets. This is separate from packet.rs to reduce
 //! clutter.
 
-use crate::protocol::testing::McDefault;
-use sandstone_derive::{McDefault, McDeserialize, McSerialize};
-use uuid::Uuid;
-
+use crate::protocol::game::info::inventory::slots::SlotDisplay;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::internal_types::IDSet;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitfield::BitField;
+use sandstone_derive::{McDefault, McDeserialize, McSerialize};
+use uuid::Uuid;
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoginPluginSpec {
@@ -94,4 +95,16 @@ impl McDeserialize for PlayerAbilityFlags {
 			creative_mode: field.get_bit(3)
 		})
 	}
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PropertySet {
+	pub identifier: String,
+	pub items: PrefixedArray<VarInt>
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct StonecutterRecipe {
+	pub id_set: IDSet,
+	pub slot_display: SlotDisplay
 }

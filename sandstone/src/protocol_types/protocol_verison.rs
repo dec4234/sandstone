@@ -1,8 +1,6 @@
 //! Defines the protocol version numbers for the final patch of each Minecraft version. This is important
 //! for verifying client protocol versions.
 
-use crate::versions;
-
 /// Internal Only. Creates an enum of Minecraft versions with their protocol numbers and fancy names.
 #[macro_export]
 macro_rules! versions {

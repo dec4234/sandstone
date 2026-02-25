@@ -153,16 +153,16 @@ async fn main() {
 		let login = Packet::LoginInfo(LoginInfoPacket::new( //todo: fix this
 			9,
 			false,
-			PrefixedArray::new(vec!["minecraft:overworld".to_string()]),
-			2.into(),
-			8.into(),
-			8.into(),
+			PrefixedArray::new(vec!["minecraft:overworld".to_string(), "minecraft:the_nether".to_string(), "minecraft:the_end".to_string()]),
+			20.into(),
+			10.into(),
+			10.into(),
 			false,
 			true,
 			false,
 			VarInt(0),
 			"minecraft:overworld".to_string(),
-															-4546743471931916645i64,
+			-4546743471931916645i64,
 			PlayerGamemode::SURVIVAL,
 			PlayerGamemode::UNDEFINED,
 			false,
@@ -174,9 +174,9 @@ async fn main() {
 			VarInt(63),
 			false,
 		));
-		client.send_packet(login).await.unwrap();
 
-		debug!("Sent login info to {client}");
+		debug!("Sending login info packet {login:?}");
+		client.send_packet(login).await.unwrap();
 
 		let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(
 			VarInt(2),

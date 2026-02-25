@@ -19,7 +19,6 @@ use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use crate::registry_entry;
 use sandstone_derive::AsNbt;
 use sandstone_derive::{FromNbt, McDefault, McSerialize};
 

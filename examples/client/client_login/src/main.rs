@@ -140,16 +140,28 @@ async fn main() {
         let packet = client.receive_packet().await.unwrap();
 
         match packet {
-            Packet::ClientboundPluginMessage(_) => {
-                debug!("Received clientbound plugin message: {packet:?}");
+            Packet::ChangeDifficulty(cd) => {
+                debug!("Received clientbound plugin message: {cd:?}");
                 continue;
             }
-            Packet::FeatureFlags(_) => {
-                debug!("Received feature flags: {packet:?}");
+            Packet::PlayerAbilities(pa) => {
+                debug!("Received feature flags: {pa:?}");
                 continue;
             }
-            Packet::ClientboundKnownPacks(_) => {
-                debug!("Received known packs: {packet:?}");
+            Packet::SetHeldItem(shi) => {
+                debug!("Received known packs: {shi:?}");
+                break;
+            }
+            Packet::UpdateRecipes(urp) => {
+                debug!("Received known packs: {urp:?}");
+                break;
+            }
+            Packet::EntityEvent(ee) => {
+                debug!("Received known packs: {ee:?}");
+                break;
+            }
+            Packet::CommandsGraph(cg) => {
+                debug!("Received known packs: {cg:?}");
                 break;
             }
             _ => {
@@ -157,4 +169,6 @@ async fn main() {
             }
         }
     }
+
+    // todo: sync player position
 }

@@ -2,13 +2,12 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use sandstone_derive::mc;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 /// Represents a packed i64 (long) that contains block or biome data. See
 /// https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Data_Array_format for more info. This
 /// matches the spec for packed data after 1.16
-#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PackedEntries {
 	data: i64,
 	/// The number of bits allocated to each entry
@@ -56,7 +55,7 @@ impl McSerialize for PackedEntries {
 }
 
 /// A Node used for representing graphs
-#[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, Hash, PartialEq)]
+#[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Node {
 	pub flags: NodeFlags,
 	pub children_count: VarInt,
@@ -70,7 +69,7 @@ pub struct Node {
 }
 
 /// Internal node flags represented as a byte with masking
-#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct NodeFlags {
 	pub typ: NodeType,
 	pub is_executable: bool,
@@ -131,14 +130,15 @@ impl McDeserialize for NodeFlags {
 }
 
 /// Type of node in a graph
-#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
 pub enum NodeType {
 	Root = 0,
 	Literal = 1,
 	Argument = 2,
 }
 
-#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
+/// ID set used for representing a set of ids in a registry either directly enumerated or indirectly via tag name
+#[derive(McDefault, Debug, Clone, PartialEq, Eq)]
 pub struct IDSet {
 	pub typ: VarInt,
 	pub tag_name: Option<String>,

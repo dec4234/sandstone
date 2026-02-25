@@ -15,7 +15,7 @@ use crate::game::player::PlayerGamemode;
 use crate::packets;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, ResourcePackEntry, TagArray};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, ResourcePackEntry, StonecutterRecipe, TagArray};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -30,7 +30,6 @@ use crate::protocol_types::datatypes::internal_types::Node;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitfield::BitField;
 use packet_component::ProtocolPropertyElement;
-use sandstone_derive::mc;
 use uuid::Uuid;
 
 pub mod packet_component;
@@ -198,7 +197,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 	},
 	PLAY => {
 		CLIENT => {
-			ChangeDifficulty, ChangeDifficultyPacket, 0x0B => {
+			ChangeDifficulty, ChangeDifficultyPacket, 0x0A => {
 				difficulty: GameDifficulty,
 				difficulty_locked: bool
 			},
@@ -274,7 +273,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				slot: VarInt
 			},
 			UpdateRecipes, UpdateRecipesPacket, 0x83 => {
-				recipes: PrefixedArray<String>
+				property_sets: PrefixedArray<PropertySet>,
+				stonecutter_recipes: PrefixedArray<StonecutterRecipe>
 			}
 		},
 		SERVER => {

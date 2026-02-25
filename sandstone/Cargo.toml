@@ -35,3 +35,6 @@ sandstone-derive = {path = "src/sandstone-derive"} #todo: implications of local 
 [dev-dependencies]
 #craftio-rs = "0.1.0"
 #mcproto-rs = {version = "0.2.0", features = ["v1_15_2"]}
+
+[lints.rust]
+mismatched_lifetime_syntaxes = "allow"
