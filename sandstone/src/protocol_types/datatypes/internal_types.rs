@@ -2,7 +2,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use sandstone_derive::{McDefault, McDeserialize, McSerialize};
+use sandstone_derive::McDefault;
 
 /// Represents a packed i64 (long) that contains block or biome data. See
 /// https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Data_Array_format for more info. This
@@ -54,95 +54,22 @@ impl McSerialize for PackedEntries {
 	}
 }
 
-/// A Node used for representing graphs
-#[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct Node {
-	pub flags: NodeFlags,
-	pub children_count: VarInt,
-	pub children: Vec<VarInt>,
-	pub redirect_node: Option<VarInt>,
-	pub name: Option<String>,
-	pub parser_id: Option<VarInt>,
-	pub properties: Option<String>, // todo: ambiguity in spec
-	#[mc(deserialize_if = flags.has_suggestions)]
-	pub suggestions: Option<String>
-}
-
-/// Internal node flags represented as a byte with masking
-#[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct NodeFlags {
-	pub typ: NodeType,
-	pub is_executable: bool,
-	pub has_redirect: bool,
-	pub has_suggestions: bool,
-	pub is_restricted: bool
-}
-
-impl NodeFlags {
-	pub fn from_byte<'a>(byte: u8) -> SerializingResult<'a, NodeFlags> {
-		Ok(Self {
-			typ: match byte & 0x03 {
-				0 => NodeType::Root,
-				1 => NodeType::Literal,
-				2 => NodeType::Argument,
-				_ => panic!("Invalid node type in flags byte")
-			},
-			is_executable: (byte & 0x04) != 0,
-			has_redirect: (byte & 0x08) != 0,
-			has_suggestions: (byte & 0x10) != 0,
-			is_restricted: (byte & 0x20) != 0
-		})
-	}
-
-	pub fn to_byte(&self) -> u8 {
-		let mut byte = match self.typ {
-			NodeType::Root => 0,
-			NodeType::Literal => 1,
-			NodeType::Argument => 2
-		};
-		if self.is_executable {
-			byte |= 0x04;
-		}
-		if self.has_redirect {
-			byte |= 0x08;
-		}
-		if self.has_suggestions {
-			byte |= 0x10;
-		}
-		if self.is_restricted {
-			byte |= 0x20;
-		}
-		byte
-	}
-}
-
-impl McSerialize for NodeFlags {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		self.to_byte().mc_serialize(serializer)
-	}
-}
-
-impl McDeserialize for NodeFlags {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		let byte = u8::mc_deserialize(deserializer)?;
-		Self::from_byte(byte)
-	}
-}
-
-/// Type of node in a graph
-#[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
-pub enum NodeType {
-	Root = 0,
-	Literal = 1,
-	Argument = 2,
-}
-
 /// ID set used for representing a set of ids in a registry either directly enumerated or indirectly via tag name
-#[derive(McDefault, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IDSet {
 	pub typ: VarInt,
 	pub tag_name: Option<String>,
 	pub ids: Option<Vec<VarInt>>
+}
+
+impl McDefault for IDSet {
+	fn mc_default() -> Self {
+		Self {
+			typ: VarInt(1),
+			tag_name: None,
+			ids: Some(vec![]),
+		}
+	}
 }
 
 impl McSerialize for IDSet {
@@ -155,12 +82,14 @@ impl McSerialize for IDSet {
 			} else {
 				return Err(SerializingErr::MissingField("IDSet with type 0 must have a tag name".to_string()));
 			}
-
-			if let Some(ids) = &self.ids {
-				ids.mc_serialize(serializer)?;
-			} else {
-				return Err(SerializingErr::MissingField("IDSet with type 0 must have an ID list".to_string()));
+		} else if let Some(ids) = &self.ids { // ids only serialized when type != 0
+			if ids.len() != (self.typ.0 - 1) as usize {
+				return Err(SerializingErr::InconsistentField(format!("IDSet with type {} must have {} IDs, but {} were provided", self.typ.0, self.typ.0 - 1, ids.len())));
 			}
+			
+			ids.mc_serialize(serializer)?;
+		} else {
+			return Err(SerializingErr::MissingField("IDSet with type 0 must have an ID list".to_string()));
 		}
 		Ok(())
 	}
@@ -171,17 +100,24 @@ impl McDeserialize for IDSet {
 		let typ = VarInt::mc_deserialize(deserializer)?;
 		if typ.0 == 0 {
 			let tag_name = String::mc_deserialize(deserializer)?;
-			let ids = Vec::<VarInt>::mc_deserialize(deserializer)?;
 			Ok(Self {
 				typ,
 				tag_name: Some(tag_name),
-				ids: Some(ids)
+				ids: None
 			})
 		} else {
+			let size = typ.0 - 1;
+
+			let mut ids = Vec::new();
+
+			for _ in 0..size {
+				ids.push(VarInt::mc_deserialize(deserializer)?);
+			}
+
 			Ok(Self {
 				typ,
 				tag_name: None,
-				ids: None
+				ids: Some(ids)
 			})
 		}
 	}
@@ -189,7 +125,8 @@ impl McDeserialize for IDSet {
 
 #[cfg(test)]
 mod test {
-	use crate::protocol_types::datatypes::internal_types::{NodeFlags, NodeType, PackedEntries};
+	use crate::protocol_types::datatypes::command::{NodeFlags, NodeType};
+	use crate::protocol_types::datatypes::internal_types::PackedEntries;
 
 	#[test]
 	fn basic_packed_entries_test() {

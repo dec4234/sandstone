@@ -28,33 +28,33 @@ impl McSerialize for SlotDisplay {
 
 		match self {
 			SlotDisplay::Empty => {
-				 0i8.mc_serialize(serializer)?;
+				 VarInt(0).mc_serialize(serializer)?;
 			},
 			SlotDisplay::AnyFuel => {
-				1i8.mc_serialize(serializer)?;
+				VarInt(1).mc_serialize(serializer)?;
 			},
 			SlotDisplay::Item(id) => {
-				2i8.mc_serialize(serializer)?;
+				VarInt(2).mc_serialize(serializer)?;
 				id.mc_serialize(serializer)?;
 			},
 			SlotDisplay::ItemStack => {
-				3i8.mc_serialize(serializer)?;
+				VarInt(3).mc_serialize(serializer)?;
 			},
 			SlotDisplay::Tag(tag) => {
-				4i8.mc_serialize(serializer)?;
+				VarInt(4).mc_serialize(serializer)?;
 				tag.mc_serialize(serializer)?;
 
 			},
 			SlotDisplay::SmithingingTrim(data) => {
-				5i8.mc_serialize(serializer)?;
+				VarInt(5).mc_serialize(serializer)?;
 				data.mc_serialize(serializer)?;
 			},
 			SlotDisplay::WithRemainder(data) => {
-				6i8.mc_serialize(serializer)?;
+				VarInt(6).mc_serialize(serializer)?;
 				data.mc_serialize(serializer)?;
 			},
 			SlotDisplay::Composite(data) => {
-				7i8.mc_serialize(serializer)?;
+				VarInt(7).mc_serialize(serializer)?;
 				data.mc_serialize(serializer)?;
 			}
 		}
@@ -65,7 +65,7 @@ impl McSerialize for SlotDisplay {
 
 impl McDeserialize for SlotDisplay {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		let typ = i8::mc_deserialize(deserializer)?;
+		let typ = VarInt::mc_deserialize(deserializer)?.0;
 		match typ {
 			0 => Ok(SlotDisplay::Empty),
 			1 => Ok(SlotDisplay::AnyFuel),
@@ -75,7 +75,7 @@ impl McDeserialize for SlotDisplay {
 			5 => Ok(SlotDisplay::SmithingingTrim(Box::new(SmithingTrimSlotData::mc_deserialize(deserializer)?))),
 			6 => Ok(SlotDisplay::WithRemainder(Box::new(WithRemainderSlotData::mc_deserialize(deserializer)?))),
 			7 => Ok(SlotDisplay::Composite(Box::new(CompositeSlotData::mc_deserialize(deserializer)?))),
-			_ => Err(SerializingErr::DeserializationError(format!("Invalid SlotDisplay type: {}", typ)))
+			_ => Err(SerializingErr::DeserializationError(format!("Invalid SlotDisplay type: '{}'", typ)))
 		}
 	}
 }

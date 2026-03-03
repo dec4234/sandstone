@@ -8,16 +8,15 @@ use sandstone::game::player::PlayerGamemode;
 use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::info::registry::registry_generator;
+use sandstone::protocol::packets::packet_component::{PropertySet, StonecutterRecipe};
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::{
-	ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket,
-	Packet, StatusResponsePacket, SyncPlayerPositionPacket,
-};
+use sandstone::protocol::packets::{ClientboundKnownPacksPacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, StatusResponsePacket, SyncPlayerPositionPacket, UpdateRecipesPacket};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::status::{
 	DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler,
 };
+use sandstone::protocol::testing::McDefault;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use sandstone::util::java::bitfield::BitField;
@@ -150,7 +149,7 @@ async fn main() {
 
 		client.change_state(PacketState::PLAY);
 
-		let login = Packet::LoginInfo(LoginInfoPacket::new( //todo: fix this
+		let login = Packet::LoginInfo(LoginInfoPacket::new(
 			9,
 			false,
 			PrefixedArray::new(vec!["minecraft:overworld".to_string(), "minecraft:the_nether".to_string(), "minecraft:the_end".to_string()]),
@@ -177,6 +176,20 @@ async fn main() {
 
 		debug!("Sending login info packet {login:?}");
 		client.send_packet(login).await.unwrap();
+
+		let update_recipes = Packet::UpdateRecipes(UpdateRecipesPacket::new(
+			vec![]
+			/*PrefixedArray::new(vec![PropertySet {
+				identifier: "test_name".to_string(),
+				items: PrefixedArray::new(vec![VarInt(0)]),
+			}]),
+			PrefixedArray::new(vec![
+				StonecutterRecipe::mc_default()
+			])*/
+		));
+
+		debug!("Sending update recipes packet {update_recipes:?}");
+		client.send_packet(update_recipes).await.unwrap();
 
 		let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(
 			VarInt(2),

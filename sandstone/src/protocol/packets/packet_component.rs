@@ -103,8 +103,21 @@ pub struct PropertySet {
 	pub items: PrefixedArray<VarInt>
 }
 
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct StonecutterRecipe {
 	pub id_set: IDSet,
 	pub slot_display: SlotDisplay
+}
+
+impl McDefault for StonecutterRecipe {
+	fn mc_default() -> Self {
+		Self {
+			id_set: IDSet {
+				typ: VarInt(4),
+				tag_name: None,
+				ids: Some(vec![VarInt(0), VarInt(1), VarInt(2)]),
+			},
+			slot_display: SlotDisplay::Empty
+		}
+	}
 }

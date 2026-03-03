@@ -90,7 +90,7 @@ mod tests {
 
         assert_eq!(ProtocolVerison::try_from(47).unwrap(), ProtocolVerison::V1_8);
         assert_eq!(ProtocolVerison::try_from(110).unwrap(), ProtocolVerison::V1_9);
-        assert_eq!(ProtocolVerison::try_from(773).unwrap(), ProtocolVerison::V1_21);
+        assert_eq!(ProtocolVerison::try_from(774).unwrap(), ProtocolVerison::V1_21);
         assert!(ProtocolVerison::try_from(999).is_err());
     }
 

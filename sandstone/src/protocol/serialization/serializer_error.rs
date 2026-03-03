@@ -45,6 +45,8 @@ pub enum SerializingErr {
 	DeserializationError(String),
 	#[error(transparent)]
 	NbtError(#[from] NbtError),
+	#[error("The input data is inconsistent with another field: {0}")]
+	InconsistentField(String),
 }
 
 impl PartialEq for SerializingErr {
@@ -60,6 +62,7 @@ impl PartialEq for SerializingErr {
 			(Self::UnknownFailure, Self::UnknownFailure) => true,
 			(Self::UniqueFailure(a), Self::UniqueFailure(b)) => a == b,
 			(Self::InvalidPacketState, Self::InvalidPacketState) => true,
+			(Self::InconsistentField(a), Self::InconsistentField(b)) => a == b,
 			_ => false,
 		}
 	}

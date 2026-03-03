@@ -3,3 +3,4 @@ pub mod chat;
 pub mod nbt;
 pub mod game_types;
 pub mod internal_types;
+pub mod command;

@@ -15,7 +15,7 @@ use crate::game::player::PlayerGamemode;
 use crate::packets;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, ResourcePackEntry, StonecutterRecipe, TagArray};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, ResourcePackEntry, TagArray};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -25,8 +25,8 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
+use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{GameDifficulty, Position};
-use crate::protocol_types::datatypes::internal_types::Node;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitfield::BitField;
 use packet_component::ProtocolPropertyElement;
@@ -201,7 +201,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				difficulty: GameDifficulty,
 				difficulty_locked: bool
 			},
-			CommandsGraph, CommandsGraphPacket, 0x0F => {
+			CommandsGraph, CommandsGraphPacket, 0x10 => {
 				nodes: PrefixedArray<Node>,
 				root_index: VarInt
 			},
@@ -273,8 +273,9 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				slot: VarInt
 			},
 			UpdateRecipes, UpdateRecipesPacket, 0x83 => {
-				property_sets: PrefixedArray<PropertySet>,
-				stonecutter_recipes: PrefixedArray<StonecutterRecipe>
+				skip: Vec<u8> // todo: temp fix
+				/*property_sets: PrefixedArray<PropertySet>, // todo: problematic, IDSet is not deserialized correctly, gives error in SlotDisplay
+				stonecutter_recipes: PrefixedArray<StonecutterRecipe>*/
 			}
 		},
 		SERVER => {

@@ -11,7 +11,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
-use log::{debug, trace};
+use log::{debug, error, trace};
 use std::fmt::Display;
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -269,6 +269,33 @@ impl CraftConnection {
 		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
 
 		Ok(packet)
+	}
+
+	/// Peek the next `n` bytes in the queue without removing them. Useful for debugging.
+	pub async fn peek_n_bytes(&mut self, n: usize) -> Result<Vec<u8>, NetworkError> {
+		let mut buffer = vec![0; n];
+		let length = self.tcp_stream.peek(&mut buffer).await;
+
+		if let Err(e) = length {
+			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
+				error!("OS Error detected in packet receive, closing the connection: {e}");
+				self.close().await;
+				return Err(NetworkError::ConnectionAbortedLocally);
+			}
+
+			return Err(NetworkError::IOError(e));
+		}
+
+		let length = length?;
+
+		trace!("Peeked from {} : {:?}", self, &buffer);
+
+		if length == 0 { // connection closed
+			self.close().await;
+			return Err(NetworkError::NoDataReceived);
+		}
+
+		Ok(buffer)
 	}
 
 	/// Change the internal Packet State. This is used to categorize what kind of packets are being sent/received.

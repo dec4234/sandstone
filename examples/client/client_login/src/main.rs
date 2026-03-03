@@ -1,7 +1,7 @@
 use log::{debug, error, trace, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::{AcknowledgeFinishConfigurationPacket, HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
+use sandstone::protocol::packets::{AcknowledgeFinishConfigurationPacket, ConfirmTeleportPacket, HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
@@ -16,7 +16,7 @@ use uuid::Uuid;
 #[tokio::main]
 async fn main() {
     SimpleLogger::new()
-        .with_level(LevelFilter::Debug)
+        .with_level(LevelFilter::Trace)
         .init()
         .unwrap();
     debug!("Starting client");
@@ -141,28 +141,28 @@ async fn main() {
 
         match packet {
             Packet::ChangeDifficulty(cd) => {
-                debug!("Received clientbound plugin message: {cd:?}");
+                debug!("Received change difficulty: {cd:?}");
                 continue;
             }
             Packet::PlayerAbilities(pa) => {
-                debug!("Received feature flags: {pa:?}");
+                debug!("Received player abilities: {pa:?}");
                 continue;
             }
             Packet::SetHeldItem(shi) => {
-                debug!("Received known packs: {shi:?}");
-                break;
+                debug!("Received set held item: {shi:?}");
+                continue;
             }
             Packet::UpdateRecipes(urp) => {
-                debug!("Received known packs: {urp:?}");
-                break;
+                debug!("Received update recipes: {urp:?}");
+                continue;
             }
             Packet::EntityEvent(ee) => {
-                debug!("Received known packs: {ee:?}");
-                break;
+                debug!("Received entity event: {ee:?}");
+                continue;
             }
             Packet::CommandsGraph(cg) => {
-                debug!("Received known packs: {cg:?}");
-                break;
+                debug!("Received commands graph: {cg:?}");
+                continue;
             }
             _ => {
                 panic!("Received unexpected packet: {packet:?}");
@@ -170,5 +170,19 @@ async fn main() {
         }
     }
 
-    // todo: sync player position
+    let teleport_id;
+
+    match client.receive_packet().await.unwrap() {
+        Packet::SyncPlayerPosition(spp) => {
+            teleport_id = spp.teleport_id;
+            debug!("Received known packs: {spp:?}");
+        }
+        packet => {
+            panic!("Received unexpected packet: {packet:?}");
+        }
+    }
+
+    let confirm = Packet::ConfirmTeleport(ConfirmTeleportPacket::new(teleport_id));
+    debug!("Sending confirm teleport packet: {confirm:?}");
+    client.send_packet(confirm).await.unwrap();
 }

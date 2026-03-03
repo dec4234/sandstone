@@ -112,6 +112,7 @@ mod macros {
 }
 
 impl<T: McSerialize> McSerialize for Vec<T> {
+	/// Serialize the contents of the Vec<T> to the serializer without any length prefix.
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
 		for item in self {
 			item.mc_serialize(serializer)?;
