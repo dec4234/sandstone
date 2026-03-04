@@ -178,14 +178,13 @@ async fn main() {
 		client.send_packet(login).await.unwrap();
 
 		let update_recipes = Packet::UpdateRecipes(UpdateRecipesPacket::new(
-			vec![]
-			/*PrefixedArray::new(vec![PropertySet {
+			PrefixedArray::new(vec![PropertySet {
 				identifier: "test_name".to_string(),
 				items: PrefixedArray::new(vec![VarInt(0)]),
 			}]),
 			PrefixedArray::new(vec![
 				StonecutterRecipe::mc_default()
-			])*/
+			])
 		));
 
 		debug!("Sending update recipes packet {update_recipes:?}");

@@ -164,6 +164,14 @@ async fn main() {
                 debug!("Received commands graph: {cg:?}");
                 continue;
             }
+            Packet::RecipeBookSettings(rb) => {
+                debug!("Received recipe book settings: {rb:?}");
+                continue;
+            }
+            Packet::RecipeBookAdd(rad) => {
+                debug!("Received recipe book add: {rad:?}");
+                break;
+            }
             _ => {
                 panic!("Received unexpected packet: {packet:?}");
             }
@@ -185,4 +193,18 @@ async fn main() {
     let confirm = Packet::ConfirmTeleport(ConfirmTeleportPacket::new(teleport_id));
     debug!("Sending confirm teleport packet: {confirm:?}");
     client.send_packet(confirm).await.unwrap();
+
+    loop {
+        let packet = client.receive_packet().await.unwrap();
+
+        match packet {
+            Packet::ServerData(sd) => { // todo: fix
+                debug!("Received server data: {:?}", sd.motd);
+                continue;
+            }
+            _ => {
+                panic!("Received unexpected packet: {packet:?}");
+            }
+        }
+    }
 }

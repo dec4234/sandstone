@@ -125,8 +125,105 @@ impl McDeserialize for IDSet {
 
 #[cfg(test)]
 mod test {
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 	use crate::protocol_types::datatypes::command::{NodeFlags, NodeType};
-	use crate::protocol_types::datatypes::internal_types::PackedEntries;
+	use crate::protocol_types::datatypes::internal_types::{IDSet, PackedEntries};
+	use crate::protocol_types::datatypes::var_types::VarInt;
+
+	#[test]
+	fn test_idset_tag_round_trip() {
+		let id_set = IDSet {
+			typ: VarInt(0),
+			tag_name: Some("minecraft:planks".to_string()),
+			ids: None,
+		};
+		let mut serializer = McSerializer::new();
+		id_set.mc_serialize(&mut serializer).unwrap();
+		let bytes: Vec<u8> = serializer.into();
+		let mut deserializer = McDeserializer::new(&bytes);
+		let result = IDSet::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(id_set, result);
+		assert!(deserializer.is_at_end());
+	}
+
+	#[test]
+	fn test_idset_inline_round_trip() {
+		let id_set = IDSet {
+			typ: VarInt(4),
+			tag_name: None,
+			ids: Some(vec![VarInt(10), VarInt(20), VarInt(30)]),
+		};
+		let mut serializer = McSerializer::new();
+		id_set.mc_serialize(&mut serializer).unwrap();
+		let bytes: Vec<u8> = serializer.into();
+		let mut deserializer = McDeserializer::new(&bytes);
+		let result = IDSet::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(id_set, result);
+		assert!(deserializer.is_at_end());
+	}
+
+	#[test]
+	fn test_idset_followed_by_data() {
+		let id_set = IDSet {
+			typ: VarInt(0),
+			tag_name: Some("minecraft:stone".to_string()),
+			ids: None,
+		};
+		let mut serializer = McSerializer::new();
+		id_set.mc_serialize(&mut serializer).unwrap();
+		VarInt(42).mc_serialize(&mut serializer).unwrap();
+		let bytes: Vec<u8> = serializer.into();
+		let mut deserializer = McDeserializer::new(&bytes);
+		let result = IDSet::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(id_set, result);
+		let next = VarInt::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(next, VarInt(42));
+		assert!(deserializer.is_at_end());
+	}
+
+	#[test]
+	fn test_stonecutter_recipe_round_trip() {
+		use crate::protocol::packets::packet_component::StonecutterRecipe;
+		use crate::protocol::game::info::inventory::slots::SlotDisplay;
+
+		let recipe = StonecutterRecipe {
+			id_set: IDSet {
+				typ: VarInt(0),
+				tag_name: Some("minecraft:stone_crafting_materials".to_string()),
+				ids: None,
+			},
+			slot_display: SlotDisplay::Item(VarInt(45)),
+		};
+		let mut serializer = McSerializer::new();
+		recipe.mc_serialize(&mut serializer).unwrap();
+		let bytes: Vec<u8> = serializer.into();
+		let mut deserializer = McDeserializer::new(&bytes);
+		let result = StonecutterRecipe::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(recipe, result);
+		assert!(deserializer.is_at_end());
+	}
+
+	#[test]
+	fn test_stonecutter_recipe_inline_ids_round_trip() {
+		use crate::protocol::packets::packet_component::StonecutterRecipe;
+		use crate::protocol::game::info::inventory::slots::SlotDisplay;
+
+		let recipe = StonecutterRecipe {
+			id_set: IDSet {
+				typ: VarInt(5),
+				tag_name: None,
+				ids: Some(vec![VarInt(10), VarInt(20), VarInt(30), VarInt(40)]),
+			},
+			slot_display: SlotDisplay::Item(VarInt(100)),
+		};
+		let mut serializer = McSerializer::new();
+		recipe.mc_serialize(&mut serializer).unwrap();
+		let bytes: Vec<u8> = serializer.into();
+		let mut deserializer = McDeserializer::new(&bytes);
+		let result = StonecutterRecipe::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(recipe, result);
+		assert!(deserializer.is_at_end());
+	}
 
 	#[test]
 	fn basic_packed_entries_test() {

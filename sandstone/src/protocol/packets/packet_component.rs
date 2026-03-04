@@ -1,7 +1,7 @@
 //! Defines a lot of random components of network packets. This is separate from packet.rs to reduce
 //! clutter.
 
-use crate::protocol::game::info::inventory::slots::SlotDisplay;
+use crate::protocol::game::info::inventory::slots::{RecipeDisplay, SlotDisplay};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
@@ -101,6 +101,16 @@ impl McDeserialize for PlayerAbilityFlags {
 pub struct PropertySet {
 	pub identifier: String,
 	pub items: PrefixedArray<VarInt>
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct RecipeBookEntry {
+	pub recipe_id: VarInt,
+	pub display: RecipeDisplay,
+	pub group_id: VarInt,
+	pub category_id: VarInt,
+	pub ingredients: PrefixedOptional<PrefixedArray<IDSet>>,
+	pub flags: u8,
 }
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]

@@ -15,7 +15,7 @@ use crate::game::player::PlayerGamemode;
 use crate::packets;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, ResourcePackEntry, TagArray};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, TagArray};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -252,7 +252,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				flying_speed: f32,
 				fov_modifier: f32
 			},
-			SyncPlayerPosition, SyncPlayerPositionPacket, 0x41 => {
+			SyncPlayerPosition, SyncPlayerPositionPacket, 0x46 => {
 				teleport_id: VarInt,
 				x: f64,
 				y: f64,
@@ -265,6 +265,27 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				#[doc = "See https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags for more info"]
 				flags: BitField<i8>
 			},
+			RecipeBookAdd, RecipeBookAddPacket, 0x48 => {
+				recipes: PrefixedArray<RecipeBookEntry>,
+				replace: bool
+			},
+			RecipeBookRemove, RecipeBookRemovePacket, 0x49 => {
+				recipes: PrefixedArray<VarInt>
+			},
+			RecipeBookSettings, RecipeBookSettingsPacket, 0x4A => {
+				crafting_open: bool,
+				crafting_filter: bool,
+				smelting_open: bool,
+				smelting_filter: bool,
+				blasting_open: bool,
+				blasting_filter: bool,
+				smoking_open: bool,
+				smoking_filter: bool
+			},
+			ServerData, ServerDataPacket, 0x54 => {
+				motd: TextComponent,
+				icon: PrefixedOptional<PrefixedArray<u8>>
+			},
 			SetCenterChunk, SetCenterChunkPacket, 0x57 => {
 				x: VarInt,
 				z: VarInt
@@ -273,9 +294,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				slot: VarInt
 			},
 			UpdateRecipes, UpdateRecipesPacket, 0x83 => {
-				skip: Vec<u8> // todo: temp fix
-				/*property_sets: PrefixedArray<PropertySet>, // todo: problematic, IDSet is not deserialized correctly, gives error in SlotDisplay
-				stonecutter_recipes: PrefixedArray<StonecutterRecipe>*/
+				property_sets: PrefixedArray<PropertySet>,
+				stonecutter_recipes: PrefixedArray<StonecutterRecipe>
 			}
 		},
 		SERVER => {
