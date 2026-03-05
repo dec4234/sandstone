@@ -113,7 +113,7 @@ pub struct RecipeBookEntry {
 	pub flags: u8,
 }
 
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct StonecutterRecipe {
 	pub id_set: IDSet,
 	pub slot_display: SlotDisplay

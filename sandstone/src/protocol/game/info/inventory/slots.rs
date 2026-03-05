@@ -10,7 +10,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
-#[derive(McDefault, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, Debug, PartialEq, Clone)]
 pub enum SlotDisplay {
 	Empty,
 	AnyFuel,
@@ -83,20 +83,20 @@ impl McDeserialize for SlotDisplay {
 	}
 }
 
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, PartialEq, Clone)]
 pub struct SmithingTrimSlotData {
 	pub base: SlotDisplay,
 	pub material: SlotDisplay,
 	pub pattern: VarInt
 }
 
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, PartialEq, Clone)]
 pub struct WithRemainderSlotData {
 	pub ingredient: SlotDisplay,
 	pub remainder: SlotDisplay
 }
 
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, PartialEq, Clone)]
 pub struct CompositeSlotData {
 	pub options: PrefixedArray<SlotDisplay>
 }

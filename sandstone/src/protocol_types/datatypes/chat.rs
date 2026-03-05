@@ -4,6 +4,7 @@
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
 use sandstone_derive::McDefault;
 use serde::{Deserialize, Serialize};
 
@@ -68,9 +69,22 @@ impl TextComponent {
 	}
 }
 
+impl From<NbtTag> for TextComponent {
+	fn from(tag: NbtTag) -> Self {
+		Self::new(serde_json::to_string(&tag).unwrap())
+	}
+}
+
+impl From<TextComponent> for NbtTag {
+	fn from(component: TextComponent) -> Self {
+		serde_json::to_string(&component).map_err(|e| SerializingErr::UniqueFailure(format!("Failed to serialize JSON: {}", e))).unwrap().into()
+	}
+}
+
 impl McSerialize for TextComponent {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		serde_json::to_string(self).map_err(|e| SerializingErr::UniqueFailure(format!("Failed to serialize JSON: {}", e)))?.mc_serialize(serializer)?;
+		let nbt = NbtTag::from(self.clone());
+		nbt.mc_serialize(serializer)?;
 		
 		Ok(())
 	}
@@ -78,8 +92,8 @@ impl McSerialize for TextComponent {
 
 impl McDeserialize for TextComponent {
 	fn mc_deserialize(deserializer: &mut McDeserializer) -> Result<Self, SerializingErr> {
-		let json = String::mc_deserialize(deserializer)?;
-		let deserialized = serde_json::from_str(&json).map_err(|e| SerializingErr::UniqueFailure(format!("Failed to deserialize JSON: {}", e)))?;
+		let nbt = NbtTag::mc_deserialize(deserializer)?;
+		let deserialized = TextComponent::from(nbt);
 		
 		Ok(deserialized)
 	}
