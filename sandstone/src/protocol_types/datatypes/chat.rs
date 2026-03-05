@@ -69,7 +69,7 @@ impl TextComponent {
 	}
 }
 
-impl From<NbtTag> for TextComponent {
+impl From<NbtTag> for TextComponent { // todo
 	fn from(tag: NbtTag) -> Self {
 		Self::new(serde_json::to_string(&tag).unwrap())
 	}

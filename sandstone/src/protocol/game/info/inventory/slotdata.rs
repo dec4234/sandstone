@@ -3,7 +3,7 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 
-// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data
+/// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data
 #[derive(Debug, Clone, PartialEq)]
 pub struct SlotData {
 	pub item_count: VarInt,

@@ -202,6 +202,10 @@ async fn main() {
                 debug!("Received server data: {:?}", sd.motd);
                 continue;
             }
+            Packet::PlayerInfoUpdate(piu) => {
+                debug!("Received player info update: {piu:?}");
+                continue;
+            }
             _ => {
                 panic!("Received unexpected packet: {packet:?}");
             }

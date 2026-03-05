@@ -252,6 +252,9 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				flying_speed: f32,
 				fov_modifier: f32
 			},
+			PlayerInfoUpdate, PlayerInfoUpdatePacket, 0x44 => {
+				data: PlayerInfoUpdateData
+			},
 			SyncPlayerPosition, SyncPlayerPositionPacket, 0x46 => {
 				teleport_id: VarInt,
 				x: f64,
