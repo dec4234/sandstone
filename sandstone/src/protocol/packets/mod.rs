@@ -13,6 +13,7 @@
 
 use crate::game::player::PlayerGamemode;
 use crate::packets;
+use crate::protocol::game::info::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, TagArray};

@@ -1,4 +1,3 @@
-use crate::protocol::game::info::player::PlayerInfoUpdateType;
 use crate::protocol::packets::packet_component::ProtocolPropertyElement;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -23,14 +22,6 @@ impl EnumSet {
 
 	pub fn from_raw(value: u8) -> Self {
 		Self { field: BitField::new(value) }
-	}
-
-	pub fn has(&self, action: &PlayerInfoUpdateType) -> bool {
-		self.field.get_bit(action.get_bit_index())
-	}
-
-	pub fn set(&mut self, action: &PlayerInfoUpdateType, value: bool) {
-		self.field.set_bit(action.get_bit_index(), value);
 	}
 
 	pub fn raw(&self) -> u8 {

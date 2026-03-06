@@ -96,7 +96,7 @@ impl NbtTag {
 	}
 	
 	/// Given the type ID, deserialize the corresponding NbtTag.
-	fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
+	pub(crate) fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
 		match ty {
 			// Primitives
 			0 => Ok(NbtTag::End),
