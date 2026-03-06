@@ -22,7 +22,7 @@ impl McDeserialize for String {
 		let bounds: (usize, usize) = (deserializer.index, deserializer.index + var_output.0 as usize);
 
 		if bounds.1 > deserializer.data.len() {
-			return Err(SerializingErr::OutOfBounds);
+			return Err(SerializingErr::OutOfBounds(format!("String length prefix of {} exceeds remaining input length of {}", var_output.0, deserializer.data.len() - deserializer.index)));
 		}
 
 		let s = String::from_utf8(deserializer.data[bounds.0..bounds.1].to_vec())?;

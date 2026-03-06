@@ -53,14 +53,14 @@ impl LightArray {
 	/// Set the light value for the given index. Half a byte per light value.
 	pub fn set(&mut self, index: usize, value: u8) -> SerializingResult<()> {
 		if value > 0x0F {
-			return Err(SerializingErr::OutOfBounds);
+			return Err(SerializingErr::OutOfBounds(format!("Light value {} is out of bounds. Valid values are 0-15", value)));
 		}
 
 		let byte_index = index / 2;
 		let is_high = index % 2 == 1;
 
 		if byte_index >= self.data.vec.len() {
-			return Err(SerializingErr::OutOfBounds);
+			return Err(SerializingErr::OutOfBounds(format!("Light index {} is out of bounds. Valid indices are 0-4095", index)));
 		}
 
 		let byte = self.data.vec[byte_index];
@@ -81,7 +81,7 @@ impl LightArray {
 		let is_high = index % 2 == 1;
 
 		if byte_index >= self.data.vec.len() {
-			return Err(SerializingErr::OutOfBounds);
+			return Err(SerializingErr::OutOfBounds(format!("Light index {} is out of bounds. Valid indices are 0-4095", index)));
 		}
 
 		let byte = self.data.vec[byte_index];
@@ -276,7 +276,7 @@ pub struct PackedXZ {
 impl PackedXZ {
 	pub fn new<'a>(x: u8, z: u8) -> SerializingResult<'a, Self> {
 		if x > 15 || z > 15 {
-			return Err(SerializingErr::OutOfBounds);
+			return Err(SerializingErr::OutOfBounds(format!("PackedXZ values out of bounds. Valid values are 0-15. Received x={}, z={}", x, z)));
 		}
 		
 		Ok(Self {

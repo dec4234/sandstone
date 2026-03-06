@@ -23,8 +23,6 @@ pub enum SerializingErr {
 	StringFromSliceError(#[from] TryFromSliceError),
 	#[error("Input ended prematurely")]
 	InputEnded,
-	#[error("Out of bounds")]
-	OutOfBounds,
 	#[error("There is unused input data left")]
 	LeftoverInput,
 	#[error("Unknown deserialization failure")]
@@ -47,6 +45,8 @@ pub enum SerializingErr {
 	NbtError(#[from] NbtError),
 	#[error("The input data is inconsistent with another field: {0}")]
 	InconsistentField(String),
+	#[error("The deserialized data is not valid for the range of possible values: {0}")]
+	OutOfBounds(String),
 }
 
 impl PartialEq for SerializingErr {
@@ -57,12 +57,12 @@ impl PartialEq for SerializingErr {
 			(Self::CouldNotDeserializeString(a), Self::CouldNotDeserializeString(b)) => a == b,
 			(Self::StringFromSliceError(a), Self::StringFromSliceError(b)) => a.to_string() == b.to_string(),
 			(Self::InputEnded, Self::InputEnded) => true,
-			(Self::OutOfBounds, Self::OutOfBounds) => true,
 			(Self::LeftoverInput, Self::LeftoverInput) => true,
 			(Self::UnknownFailure, Self::UnknownFailure) => true,
 			(Self::UniqueFailure(a), Self::UniqueFailure(b)) => a == b,
 			(Self::InvalidPacketState, Self::InvalidPacketState) => true,
 			(Self::InconsistentField(a), Self::InconsistentField(b)) => a == b,
+			(Self::OutOfBounds(a), Self::OutOfBounds(b)) => a == b,
 			_ => false,
 		}
 	}

@@ -132,3 +132,110 @@ impl McDefault for StonecutterRecipe {
 	}
 }
 
+#[derive(McDefault, Debug, Clone, PartialEq)]
+pub enum GameEventType {
+	NoRespawnBlockAvailable,
+	BeginRaining,
+	EndRaining,
+	ChangeGameMode,
+	WinGame,
+	DemoEvent,
+	ArrowHitPlayer,
+	RainLevelChange,
+	ThunderLevelChange,
+	PlayPufferfishStingSound,
+	PlayElderGuardianAppearance,
+	EnableRespawnScreen,
+	LimitedCrafting,
+	StartWaitingForLevelChunks,
+}
+
+impl McSerialize for GameEventType {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		let id: u8 = match self {
+			GameEventType::NoRespawnBlockAvailable => 0,
+			GameEventType::BeginRaining => 1,
+			GameEventType::EndRaining => 2,
+			GameEventType::ChangeGameMode => 3,
+			GameEventType::WinGame => 4,
+			GameEventType::DemoEvent => 5,
+			GameEventType::ArrowHitPlayer => 6,
+			GameEventType::RainLevelChange => 7,
+			GameEventType::ThunderLevelChange => 8,
+			GameEventType::PlayPufferfishStingSound => 9,
+			GameEventType::PlayElderGuardianAppearance => 10,
+			GameEventType::EnableRespawnScreen => 11,
+			GameEventType::LimitedCrafting => 12,
+			GameEventType::StartWaitingForLevelChunks => 13,
+		};
+		id.mc_serialize(serializer)
+	}
+}
+
+impl McDeserialize for GameEventType {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let id = u8::mc_deserialize(deserializer)?;
+		match id {
+			0 => Ok(GameEventType::NoRespawnBlockAvailable),
+			1 => Ok(GameEventType::BeginRaining),
+			2 => Ok(GameEventType::EndRaining),
+			3 => Ok(GameEventType::ChangeGameMode),
+			4 => Ok(GameEventType::WinGame),
+			5 => Ok(GameEventType::DemoEvent),
+			6 => Ok(GameEventType::ArrowHitPlayer),
+			7 => Ok(GameEventType::RainLevelChange),
+			8 => Ok(GameEventType::ThunderLevelChange),
+			9 => Ok(GameEventType::PlayPufferfishStingSound),
+			10 => Ok(GameEventType::PlayElderGuardianAppearance),
+			11 => Ok(GameEventType::EnableRespawnScreen),
+			12 => Ok(GameEventType::LimitedCrafting),
+			13 => Ok(GameEventType::StartWaitingForLevelChunks),
+			_ => Err(SerializingErr::DeserializationError(format!("Invalid GameEventType id: {}", id))),
+		}
+	}
+}
+
+#[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
+pub struct AttributeProperty {
+	pub id: VarInt,
+	pub value: f64,
+	pub modifiers: PrefixedArray<ModifierData>
+}
+
+#[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
+pub struct ModifierData {
+	pub id: String,
+	pub amount: f64,
+	pub operation: ModifierOperation
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq)]
+pub enum ModifierOperation {
+	AddSubtractAmount,
+	AddSubtractPercentage,
+	MultiplyPercentage
+}
+
+impl McSerialize for ModifierOperation {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		let id: u8 = match self {
+			ModifierOperation::AddSubtractAmount => 0,
+			ModifierOperation::AddSubtractPercentage => 1,
+			ModifierOperation::MultiplyPercentage => 2,
+		};
+		id.mc_serialize(serializer)
+	}
+}
+
+impl McDeserialize for ModifierOperation {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let id = u8::mc_deserialize(deserializer)?;
+		match id {
+			0 => Ok(ModifierOperation::AddSubtractAmount),
+			1 => Ok(ModifierOperation::AddSubtractPercentage),
+			2 => Ok(ModifierOperation::MultiplyPercentage),
+			_ => Err(SerializingErr::OutOfBounds(format!("Invalid ModifierOperation id: {}", id))),
+		}
+	}
+}
+

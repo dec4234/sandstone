@@ -206,6 +206,46 @@ async fn main() {
                 debug!("Received player info update: {piu:?}");
                 continue;
             }
+            Packet::InitializeWorldBorder(iwb) => {
+                debug!("Received initialize world border: {iwb:?}");
+                continue;
+            }
+            Packet::UpdateTime(ut) => {
+                debug!("Received update time: {ut:?}");
+                continue;
+            }
+            Packet::SetDefaultSpawnPosition(sds) => {
+                debug!("Received set default spawn position: {sds:?}");
+                continue;
+            }
+            Packet::GameEvent(ge) => { // required unlike the rest
+                debug!("Received game event: {ge:?}");
+                continue;
+            }
+            Packet::SetTickingState(st) => {
+                debug!("Received set ticking state: {st:?}");
+                continue;
+            }
+            Packet::StepTick(st) => {
+                debug!("Received step tick: {st:?}");
+                continue;
+            }
+            Packet::SetCenterChunk(scc) => {
+                debug!("Received set center chunk: {scc:?}");
+                continue;
+            }
+            Packet::SetContainerContent(scc) => {
+                debug!("Received set container content: {scc:?}");
+                continue;
+            }
+            Packet::SetEntityMetadata(sem) => {
+                debug!("Received set entity metadata: {sem:?}");
+                continue;
+            }
+            Packet::UpdateAttributes(ua) => {
+                debug!("Received update attributes: {ua:?}");
+                continue;
+            }
             _ => {
                 panic!("Received unexpected packet: {packet:?}");
             }

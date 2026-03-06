@@ -13,10 +13,13 @@
 
 use crate::game::player::PlayerGamemode;
 use crate::packets;
+use crate::protocol::game::entity::EntityMetadata;
+use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::game::info::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
+use crate::protocol::game::info::stats::advancement::{Advancement, AdvancementProgress, Mapping};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, TagArray};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, TagArray};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -28,7 +31,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{GameDifficulty, Position};
-use crate::protocol_types::datatypes::var_types::VarInt;
+use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitfield::BitField;
 use packet_component::ProtocolPropertyElement;
 use uuid::Uuid;
@@ -206,9 +209,19 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				nodes: PrefixedArray<Node>,
 				root_index: VarInt
 			},
+			SetContainerContent, SetContainerContentPacket, 0x12 => {
+				window_id: VarInt,
+				state_id: VarInt,
+				slot_data: PrefixedArray<SlotData>,
+				carried_item: SlotData
+			},
 			EntityEvent, EntityEventPacket, 0x22 => {
 				entity_id: i32,
 				entity_status: i8 // todo: create comprehensive enum https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses
+			},
+			GameEvent, GameEventPacket, 0x26 => {
+				event: GameEventType,
+				value: f32
 			},
 			ChunkDataUpdateLight, ChunkDataUpdateLightPacket, 0x27 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
 				x: i32,
@@ -216,6 +229,16 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				#[doc = "Chunk byte data"]
 				data: ChunkData,
 				light: LightData
+			},
+			InitializeWorldBorder, InitializeWorldBorderPacket, 0x2A => {
+				x: f64,
+				z: f64,
+				old_diameter: f64,
+				new_diameter: f64,
+				speed: VarLong,
+				portal_teleport_boundary: VarInt,
+				warning_blocks: VarInt,
+				warning_time: VarInt
 			},
 			LoginInfo, LoginInfoPacket, 0x30 => {
 				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
@@ -290,12 +313,45 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				motd: TextComponent,
 				icon: PrefixedOptional<PrefixedArray<u8>>
 			},
-			SetCenterChunk, SetCenterChunkPacket, 0x57 => {
+			SetCenterChunk, SetCenterChunkPacket, 0x5C => {
 				x: VarInt,
 				z: VarInt
 			},
+			SetDefaultSpawnPosition, SetDefaultSpawnPositionPacket, 0x5F => {
+				dimension_name: String,
+				location: Position,
+				yaw: f32,
+				pitch: f32
+			},
+			SetEntityMetadata, SetEntityMetadataPacket, 0x61 => {
+				entity_id: VarInt,
+				metadata: EntityMetadata
+			},
+			UpdateTime, UpdateTimePacket, 0x6F => {
+				world_age: i64,
+				time_of_day: i64,
+				time_of_day_increasing: bool
+			},
 			SetHeldItem, SetHeldItemPacket, 0x67 => {
 				slot: VarInt
+			},
+			SetTickingState, SetTickingStatePacket, 0x7D => {
+				tick_rate: f32,
+				is_frozen: bool
+			},
+			StepTick, StepTickPacket, 0x7E => {
+				tick_steps: VarInt
+			},
+			UpdateAdvancements, UpdateAdvancementsPacket, 0x80 => {
+				reset: bool,
+				advancement_mapping: PrefixedArray<Mapping<Advancement>>,
+				identifiers: PrefixedArray<String>,
+				progress_mapping: PrefixedArray<Mapping<AdvancementProgress>>,
+				show_advancements: bool
+			},
+			UpdateAttributes, UpdateAttributesPacket, 0x81 => {
+				entity_id: VarInt,
+				modifiers: PrefixedArray<AttributeProperty>
 			},
 			UpdateRecipes, UpdateRecipesPacket, 0x83 => {
 				property_sets: PrefixedArray<PropertySet>,
