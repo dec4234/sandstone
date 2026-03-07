@@ -1,3 +1,4 @@
+use crate::protocol::game::effects::sound::SoundEvent;
 use crate::protocol::game::info::inventory::component_types::*;
 use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::serialization::serializer_error::SerializingErr;
@@ -6,7 +7,7 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::Position;
-use crate::protocol_types::datatypes::internal_types::IDSet;
+use crate::protocol_types::datatypes::internal_types::{IDSet, IDorX};
 use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
@@ -61,7 +62,7 @@ pub struct FoodComponent {
 pub struct ConsumableComponent {
 	pub consume_seconds: f32,
 	pub animation: VarInt,
-	pub sound: IdOrSoundEvent,
+	pub sound: IDorX<SoundEvent>,
 	pub has_particles: bool,
 	pub effects: PrefixedArray<ConsumeEffect>,
 }
@@ -96,7 +97,7 @@ pub struct WeaponComponent {
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct EquippableComponent {
 	pub slot: VarInt,
-	pub equip_sound: IdOrSoundEvent,
+	pub equip_sound: IDorX<SoundEvent>,
 	pub model: PrefixedOptional<String>,
 	pub camera_overlay: PrefixedOptional<String>,
 	pub allowed_entities: PrefixedOptional<IDSet>,
@@ -122,8 +123,8 @@ pub struct BlocksAttacksComponent {
 	pub item_damage_base: f32,
 	pub item_damage_factor: f32,
 	pub bypassed_by: PrefixedOptional<String>,
-	pub block_sound: PrefixedOptional<IdOrSoundEvent>,
-	pub disable_sound: PrefixedOptional<IdOrSoundEvent>,
+	pub block_sound: PrefixedOptional<IDorX<SoundEvent>>,
+	pub disable_sound: PrefixedOptional<IDorX<SoundEvent>>,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
@@ -498,7 +499,7 @@ pub enum StructuredComponent {
 	Bees(PrefixedArray<BeeData>),                   // 68
 	Lock(NbtTag),                                   // 69
 	ContainerLoot(NbtCompound),                     // 70
-	BreakSound(IdOrSoundEvent),                     // 71
+	BreakSound(IDorX<SoundEvent>),                  // 71
 	VillagerVariant(VarInt),                        // 72
 	WolfVariant(VarInt),                            // 73
 	WolfSoundVariant(VarInt),                       // 74
@@ -704,7 +705,7 @@ impl McDeserialize for StructuredComponent {
 			68 => Ok(StructuredComponent::Bees(PrefixedArray::mc_deserialize(deserializer)?)),
 			69 => Ok(StructuredComponent::Lock(NbtTag::mc_deserialize(deserializer)?)),
 			70 => Ok(StructuredComponent::ContainerLoot(NbtCompound::mc_deserialize(deserializer)?)),
-			71 => Ok(StructuredComponent::BreakSound(IdOrSoundEvent::mc_deserialize(deserializer)?)),
+			71 => Ok(StructuredComponent::BreakSound(IDorX::mc_deserialize(deserializer)?)),
 			72 => Ok(StructuredComponent::VillagerVariant(VarInt::mc_deserialize(deserializer)?)),
 			73 => Ok(StructuredComponent::WolfVariant(VarInt::mc_deserialize(deserializer)?)),
 			74 => Ok(StructuredComponent::WolfSoundVariant(VarInt::mc_deserialize(deserializer)?)),

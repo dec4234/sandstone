@@ -13,11 +13,12 @@
 
 use crate::game::player::PlayerGamemode;
 use crate::packets;
+use crate::protocol::game::effects::sound::{SoundCategory, SoundEvent};
 use crate::protocol::game::entity::EntityMetadata;
 use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::game::info::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
-use crate::protocol::game::info::stats::advancement::{Advancement, AdvancementProgress, Mapping};
+use crate::protocol::game::info::stats::advancement::{Advancement, AdvancementProgress};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, TagArray};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
@@ -31,6 +32,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{GameDifficulty, Position};
+use crate::protocol_types::datatypes::internal_types::{IDorX, Mapping};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitfield::BitField;
 use packet_component::ProtocolPropertyElement;
@@ -334,6 +336,14 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			},
 			SetHeldItem, SetHeldItemPacket, 0x67 => {
 				slot: VarInt
+			},
+			SoundEffect, SoundEffectPacket, 0x73 => {
+				sound_event: IDorX<SoundEvent>,
+				sound_category: SoundCategory,
+				entity_id: VarInt,
+				volume: f32,
+				pitch: f32,
+				seed: i64
 			},
 			SetTickingState, SetTickingStatePacket, 0x7D => {
 				tick_rate: f32,

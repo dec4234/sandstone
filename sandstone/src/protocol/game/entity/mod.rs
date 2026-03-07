@@ -1,6 +1,4 @@
-pub mod particle;
-
-use crate::protocol::game::entity::particle::Particle;
+use crate::protocol::game::effects::particle::Particle;
 use crate::protocol::game::info::inventory::component_types::{IdOrPaintingVariant, ResolvableProfile};
 use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::serialization::serializer_error::SerializingErr;

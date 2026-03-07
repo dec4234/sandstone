@@ -123,6 +123,47 @@ impl McDeserialize for IDSet {
 	}
 }
 
+/// Used when representing a data record of type T or by reference to a registry.
+///
+/// [Doc Link](https://minecraft.wiki/w/Java_Edition_protocol/Packets#ID_or_X)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IDorX<T: McSerialize + McDeserialize + Clone + PartialEq> {
+	Registry(VarInt),
+	Inline(T),
+}
+
+impl<T: McSerialize + McDeserialize + Clone + PartialEq> McSerialize for IDorX<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		match self {
+			IDorX::Registry(id) => {
+				VarInt(id.0 + 1).mc_serialize(serializer)?;
+			}
+			IDorX::Inline(val) => {
+				VarInt(0).mc_serialize(serializer)?;
+				val.mc_serialize(serializer)?;
+			}
+		}
+		Ok(())
+	}
+}
+
+impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDeserialize for IDorX<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let typ = VarInt::mc_deserialize(deserializer)?.0;
+		if typ == 0 {
+			Ok(IDorX::Inline(T::mc_deserialize(deserializer)?))
+		} else {
+			Ok(IDorX::Registry(VarInt(typ - 1)))
+		}
+	}
+}
+
+impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDefault for IDorX<T> {
+	fn mc_default() -> Self {
+		IDorX::Registry(VarInt(0))
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
@@ -296,5 +337,32 @@ mod test {
 		assert_eq!(deserialized_flags.has_redirect, flags.has_redirect);
 		assert_eq!(deserialized_flags.has_suggestions, flags.has_suggestions);
 		assert_eq!(deserialized_flags.is_restricted, flags.is_restricted);
+	}
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Mapping<T> {
+	pub key: String,
+	pub value: T,
+}
+
+impl<T: McSerialize> McSerialize for Mapping<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		self.key.mc_serialize(serializer)?;
+		self.value.mc_serialize(serializer)
+	}
+}
+
+impl<T: McDeserialize> McDeserialize for Mapping<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let key = String::mc_deserialize(deserializer)?;
+		let value = T::mc_deserialize(deserializer)?;
+		Ok(Self { key, value })
+	}
+}
+
+impl<T: McDefault> McDefault for Mapping<T> {
+	fn mc_default() -> Self {
+		Self { key: McDefault::mc_default(), value: T::mc_default() }
 	}
 }

@@ -246,6 +246,10 @@ async fn main() {
                 debug!("Received update attributes: {ua:?}");
                 continue;
             }
+            Packet::UpdateAdvancements(ua) => {
+                debug!("Received update advancements: {ua:?}");
+                continue;
+            }
             _ => {
                 panic!("Received unexpected packet: {packet:?}");
             }

@@ -1,9 +1,10 @@
+use crate::protocol::game::effects::sound::SoundEvent;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
-use crate::protocol_types::datatypes::internal_types::IDSet;
+use crate::protocol_types::datatypes::internal_types::{IDSet, IDorX};
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
@@ -84,50 +85,12 @@ impl McDefault for DyeColor {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum IdOrSoundEvent {
-	Registry(VarInt),
-	Inline(InlineSoundEvent),
-}
-
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct InlineSoundEvent {
 	pub name: String,
 	pub has_fixed_range: bool,
 	#[mc(deserialize_if = has_fixed_range)]
 	pub fixed_range: Option<f32>,
-}
-
-impl McSerialize for IdOrSoundEvent {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		match self {
-			IdOrSoundEvent::Registry(id) => {
-				VarInt(id.0 + 1).mc_serialize(serializer)?;
-			}
-			IdOrSoundEvent::Inline(sound) => {
-				VarInt(0).mc_serialize(serializer)?;
-				sound.mc_serialize(serializer)?;
-			}
-		}
-		Ok(())
-	}
-}
-
-impl McDeserialize for IdOrSoundEvent {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		let typ = VarInt::mc_deserialize(deserializer)?.0;
-		if typ == 0 {
-			Ok(IdOrSoundEvent::Inline(InlineSoundEvent::mc_deserialize(deserializer)?))
-		} else {
-			Ok(IdOrSoundEvent::Registry(VarInt(typ - 1)))
-		}
-	}
-}
-
-impl McDefault for IdOrSoundEvent {
-	fn mc_default() -> Self {
-		IdOrSoundEvent::Registry(VarInt(0))
-	}
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
@@ -308,7 +271,7 @@ pub enum ConsumeEffect {
 	RemoveEffects(IDSet),
 	ClearAllEffects,
 	TeleportRandomly(f32),
-	PlaySound(IdOrSoundEvent),
+	PlaySound(IDorX<SoundEvent>),
 }
 
 impl McSerialize for ConsumeEffect {
@@ -351,7 +314,7 @@ impl McDeserialize for ConsumeEffect {
 			1 => Ok(ConsumeEffect::RemoveEffects(IDSet::mc_deserialize(deserializer)?)),
 			2 => Ok(ConsumeEffect::ClearAllEffects),
 			3 => Ok(ConsumeEffect::TeleportRandomly(f32::mc_deserialize(deserializer)?)),
-			4 => Ok(ConsumeEffect::PlaySound(IdOrSoundEvent::mc_deserialize(deserializer)?)),
+			4 => Ok(ConsumeEffect::PlaySound(IDorX::mc_deserialize(deserializer)?)),
 			_ => Err(SerializingErr::DeserializationError(format!("Invalid ConsumeEffect type: {}", typ)))
 		}
 	}
@@ -462,7 +425,7 @@ impl McDefault for IdOrTrimPattern {
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct Instrument {
-	pub sound_event: IdOrSoundEvent,
+	pub sound_event: IDorX<SoundEvent>,
 	pub use_duration: f32,
 	pub range: f32,
 	pub description: TextComponent,
@@ -508,7 +471,7 @@ impl McDefault for IdOrInstrument {
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct JukeboxSong {
-	pub sound_event: IdOrSoundEvent,
+	pub sound_event: IDorX<SoundEvent>,
 	pub description: TextComponent,
 	pub duration: f32,
 	pub output: VarInt,

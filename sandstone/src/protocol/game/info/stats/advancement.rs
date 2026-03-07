@@ -12,33 +12,6 @@ use sandstone_derive::McDefault;
 use sandstone_derive::{McDeserialize, McSerialize};
 use std::fmt::Debug;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Mapping<T> {
-	pub key: String,
-	pub value: T,
-}
-
-impl<T: McSerialize> McSerialize for Mapping<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		self.key.mc_serialize(serializer)?;
-		self.value.mc_serialize(serializer)
-	}
-}
-
-impl<T: McDeserialize> McDeserialize for Mapping<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		let key = String::mc_deserialize(deserializer)?;
-		let value = T::mc_deserialize(deserializer)?;
-		Ok(Self { key, value })
-	}
-}
-
-impl<T: McDefault> McDefault for Mapping<T> {
-	fn mc_default() -> Self {
-		Self { key: McDefault::mc_default(), value: T::mc_default() }
-	}
-}
-
 #[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
 pub struct Advancement {
 	pub parent_id: PrefixedOptional<String>,
@@ -116,7 +89,7 @@ impl McSerialize for AdvancementFlags {
 
 impl McDeserialize for AdvancementFlags {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		let flags = VarInt::mc_deserialize(deserializer)?.0;
+		let flags = i32::mc_deserialize(deserializer)?;
 		Ok(Self {
 			has_background_texture: (flags & 0x01) != 0,
 			show_toast: (flags & 0x02) != 0,
@@ -127,6 +100,11 @@ impl McDeserialize for AdvancementFlags {
 
 #[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
 pub struct AdvancementProgress {
+	pub criteria: PrefixedArray<CriterionProgress>,
+}
+
+#[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
+pub struct CriterionProgress {
 	pub criterion: String,
-	pub date_acheived: PrefixedOptional<i64>
+	pub date_achieved: PrefixedOptional<i64>,
 }
