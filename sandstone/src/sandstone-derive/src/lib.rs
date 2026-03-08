@@ -429,6 +429,164 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+/// Derive `McSerialize` and `McDeserialize` for unit enums where each variant maps to a VarInt.
+///
+/// Each variant must be a unit variant with an explicit discriminant value.
+///
+/// ```rust,ignore
+/// #[derive(VarIntEnum)]
+/// pub enum ClientStatusAction {
+///     PerformRespawn = 0,
+///     RequestStats = 1,
+/// }
+/// ```
+#[proc_macro_derive(VarIntEnum)]
+pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    let data_enum = match &input.data {
+        Data::Enum(data) => data,
+        _ => panic!("VarIntEnum can only be derived for enums"),
+    };
+
+    let mut serialize_arms = Vec::new();
+    let mut deserialize_arms = Vec::new();
+    let mut variant_names = Vec::new();
+
+    for variant in &data_enum.variants {
+        assert!(
+            matches!(variant.fields, Fields::Unit),
+            "VarIntEnum only supports unit variants, but {:?} has fields",
+            variant.ident
+        );
+
+        let discriminant = variant
+            .discriminant
+            .as_ref()
+            .expect(&format!(
+                "VarIntEnum requires explicit discriminant for variant {}",
+                variant.ident
+            ));
+
+        let expr = &discriminant.1;
+        let variant_ident = &variant.ident;
+
+        serialize_arms.push(quote! {
+            #name::#variant_ident => #expr,
+        });
+
+        deserialize_arms.push(quote! {
+            #expr => Ok(#name::#variant_ident),
+        });
+
+        variant_names.push(variant_ident.to_string());
+    }
+
+    let enum_name_str = name.to_string();
+
+    let expanded = quote! {
+        impl McSerialize for #name {
+            fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+                let id = match self {
+                    #(#serialize_arms)*
+                };
+                VarInt(id).mc_serialize(serializer)
+            }
+        }
+
+        impl McDeserialize for #name {
+            fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+                let id = VarInt::mc_deserialize(deserializer)?.0;
+                match id {
+                    #(#deserialize_arms)*
+                    _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, id))),
+                }
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+/// Derive `McSerialize` and `McDeserialize` for unit enums where each variant maps to a `u8`.
+///
+/// Each variant must be a unit variant with an explicit discriminant value.
+///
+/// ```rust,ignore
+/// #[derive(ByteEnum)]
+/// pub enum ModifierOperation {
+///     AddSubtractAmount = 0,
+///     AddSubtractPercentage = 1,
+///     MultiplyPercentage = 2,
+/// }
+/// ```
+#[proc_macro_derive(ByteEnum)]
+pub fn derive_byte_enum(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    let data_enum = match &input.data {
+        Data::Enum(data) => data,
+        _ => panic!("ByteEnum can only be derived for enums"),
+    };
+
+    let mut serialize_arms = Vec::new();
+    let mut deserialize_arms = Vec::new();
+
+    for variant in &data_enum.variants {
+        assert!(
+            matches!(variant.fields, Fields::Unit),
+            "ByteEnum only supports unit variants, but {:?} has fields",
+            variant.ident
+        );
+
+        let discriminant = variant
+            .discriminant
+            .as_ref()
+            .expect(&format!(
+                "ByteEnum requires explicit discriminant for variant {}",
+                variant.ident
+            ));
+
+        let expr = &discriminant.1;
+        let variant_ident = &variant.ident;
+
+        serialize_arms.push(quote! {
+            #name::#variant_ident => #expr,
+        });
+
+        deserialize_arms.push(quote! {
+            #expr => Ok(#name::#variant_ident),
+        });
+    }
+
+    let enum_name_str = name.to_string();
+
+    let expanded = quote! {
+        impl McSerialize for #name {
+            fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+                let id: u8 = match self {
+                    #(#serialize_arms)*
+                };
+                id.mc_serialize(serializer)
+            }
+        }
+
+        impl McDeserialize for #name {
+            fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+                let id = u8::mc_deserialize(deserializer)?;
+                match id {
+                    #(#deserialize_arms)*
+                    _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, id))),
+                }
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
 /// Derive the `McDefault` trait for a struct. This trait provides a default value for the struct,
 /// which can be used for automated packet testing.
 #[proc_macro_derive(McDefault)]

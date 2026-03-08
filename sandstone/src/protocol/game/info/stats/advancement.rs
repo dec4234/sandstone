@@ -97,14 +97,3 @@ impl McDeserialize for AdvancementFlags {
 		})
 	}
 }
-
-#[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
-pub struct AdvancementProgress {
-	pub criteria: PrefixedArray<CriterionProgress>,
-}
-
-#[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
-pub struct CriterionProgress {
-	pub criterion: String,
-	pub date_achieved: PrefixedOptional<i64>,
-}

@@ -7,6 +7,7 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
 use sandstone_derive::McDefault;
 
+/// The Gamemode of a player, which is represented as a byte.
 #[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 #[repr(i8)]
 pub enum PlayerGamemode {

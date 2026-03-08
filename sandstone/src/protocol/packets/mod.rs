@@ -16,11 +16,11 @@ use crate::packets;
 use crate::protocol::game::effects::sound::{SoundCategory, SoundEvent};
 use crate::protocol::game::entity::EntityMetadata;
 use crate::protocol::game::info::inventory::slotdata::SlotData;
-use crate::protocol::game::info::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
-use crate::protocol::game::info::stats::advancement::{Advancement, AdvancementProgress};
+use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
+use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, TagArray};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, Tag};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -76,7 +76,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 	},
 	LOGIN => {
 		CLIENT => {
-			Disconnect, DisconnectPacket, 0x00 => {
+			LoginDisconnect, LoginDisconnectPacket, 0x00 => {
 				reason: TextComponent
 			},
 			EncryptionRequest, EncryptionRequestPacket, 0x01 => {
@@ -167,7 +167,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				flags: Vec<String>
 			},
 			UpdateTags, UpdateTagsPacket, 0x0D => {
-				tags: PrefixedArray<TagArray>
+				tags: PrefixedArray<Mapping<PrefixedArray<Tag>>>
 			},
 			ClientboundKnownPacks, ClientboundKnownPacksPacket, 0x0E => {
 				entries: PrefixedArray<ResourcePackEntry>
@@ -207,6 +207,9 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				difficulty: GameDifficulty,
 				difficulty_locked: bool
 			},
+			ChunkBatchStart, ChunkBatchStartPacket, 0x0C => {
+				// no fields
+			},
 			CommandsGraph, CommandsGraphPacket, 0x10 => {
 				nodes: PrefixedArray<Node>,
 				root_index: VarInt
@@ -217,9 +220,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				slot_data: PrefixedArray<SlotData>,
 				carried_item: SlotData
 			},
-			EntityEvent, EntityEventPacket, 0x22 => {
+			DisconnectPlay, DisconnectPlayPacket, 0x20 => {
+				reason: TextComponent
+			},
+			EntityEvent, EntityEventPacket, 0x22 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses"] => {
 				entity_id: i32,
-				entity_status: i8 // todo: create comprehensive enum https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses
+				entity_status: i8 // todo: create comprehensive enum
 			},
 			GameEvent, GameEventPacket, 0x26 => {
 				event: GameEventType,
@@ -241,6 +247,9 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				portal_teleport_boundary: VarInt,
 				warning_blocks: VarInt,
 				warning_time: VarInt
+			},
+			ClientboundKeepAlive, ClientboundKeepAlivePacket, 0x2B => {
+				keep_alive_id: i64
 			},
 			LoginInfo, LoginInfoPacket, 0x30 => {
 				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
@@ -311,6 +320,21 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				smoking_open: bool,
 				smoking_filter: bool
 			},
+			Respawn, RespawnPacket, 0x50 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Respawn"] => {
+				dimension_type: VarInt,
+				dimension_name: String,
+				hashed_seed: i64,
+				gamemode: PlayerGamemode,
+				previous_gamemode: PlayerGamemode,
+				is_debug: bool,
+				is_flat: bool,
+				has_death_location: bool,
+				death_dimension_name: Option<String>,
+				death_location: Option<Position>,
+				portal_cooldown: VarInt,
+				sea_level: VarInt,
+				data_kept: RespawnKeptData
+			},
 			ServerData, ServerDataPacket, 0x54 => {
 				motd: TextComponent,
 				icon: PrefixedOptional<PrefixedArray<u8>>
@@ -328,6 +352,16 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			SetEntityMetadata, SetEntityMetadataPacket, 0x61 => {
 				entity_id: VarInt,
 				metadata: EntityMetadata
+			},
+			SetExperience, SetExperiencePacket, 0x65 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Experience"] => {
+				experience_bar: f32,
+				level: VarInt,
+				total_experience: VarInt
+			},
+			SetHealth, SetHealthPacket, 0x66 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Health"] => {
+				health: f32,
+				food: VarInt,
+				saturation: f32
 			},
 			UpdateTime, UpdateTimePacket, 0x6F => {
 				world_age: i64,
@@ -353,11 +387,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				tick_steps: VarInt
 			},
 			UpdateAdvancements, UpdateAdvancementsPacket, 0x80 => {
-				reset: bool,
+				unimplemented: Vec<u8> // todo: fix UpdateAdvancements
+				/*reset: bool,
 				advancement_mapping: PrefixedArray<Mapping<Advancement>>,
 				identifiers: PrefixedArray<String>,
-				progress_mapping: PrefixedArray<Mapping<AdvancementProgress>>,
-				show_advancements: bool
+				progress_mapping: PrefixedArray<Mapping<PrefixedArray<Mapping<PrefixedOptional<i64>>>>>,
+				show_advancements: bool*/
 			},
 			UpdateAttributes, UpdateAttributesPacket, 0x81 => {
 				entity_id: VarInt,
@@ -371,6 +406,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 		SERVER => {
 			ConfirmTeleport, ConfirmTeleportPacket, 0x00 => {
 				teleport_id: VarInt
+			},
+			ClientCommand, ClientCommandPacket, 0x0B #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Command"] => {
+				action: ClientStatusAction
+			},
+			ServerboundKeepAlive, ServerboundKeepAlivePacket, 0x1B => {
+				keep_alive_id: i64
 			},
 			SetPlayerPositionRotation, SetPlayerPositionRotationPacket, 0x1D => {
 				x: f64,

@@ -340,6 +340,7 @@ mod test {
 	}
 }
 
+/// Map a string identifier to a given value of type T.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mapping<T> {
 	pub key: String,

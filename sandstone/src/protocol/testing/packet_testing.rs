@@ -2,7 +2,7 @@
 
 use crate::protocol::packets::packet_component::LoginPluginSpec;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use crate::protocol::packets::{DisconnectPacket, LoginPluginResponsePacket, Packet};
+use crate::protocol::packets::{LoginDisconnectPacket, LoginPluginResponsePacket, Packet};
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::chat::TextComponent;
 
@@ -72,7 +72,7 @@ pub fn test_optional_vec_serialization() {
 pub fn test_cross_serialization() {
 	let mut serializer = McSerializer::new();
 	
-	let packet = Packet::Disconnect(DisconnectPacket {
+	let packet = Packet::LoginDisconnect(LoginDisconnectPacket {
 		reason: TextComponent::from("Hello, world!".to_string())
 	});
 	

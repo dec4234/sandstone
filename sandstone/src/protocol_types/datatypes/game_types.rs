@@ -54,7 +54,7 @@ pub enum GameDifficulty {
 
 impl McSerialize for GameDifficulty {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		let value = match self {
+		let value: u8 = match self {
 			GameDifficulty::Peaceful => 0,
 			GameDifficulty::Easy => 1,
 			GameDifficulty::Normal => 2,

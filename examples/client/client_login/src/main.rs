@@ -1,7 +1,8 @@
 use log::{debug, error, trace, LevelFilter};
 use sandstone::network::CraftConnection;
+use sandstone::protocol::game::player::ClientStatusAction;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::{AcknowledgeFinishConfigurationPacket, ConfirmTeleportPacket, HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
+use sandstone::protocol::packets::{AcknowledgeFinishConfigurationPacket, ClientCommandPacket, ConfirmTeleportPacket, HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKeepAlivePacket, ServerboundKnownPacksPacket};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
@@ -16,7 +17,7 @@ use uuid::Uuid;
 #[tokio::main]
 async fn main() {
     SimpleLogger::new()
-        .with_level(LevelFilter::Trace)
+        .with_level(LevelFilter::Debug)
         .init()
         .unwrap();
     debug!("Starting client");
@@ -103,11 +104,11 @@ async fn main() {
                     continue;
                 }
                 Packet::UpdateTags(_) => {
-                    debug!("Received update tags: {packet:?}");
+                    trace!("Received update tags");
                     continue;
                 }
-                Packet::FinishConfiguration(_) => {
-                    debug!("Received finish configuration packet: {packet:?}");
+                Packet::FinishConfiguration(fc) => {
+                    debug!("Received finish configuration packet: {fc:?}");
                     break;
                 }
                 _ => {
@@ -152,8 +153,8 @@ async fn main() {
                 debug!("Received set held item: {shi:?}");
                 continue;
             }
-            Packet::UpdateRecipes(urp) => {
-                debug!("Received update recipes: {urp:?}");
+            Packet::UpdateRecipes(_) => {
+                debug!("Received update recipes.");
                 continue;
             }
             Packet::EntityEvent(ee) => {
@@ -246,9 +247,55 @@ async fn main() {
                 debug!("Received update attributes: {ua:?}");
                 continue;
             }
-            Packet::UpdateAdvancements(ua) => {
-                debug!("Received update advancements: {ua:?}");
+            Packet::UpdateAdvancements(_) => {
+                debug!("Received update advancements.");
                 continue;
+            }
+            Packet::EntityEvent(ee) => {
+                debug!("Received entity event: {ee:?}");
+                continue;
+            }
+            Packet::SetHealth(sh) => {
+                debug!("Received set health: {sh:?}");
+
+                if sh.health <= 0.0 {
+                    let respawn = Packet::ClientCommand(ClientCommandPacket {
+                        action: ClientStatusAction::PerformRespawn,
+                    });
+
+                    debug!("Sending client command (respawn).");
+                    client.send_packet(respawn).await.unwrap();
+                }
+
+                continue;
+            }
+            Packet::SetExperience(se) => {
+                debug!("Received set experience: {se:?}");
+                continue;
+            }
+            Packet::ClientboundKeepAlive(ka) => {
+                debug!("Received clientbound keep alive: {ka:?}");
+
+                let keep_alive = Packet::ServerboundKeepAlive(ServerboundKeepAlivePacket {
+                    keep_alive_id: ka.keep_alive_id,
+                });
+
+                debug!("Sending serverbound keep alive: {keep_alive:?}");
+                client.send_packet(keep_alive).await.unwrap();
+
+                continue;
+            }
+            Packet::PlayerAbilities(pa) => {
+                debug!("Received player abilities: {pa:?}");
+                continue;
+            }
+            Packet::ChunkBatchStart(_) => {
+                debug!("Received chunk batch start.");
+                continue;
+            }
+            Packet::DisconnectPlay(dp) => {
+                debug!("Disconnected: {dp:?}");
+                break;
             }
             _ => {
                 panic!("Received unexpected packet: {packet:?}");
