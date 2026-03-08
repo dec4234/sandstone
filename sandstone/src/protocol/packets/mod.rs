@@ -19,7 +19,7 @@ use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
-use crate::protocol::game::world::chunk::ChunkData;
+use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, Tag};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
@@ -203,9 +203,19 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 	},
 	PLAY => {
 		CLIENT => {
+			BundleDelimiter, BundleDelimiterPacket, 0x00 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Bundle_Delimiter"] => {
+				// no fields
+			},
+			/*BlockUpdate, BlockUpdatePacket, 0x08 => {
+				location: Position,
+				block_id: VarInt
+			},*/
 			ChangeDifficulty, ChangeDifficultyPacket, 0x0A => {
 				difficulty: GameDifficulty,
 				difficulty_locked: bool
+			},
+			ChunkBatchFinished, ChunkBatchFinishedPacket, 0x0B => {
+				size: VarInt
 			},
 			ChunkBatchStart, ChunkBatchStartPacket, 0x0C => {
 				// no fields
@@ -236,7 +246,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				z: i32,
 				#[doc = "Chunk byte data"]
 				data: ChunkData,
-				light: Vec<u8>
+				light: LightData
 			},
 			InitializeWorldBorder, InitializeWorldBorderPacket, 0x2A => {
 				x: f64,

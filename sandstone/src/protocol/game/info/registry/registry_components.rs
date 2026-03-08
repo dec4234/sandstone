@@ -70,8 +70,8 @@ pub struct ChatTypePart {
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct ExitAction {
-	pub width: i32,
-	pub level: NbtTranslateColor
+	pub label: NbtTranslateColor,
+	pub width: i32
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]

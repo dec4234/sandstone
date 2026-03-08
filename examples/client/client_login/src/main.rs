@@ -199,7 +199,7 @@ async fn main() {
         let packet = client.receive_packet().await.unwrap();
 
         match packet {
-            Packet::ServerData(sd) => { // todo: fix
+            Packet::ServerData(sd) => {
                 debug!("Received server data: {:?}", sd.motd);
                 continue;
             }
@@ -291,6 +291,26 @@ async fn main() {
             }
             Packet::ChunkBatchStart(_) => {
                 debug!("Received chunk batch start.");
+                continue;
+            }
+            Packet::ChunkDataUpdateLight(cd) => {
+                debug!("Received chunk at {}, {}", cd.x, cd.z);
+                continue;
+            }
+            Packet::ChunkBatchFinished(cbf) => {
+                debug!("Finished receiving {} chunks.", cbf.size.0);
+                continue;
+            }
+            /*Packet::BlockUpdate(bu) => {
+                debug!("Received block update {bu:?}");
+                continue;
+            }*/
+            Packet::BundleDelimiter(_) => {
+                debug!("Received bundle delimiter");
+                continue;
+            }
+            Packet::SoundEffect(se) => {
+                debug!("Received sound effect {se:?}");
                 continue;
             }
             Packet::DisconnectPlay(dp) => {

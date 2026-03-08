@@ -3,18 +3,16 @@
 
 use crate::protocol::game::info::registry::registry_components::{MonsterSpawnLightLevel, NbtTranslateColor, WolfVariantAssets};
 use crate::protocol::game::info::registry::{BannerPattern, CatVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigVariant, WolfSoundVariant, WolfVariant, ZombieNautilusVariant};
+use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 
 impl Default for DimensionType {
 	fn default() -> Self {
 		Self {
-			fixed_time: Some(1000),
 			ambient_light: 0.0,
-			bed_works: 1,
-			cloud_height: Some(192),
+			attributes: NbtCompound::new_no_name(),
 			coordinate_scale: 1.0,
-			effects: "minecraft:overworld".to_string(),
 			has_ceiling: 0,
-			has_raids: 1,
+			has_fixed_time: None,
 			has_skylight: 1,
 			height: 384,
 			infiniburn: "#minecraft:infiniburn_overworld".to_string(),
@@ -22,10 +20,8 @@ impl Default for DimensionType {
 			min_y: -64,
 			monster_spawn_block_light_limit: 0,
 			monster_spawn_light_level: MonsterSpawnLightLevel::default(),
-			natural: 1,
-			piglin_safe: 0,
-			respawn_anchor_works: 0,
-			ultrawarm: 0,
+			skybox: None,
+			timelines: "#minecraft:in_overworld".to_string(),
 		}
 	}
 }

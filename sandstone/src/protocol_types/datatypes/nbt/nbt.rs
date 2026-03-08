@@ -467,8 +467,12 @@ impl Index<&str> for NbtCompound {
 
 impl McSerialize for NbtCompound {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		if self.map.is_empty() && self.root_name.is_none() {
+			0u8.mc_serialize(serializer)?;
+			return Ok(());
+		}
 		10u8.mc_serialize(serializer)?;
-		
+
 		self.serialize_no_tag(serializer)
 	}
 }
@@ -476,13 +480,17 @@ impl McSerialize for NbtCompound {
 impl McDeserialize for NbtCompound {
 	/// Deserialize a compound without a root name, such as network NBT or compounds in compounds.
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		let t = u8::mc_deserialize(deserializer)?; // todo: debug here
+		let t = u8::mc_deserialize(deserializer)?;
+
+		if t == 0 {
+			return Ok(Self::new_no_name());
+		}
 
 		if t != 10 {
 			debug!("Nearby bytes: {:?}", deserializer.subset(50, 15));
 			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {t} instead")));
 		}
-		
+
 		Self::from_no_tag(deserializer)
 	}
 }
@@ -512,6 +520,15 @@ impl TryFrom<NbtTag> for NbtCompound {
 		match tag {
 			NbtTag::Compound(c) => Ok(c),
 			_ => Err(NbtError::InvalidType),
+		}
+	}
+}
+
+impl From<NbtTag> for Option<NbtCompound> {
+	fn from(tag: NbtTag) -> Self {
+		match tag {
+			NbtTag::Compound(c) => Some(c),
+			_ => None,
 		}
 	}
 }

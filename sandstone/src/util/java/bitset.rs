@@ -1,19 +1,39 @@
 //! Implementation of https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html
 
-use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
-use sandstone_derive::{McDeserialize, McSerialize};
+use crate::protocol_types::datatypes::var_types::VarInt;
 use std::ops::Range;
 
 /// A BitSet is a bitmask datatype of infinite size. It is stored as a Vec of u64
-#[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BitSet {
 	bits: Vec<u64>,
+}
+
+impl McSerialize for BitSet {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		VarInt(self.bits.len() as i32).mc_serialize(serializer)?;
+		for long in &self.bits {
+			long.mc_serialize(serializer)?;
+		}
+		Ok(())
+	}
+}
+
+impl McDeserialize for BitSet {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let len = VarInt::mc_deserialize(deserializer)?;
+		let mut bits = Vec::with_capacity(len.0 as usize);
+		for _ in 0..len.0 {
+			bits.push(u64::mc_deserialize(deserializer)?);
+		}
+		Ok(Self { bits })
+	}
 }
 
 impl BitSet {

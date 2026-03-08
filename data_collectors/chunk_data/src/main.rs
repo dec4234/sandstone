@@ -315,6 +315,10 @@ async fn main() {
                 std::fs::write(&filename, format!("{cbd:#?}")).unwrap();
                 continue;
             }
+            Packet::ChunkBatchFinished(cbf) => {
+                debug!("Finished receiving {} chunks.", cbf.size.0);
+                return;
+            }
             Packet::DisconnectPlay(dp) => {
                 debug!("Disconnected: {dp:?}");
                 return;

@@ -7,7 +7,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::{ChatTypePart, Effects, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, WolfVariantAssets};
+use crate::protocol::game::info::registry::registry_components::{EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, WolfVariantAssets};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -89,7 +89,11 @@ impl RegistryEntry {
 		let is_present = bool::mc_deserialize(deserializer)?;
 
 		let data = if is_present {
-			let data = RegistryType::deserialize(deserializer, registry_type)?;
+			let reg_type = registry_type.clone();
+			let data = RegistryType::deserialize(deserializer, registry_type)
+				.map_err(|e| SerializingErr::DeserializationError(
+					format!("registry '{}', entry '{}': {}", reg_type, id, e)
+				))?;
 			Some(data)
 		} else {
 			None
@@ -141,7 +145,9 @@ macro_rules! registry_entry {
 				/// Deserialize the registry via NBT.
 				fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 					let nbt = NbtCompound::mc_deserialize(deserializer)?;
-					Ok(Self::try_from(nbt)?)
+					Self::try_from(nbt).map_err(|e| SerializingErr::DeserializationError(
+						format!("in registry struct '{}': {}", stringify!($lib_name), e)
+					))
 				}
 			}
 		)*
@@ -197,8 +203,8 @@ registry_entry!(
 		asset_id: String
 	},
 	"minecraft:chat_type", ChatType => {
-		chat: ChatTypePart,
-		narration: ChatTypePart
+		chat: NbtCompound,
+		narration: NbtCompound
 	},
 	"minecraft:chicken_variant", ChickenVariant => {
 		asset_id: String,
@@ -218,7 +224,7 @@ registry_entry!(
 	"minecraft:dialog", Dialog => {
 		button_width: i32,
 		columns: i32,
-		dialogs: String,
+		dialogs: Option<String>,
 		exit_action: ExitAction,
 		external_title: NbtTranslateColor,
 		title: NbtTranslateColor,
@@ -226,29 +232,24 @@ registry_entry!(
 	},
 	"minecraft:dimension_type", DimensionType => {
 		ambient_light: f32,
-		bed_works: i8,
-		cloud_height: Option<i32>,
+		attributes: NbtCompound,
 		coordinate_scale: f64,
-		effects: String,
-		fixed_time: Option<i64>,
-		has_skylight: i8,
 		has_ceiling: i8,
-		has_raids: i8,
+		has_fixed_time: Option<i8>,
+		has_skylight: i8,
 		height: i32,
 		infiniburn: String,
 		logical_height: i32,
 		min_y: i32,
 		monster_spawn_block_light_limit: i32,
-		monster_spawn_light_level: MonsterSpawnLightLevel, // todo
-		natural: i8,
-		piglin_safe: i8,
-		respawn_anchor_works: i8,
-		ultrawarm: i8
+		monster_spawn_light_level: MonsterSpawnLightLevel,
+		skybox: Option<String>,
+		timelines: String
 	},
-	"minecraft:enchantment", Enchantment => { // todo: complex nested structure
+	"minecraft:enchantment", Enchantment => {
 		anvil_cost: i32,
 		description: NbtTranslateColor,
-		effects: Effects,
+		effects: Option<NbtCompound>,
 		max_cost: EnchantmentCost,
 		max_level: i32,
 		min_cost: EnchantmentCost,
@@ -292,13 +293,43 @@ registry_entry!(
 	},
 	"minecraft:worldgen/biome", Biome => {
 		downfall: f32,
-		has_precipitation: bool, // note that bools will be shown as "Byte" in JSON form of nbt
+		effects: NbtCompound,
+		has_precipitation: bool,
 		temperature: f32,
 		temperature_modifier: Option<String>
 	},
 	"minecraft:zombie_nautilus_variant", ZombieNautilusVariant => {
 		model: Option<String>,
 		asset_id: String
+	},
+	"minecraft:jukebox_song", JukeboxSong => {
+		comparator_output: i32,
+		description: NbtCompound,
+		length_in_seconds: f32,
+		sound_event: String
+	},
+	"minecraft:instrument", Instrument => {
+		description: NbtCompound,
+		range: f32,
+		sound_event: String,
+		use_duration: f32
+	},
+	"minecraft:test_environment", TestEnvironment => {
+		definitions: Vec<NbtCompound>,
+		r#type: String
+	},
+	"minecraft:test_instance", TestInstance => {
+		environment: String,
+		function: String,
+		max_ticks: i32,
+		required: i8,
+		setup_ticks: i32,
+		structure: String,
+		r#type: String
+	},
+	"minecraft:timeline", Timeline => {
+		period_ticks: Option<i32>,
+		tracks: Option<NbtCompound>
 	}
 );
 

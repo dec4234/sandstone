@@ -288,7 +288,8 @@ pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
 
     let field_additions = fields.iter().map(|f| {
         let field_ident = f.ident.as_ref().unwrap();
-        let mut key = field_ident.to_string();
+        let raw_key = field_ident.to_string();
+        let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
 
         // Parse field attributes
         for attr in &f.attrs {
@@ -355,9 +356,12 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
         panic!("FromNbt can only be derived for structs");
     };
 
+    let struct_name_str = struct_name.to_string();
+
     let field_initializers = fields.iter().map(|f| {
         let field_ident = f.ident.as_ref().unwrap();
-        let mut key = field_ident.to_string();
+        let raw_key = field_ident.to_string();
+        let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
         let field_ty = &f.ty;
 
         // Parse rename attribute
@@ -381,19 +385,42 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
         }
 
         let key_str = key.clone();
+        let sname = struct_name_str.clone();
 
-        quote! {
-            #field_ident: {
-                match nbt.get(#key_str) {
-                    Some(tag) => {
-                        <#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
-                            .map_err(|_| NbtError::InvalidType)?
+        let is_option = field_ty.to_token_stream().to_string().starts_with("Option");
+
+        if is_option {
+            quote! {
+                #field_ident: {
+                    match nbt.get(#key_str) {
+                        Some(tag) => {
+                            <#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
+                                .map_err(|_| NbtError::MissingField(
+                                    format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
+                                ))?
+                        }
+                        None => None,
                     }
-                    None => {
-                        return Err(NbtError::MissingField(#key_str.to_string()));
+                },
+            }
+        } else {
+            quote! {
+                #field_ident: {
+                    match nbt.get(#key_str) {
+                        Some(tag) => {
+                            <#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
+                                .map_err(|_| NbtError::MissingField(
+                                    format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
+                                ))?
+                        }
+                        None => {
+                            return Err(NbtError::MissingField(
+                                format!("'{}' in '{}'", #key_str, #sname)
+                            ));
+                        }
                     }
-                }
-            },
+                },
+            }
         }
     });
 
