@@ -167,15 +167,18 @@ impl PalletedContainer {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, num_entries: u16, typ: PaletteFormatType) -> SerializingResult<'a, Self> where Self: Sized {
 		let bpe = u8::mc_deserialize(deserializer)?;
 		let palette = PalleteFormat::mc_deserialize(deserializer, bpe, typ)?;
-		
-		let num_i64s = (num_entries as f32 / entries_per_i64(bpe) as f32).ceil() as u16;
-		
-		let mut data = Vec::with_capacity(num_i64s as usize);
-		
-		for _ in 0..num_i64s {
-			data.push(PackedEntries::mc_deserialize(deserializer, bpe)?);
-		}
-		
+
+		let data = if bpe == 0 {
+			Vec::new()
+		} else {
+			let num_i64s = (num_entries as f32 / entries_per_i64(bpe) as f32).ceil() as u16;
+			let mut data = Vec::with_capacity(num_i64s as usize);
+			for _ in 0..num_i64s {
+				data.push(PackedEntries::mc_deserialize(deserializer, bpe)?);
+			}
+			data
+		};
+
 		Ok(Self {
 			bits_per_entry: bpe,
 			palette,
@@ -224,7 +227,7 @@ impl PalleteFormat {
 		
 		match typ {
 			BLOCKS => {
-				if bits_per_entry >= 4 && bits_per_entry <= 8 {
+				if (4..=8).contains(&bits_per_entry) {
 					Ok(PalleteFormat::Indirect(IndirectFormat::mc_deserialize(deserializer)?))
 				} else if bits_per_entry == 15 {
 					Ok(PalleteFormat::Direct)
@@ -233,9 +236,9 @@ impl PalleteFormat {
 				}
 			}
 			BIOMES => {
-				if bits_per_entry >= 1 && bits_per_entry <= 3 {
+				if (1..=3).contains(&bits_per_entry) {
 					Ok(PalleteFormat::Indirect(IndirectFormat::mc_deserialize(deserializer)?))
-				} else if bits_per_entry == 6 {
+				} else if bits_per_entry == 7 {
 					Ok(PalleteFormat::Direct)
 				} else {
 					Err(SerializingErr::InvalidBitsPerEntry)
@@ -247,15 +250,13 @@ impl PalleteFormat {
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
 pub struct IndirectFormat {
-	pub length: VarInt,
-	pub array: Vec<VarInt>
+	pub palette: PrefixedArray<VarInt>
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
 pub struct Heightmap {
 	typ: VarInt,
-	length: VarInt,
-	data: Vec<i64>,
+	data: PrefixedArray<i64>,
 }
 
 /// A block entity is something like a chest or other block which has NBT.

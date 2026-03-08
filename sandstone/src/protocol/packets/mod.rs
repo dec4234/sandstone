@@ -19,7 +19,7 @@ use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
-use crate::protocol::game::world::chunk::{ChunkData, LightData};
+use crate::protocol::game::world::chunk::ChunkData;
 use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, Tag};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
@@ -231,12 +231,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				event: GameEventType,
 				value: f32
 			},
-			ChunkDataUpdateLight, ChunkDataUpdateLightPacket, 0x27 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
+			ChunkDataUpdateLight, ChunkDataUpdateLightPacket, 0x2C #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
 				x: i32,
-				y: i32,
+				z: i32,
 				#[doc = "Chunk byte data"]
 				data: ChunkData,
-				light: LightData
+				light: Vec<u8>
 			},
 			InitializeWorldBorder, InitializeWorldBorderPacket, 0x2A => {
 				x: f64,
