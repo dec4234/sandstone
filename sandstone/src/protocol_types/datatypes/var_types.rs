@@ -69,63 +69,66 @@ impl VarInt {
     ///
     /// This is usually used for reading the packet length VarInt from the start of a packet.
     pub fn from_tcp_stream(stream: &TcpStream) -> Result<Self, NetworkError> {
-        let mut vec = Vec::with_capacity(3);
+        let mut buf = [0u8; 3];
+        let mut len = 0usize;
 
         loop {
             let var_buffer = &mut [0u8; 1];
-            let len = stream.try_read(var_buffer)?;
+            let n = stream.try_read(var_buffer)?;
 
-            if len == 0 {
+            if n == 0 {
                 return Err(NetworkError::NoDataReceived);
             }
 
             let b = var_buffer[0];
+            buf[len] = b;
+            len += 1;
 
             if b & crate::network::CONTINUE_BIT == 0 {
-                vec.push(b);
                 break;
-            } else {
-                vec.push(b);
-
-                if vec.len() > 3 {
-                    return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
-                }
+            } else if len >= 3 {
+                return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
             }
         }
 
-        Ok(VarInt::from_slice(&vec)?)
+        Ok(VarInt::from_slice(&buf[..len])?)
     }
 
-    /// Convert the VarInt into a Vec of bytes which can be serialized, or converted back to a VarInt using `from_slice`.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut vec: Vec<u8> = Vec::with_capacity(5);
+    /// Encode this VarInt into a stack-allocated byte array. Returns the array and the number of
+    /// bytes written. This avoids heap allocation for serialization hot paths.
+    pub fn to_byte_array(&self) -> ([u8; 5], usize) {
+        let mut buf = [0u8; 5];
+        let mut len = 0;
         let mut inner = self.0;
 
         loop {
             if (inner & SEGMENT_INT_OPP) == 0 {
-                vec.push(inner as u8);
+                buf[len] = inner as u8;
+                len += 1;
                 break;
             }
 
-            vec.push((inner | CONTINUE_INT) as u8); // this is boolean simplified from the wiki.vg example
+            buf[len] = (inner | CONTINUE_INT) as u8;
+            len += 1;
 
-            // https://stackoverflow.com/questions/70212075/how-to-make-unsigned-right-shift-in-rust
-            inner = {
-                if inner >= 0 {
-                    inner >> 7
-                } else {
-                    ((inner as u32) >> 7) as i32
-                }
+            inner = if inner >= 0 {
+                inner >> 7
+            } else {
+                ((inner as u32) >> 7) as i32
             };
         }
 
-        vec
+        (buf, len)
+    }
+
+    /// Convert the VarInt into a Vec of bytes which can be serialized, or converted back to a VarInt using `from_slice`.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let (buf, len) = self.to_byte_array();
+        buf[..len].to_vec()
     }
 
     pub fn bytes(i: i32) -> Vec<u8> {
-        let var = VarInt(i);
-
-        var.to_bytes()
+        VarInt(i).to_bytes()
     }
 }
 
@@ -158,16 +161,14 @@ impl FromStr for VarInt {
 
 impl McSerialize for VarInt {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-        serializer.serialize_vec(self.to_bytes());
-
+        let (buf, len) = self.to_byte_array();
+        serializer.serialize_bytes(&buf[..len]);
         Ok(())
     }
 }
 
 impl McDeserialize for VarInt {
     fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, VarInt> {
-        let mut bytes = Vec::with_capacity(5);
-
         if deserializer.data.is_empty() {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
@@ -181,21 +182,18 @@ impl McDeserialize for VarInt {
                 ));
             }
 
-            bytes.push(deserializer.data[i + deserializer.index]);
             i += 1;
         }
 
-        if i == deserializer.data.len() {
+        if i + deserializer.index >= deserializer.data.len() {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        bytes.push(deserializer.data[i + deserializer.index]);
-
+        let start = deserializer.index;
+        let end = start + i + 1;
         deserializer.increment(i + 1);
 
-        let var = VarInt::from_slice(&bytes)?;
-
-        Ok(var)
+        VarInt::from_slice(&deserializer.data[start..end])
     }
 }
 
@@ -261,30 +259,37 @@ impl VarLong {
         VarLong::from_slice(bytes.as_slice())
     }
 
-    /// Convert the VarLong into a Vec of bytes which can be serialized, or converted back to a VarLong using `from_slice`.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut vec: Vec<u8> = Vec::with_capacity(10);
+    /// Encode this VarLong into a stack-allocated byte array. Returns the array and the number of
+    /// bytes written.
+    pub fn to_byte_array(&self) -> ([u8; 10], usize) {
+        let mut buf = [0u8; 10];
+        let mut len = 0;
         let mut inner = self.0;
 
         loop {
             if (inner & SEGMENT_LONG_OPP) == 0 {
-                vec.push(inner as u8);
+                buf[len] = inner as u8;
+                len += 1;
                 break;
             }
 
-            vec.push((inner | CONTINUE_LONG) as u8); // this is boolean simplified from the wiki.vg example
+            buf[len] = (inner | CONTINUE_LONG) as u8;
+            len += 1;
 
-            // https://stackoverflow.com/questions/70212075/how-to-make-unsigned-right-shift-in-rust
-            inner = {
-                if inner >= 0 {
-                    inner >> 7
-                } else {
-                    ((inner as u64) >> 7) as i64
-                }
+            inner = if inner >= 0 {
+                inner >> 7
+            } else {
+                ((inner as u64) >> 7) as i64
             };
         }
 
-        vec
+        (buf, len)
+    }
+
+    /// Convert the VarLong into a Vec of bytes which can be serialized, or converted back to a VarLong using `from_slice`.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let (buf, len) = self.to_byte_array();
+        buf[..len].to_vec()
     }
 
     pub fn bytes(i: i64) -> Vec<u8> {
@@ -321,17 +326,15 @@ impl FromStr for VarLong {
 
 impl McSerialize for VarLong {
     fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-        serializer.serialize_vec(self.to_bytes());
-
+        let (buf, len) = self.to_byte_array();
+        serializer.serialize_bytes(&buf[..len]);
         Ok(())
     }
 }
 
 impl McDeserialize for VarLong {
     fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, VarLong> {
-        let mut bytes = Vec::with_capacity(10);
-
-        if deserializer.data.len() == 0 {
+        if deserializer.data.is_empty() {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
@@ -346,21 +349,18 @@ impl McDeserialize for VarLong {
                 ));
             }
 
-            bytes.push(deserializer.data[i + deserializer.index]);
             i += 1;
         }
 
-        if i == deserializer.data.len() {
+        if i + deserializer.index >= deserializer.data.len() {
             return Err(SerializingErr::InvalidEndOfVarInt);
         }
 
-        bytes.push(deserializer.data[i]);
+        let start = deserializer.index;
+        let end = start + i + 1;
+        deserializer.increment(i + 1);
 
-        deserializer.increment(i);
-
-        let var = VarLong::from_slice(&bytes)?;
-
-        Ok(var)
+        VarLong::from_slice(&deserializer.data[start..end])
     }
 }
 

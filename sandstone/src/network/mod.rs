@@ -38,6 +38,8 @@ pub struct CraftConnection {
 	pub compression_threshold: Option<i32>,
 	pub protocol_version: Option<VarInt>,
 	pub client_type: PacketDirection,
+	/// Reusable buffer for packet reads, avoids allocating per packet
+	read_buffer: Vec<u8>,
 }
 
 impl CraftConnection {
@@ -54,6 +56,7 @@ impl CraftConnection {
 			compression_threshold: None,
 			protocol_version: None,
 			client_type,
+			read_buffer: Vec::with_capacity(1024),
 		})
 	}
 
@@ -71,67 +74,57 @@ impl CraftConnection {
 		Ok(())
 	}
 
-	// TODO: could use a good optimization pass - reduce # of copies, ideally to 0
 	/// Receive a minecraft packet from the client. This will block until a packet is received. This removes data from the TCP buffer
 	pub async fn receive_packet(&mut self) -> Result<Packet, NetworkError> {
-		let mut vec = Vec::with_capacity(3); //todo: replace with VarInt::from_tcp_stream
+		// Read VarInt length prefix using a stack array (no heap allocation)
+		let mut varint_buf = [0u8; 3];
+		let mut varint_len = 0usize;
 
-		// read varint for length
 		loop {
 			let b = self.tcp_stream.read_u8().await?;
-
-			vec.push(b);
+			varint_buf[varint_len] = b;
+			varint_len += 1;
 
 			if b & CONTINUE_BIT == 0 {
 				break;
-			} else if vec.len() > 3 {
+			} else if varint_len >= 3 {
 				return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
 			}
 		}
 
-		let vari = VarInt::from_slice(&vec)?;
+		let packet_len = VarInt::from_slice(&varint_buf[..varint_len])?.0 as usize;
 
-		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
+		if packet_len > PACKET_MAX_SIZE {
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		let length = vari.0 as usize + vec.len();
+		// Reuse the connection's read buffer, resizing only when needed
+		let total_len = varint_len + packet_len;
+		self.read_buffer.resize(total_len, 0);
+		self.read_buffer[..varint_len].copy_from_slice(&varint_buf[..varint_len]);
 
-		// TODO: analysis needed - does this minimize copying?
-		// could define &[u8] to max packet size but that seems like too much memory usage
-		let mut buffer = vec![0; length];
-
-		for (i, b) in vec.iter().enumerate() {
-			buffer[i] = *b;
-		}
-
-		let length = self.tcp_stream.read(&mut buffer[vec.len()..]).await;
-
-		let length = match length {
-			Ok(length) => {length}
+		// Read the full packet body in one call
+		match self.tcp_stream.read_exact(&mut self.read_buffer[varint_len..total_len]).await {
+			Ok(_) => {}
+			Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+				self.close().await;
+				return Err(NetworkError::NoDataReceived);
+			}
 			Err(e) => {
 				if e.to_string().contains("An established connection was aborted by the software in your host machine") {
 					debug!("OS Error detected in packet receive, closing the connection: {e}");
 					self.close().await;
 					return Err(NetworkError::ConnectionAbortedLocally);
 				}
-
 				return Err(NetworkError::IOError(e));
 			}
-		};
-
-		trace!("Received from {} : {:?}", self, &buffer);
-
-		if length == 0 { // connection closed
-			self.close().await;
-			return Err(NetworkError::NoDataReceived);
-		} else if length == PACKET_MAX_SIZE {
-			return Err(NetworkError::PacketTooLarge);
 		}
+
+		trace!("Received from {} : {:?}", self, &self.read_buffer[..total_len]);
 
 		// TODO: decompress & decrypt here
 
-		let mut deserializer = McDeserializer::new(&buffer);
+		let mut deserializer = McDeserializer::new(&self.read_buffer[..total_len]);
 		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, self.client_type)?;
 
 		Ok(packet)
@@ -141,33 +134,22 @@ impl CraftConnection {
 	/// if no data is available.
 	pub fn try_receive_packet(&mut self) -> Result<Packet, NetworkError> {
 		let vari = VarInt::from_tcp_stream(&self.tcp_stream)?;
-		let varbytes = vari.to_bytes();
+		let (var_buf, var_len) = vari.to_byte_array();
 
-		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
+		if vari.0 > PACKET_MAX_SIZE as i32 {
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		let length = vari.0 as usize + varbytes.len();
+		let packet_len = vari.0 as usize;
+		let total_len = var_len + packet_len;
+		let mut buffer = vec![0u8; total_len];
+		buffer[..var_len].copy_from_slice(&var_buf[..var_len]);
 
-		// TODO: analysis needed - does this minimize copying?
-		// could define &[u8] to max packet size but that seems like too much memory usage
-		let mut buffer = vec![0; length];
-
-		for (i, b) in varbytes.iter().enumerate() {
-			buffer[i] = *b;
-		}
-
-		let length = self.tcp_stream.try_read(&mut buffer[varbytes.len()..]);
-
-		if let Err(e) = length {
-			return Err(NetworkError::IOError(e));
-		}
-
-		let length = length?;
+		let length = self.tcp_stream.try_read(&mut buffer[var_len..])?;
 
 		trace!("Received from {} : {:?}", self, &buffer);
 
-		if length == 0 { // connection closed
+		if length == 0 {
 			return Err(NetworkError::NoDataReceived);
 		} else if length == PACKET_MAX_SIZE {
 			return Err(NetworkError::PacketTooLarge);
@@ -179,7 +161,6 @@ impl CraftConnection {
 		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
 
 		Ok(packet)
-
 	}
 
 	pub async fn receive_direct<T: McSerialize + McDeserialize>(&mut self) -> Result<T, NetworkError> {
@@ -200,63 +181,51 @@ impl CraftConnection {
 
 	/// Peek the next packet in the queue without removing it. This will block until a packet is received.
 	pub async fn peek_packet(&mut self) -> Result<Packet, NetworkError> {
-		// read varint for length
-		let mut i = 1usize;
+		// Peek VarInt length using a stack array — we peek incrementally since we
+		// don't know how many bytes the VarInt occupies
+		let mut peek_buf = [0u8; 3];
+		let mut varint_len = 1usize;
 		let vari: VarInt;
 
-		/*
-		So we have to use this weird loop because we need to peek the data slowly to understand the byte length of the varint
-		 */
 		loop {
-			let mut b = vec![0; i];
-			if self.tcp_stream.peek(&mut b).await? == 0 {
+			if self.tcp_stream.peek(&mut peek_buf[..varint_len]).await? == 0 {
 				return Err(NetworkError::NoDataReceived);
 			}
 
-			// this indicates if the varint has ended
-			if b[i - 1] & CONTINUE_BIT == 0 {
-				vari = VarInt::from_slice(&b)?;
+			if peek_buf[varint_len - 1] & CONTINUE_BIT == 0 {
+				vari = VarInt::from_slice(&peek_buf[..varint_len])?;
 				break;
-			} else if i > 3 { // any varint over 3 bytes is either broken or too big for a packet
+			} else if varint_len >= 3 {
 				return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
 			}
 
-			i += 1;
+			varint_len += 1;
 		}
 
-		let varbytes = vari.to_bytes();
-
-		if vari.0 > PACKET_MAX_SIZE as i32 { // prob can't happen since it stops after 3 bytes, but check anyways
+		if vari.0 > PACKET_MAX_SIZE as i32 {
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		let length = vari.0 as usize + varbytes.len();
+		let packet_len = vari.0 as usize;
+		let total_len = varint_len + packet_len;
+		let mut buffer = vec![0u8; total_len];
+		buffer[..varint_len].copy_from_slice(&peek_buf[..varint_len]);
 
-		// TODO: analysis needed - does this minimize copying?
-		// could define &[u8] to max packet size but that seems like too much memory usage
-		let mut buffer = vec![0; length];
-
-		for (i, b) in varbytes.iter().enumerate() {
-			buffer[i] = *b;
-		}
-
-		let length = self.tcp_stream.peek(&mut buffer[varbytes.len()..]).await;
-
-		if let Err(e) = length {
-			if e.to_string().contains("An established connection was aborted by the software in your host machine") {
-				debug!("OS Error detected in packet receive, closing the connection: {e}");
-				self.close().await;
-				return Err(NetworkError::ConnectionAbortedLocally);
+		let length = match self.tcp_stream.peek(&mut buffer[varint_len..]).await {
+			Ok(len) => len,
+			Err(e) => {
+				if e.to_string().contains("An established connection was aborted by the software in your host machine") {
+					debug!("OS Error detected in packet receive, closing the connection: {e}");
+					self.close().await;
+					return Err(NetworkError::ConnectionAbortedLocally);
+				}
+				return Err(NetworkError::IOError(e));
 			}
-
-			return Err(NetworkError::IOError(e));
-		}
-
-		let length = length?;
+		};
 
 		trace!("Peeked from {} : {:?}", self, &buffer);
 
-		if length == 0 { // connection closed
+		if length == 0 {
 			self.close().await;
 			return Err(NetworkError::NoDataReceived);
 		} else if length == PACKET_MAX_SIZE {
