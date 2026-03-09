@@ -313,6 +313,10 @@ async fn main() {
                 debug!("Received sound effect {se:?}");
                 continue;
             }
+            Packet::SpawnEntity(se) => {
+                debug!("Received spawn entity {se:?}");
+                continue;
+            }
             Packet::DisconnectPlay(dp) => {
                 debug!("Disconnected: {dp:?}");
                 break;

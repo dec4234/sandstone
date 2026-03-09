@@ -32,7 +32,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{GameDifficulty, Position};
-use crate::protocol_types::datatypes::internal_types::{IDorX, Mapping};
+use crate::protocol_types::datatypes::internal_types::{Angle, IDorX, LpVec3, Mapping};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitfield::BitField;
 use packet_component::ProtocolPropertyElement;
@@ -205,6 +205,19 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 		CLIENT => {
 			BundleDelimiter, BundleDelimiterPacket, 0x00 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Bundle_Delimiter"] => {
 				// no fields
+			},
+			SpawnEntity, SpawnEntityPacket, 0x01 => {
+				entity_id: VarInt,
+				entity_uuid: Uuid,
+				typ: VarInt,
+				x: f64,
+				y: f64,
+				z: f64,
+				velocity: LpVec3,
+				pitch: Angle,
+				yaw: Angle,
+				head_yaw: Angle,
+				data: VarInt
 			},
 			/*BlockUpdate, BlockUpdatePacket, 0x08 => {
 				location: Position,
