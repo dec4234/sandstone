@@ -196,7 +196,13 @@ async fn main() {
     client.send_packet(confirm).await.unwrap();
 
     loop {
-        let packet = client.receive_packet().await.unwrap();
+        let packet =  match client.receive_packet().await {
+            Ok(packet) => {packet}
+            Err(e) => {
+                error!("{}", e);
+                return;
+            }
+        };
 
         match packet {
             Packet::ServerData(sd) => {
@@ -301,10 +307,10 @@ async fn main() {
                 debug!("Finished receiving {} chunks.", cbf.size.0);
                 continue;
             }
-            /*Packet::BlockUpdate(bu) => {
+            Packet::BlockUpdate(bu) => {
                 debug!("Received block update {bu:?}");
                 continue;
-            }*/
+            }
             Packet::BundleDelimiter(_) => {
                 debug!("Received bundle delimiter");
                 continue;
@@ -317,12 +323,53 @@ async fn main() {
                 debug!("Received spawn entity {se:?}");
                 continue;
             }
+            Packet::UpdateEntityPostitionRotation(uepr) => {
+                debug!("Update entity postition and rotation {uepr:?}");
+                continue;
+            }
+            Packet::SetEquipment(se) => {
+                debug!("Set equipment {se:?}");
+                continue;
+            }
+            Packet::LinkEntries(le) => {
+                debug!("Linked entries {le:?}");
+                continue;
+            }
+            Packet::RemoveEntities(re) => {
+                debug!("Remove entities {re:?}");
+                continue;
+            }
+            Packet::SetEntityVelocity(sev) => {
+                debug!("Set entity velocity {sev:?}");
+                continue;
+            }
+            Packet::SetHeadRotation(shr) => {
+                debug!("Set head rotation {shr:?}");
+                continue;
+            }
+            Packet::TeleportEntity(te) => {
+                debug!("Teleport entity {te:?}");
+                continue;
+            }
+            Packet::UpdateEntityPosition(uep) => {
+                debug!("Update entity postion {uep:?}");
+                continue;
+            }
+            Packet::UpdateEntityRotation(uer) => {
+                debug!("Update entity rotation {uer:?}");
+                continue;
+            }
+            Packet::WorldEvent(we) => {
+                debug!("World event {we:?}");
+                continue;
+            }
             Packet::DisconnectPlay(dp) => {
                 debug!("Disconnected: {dp:?}");
                 break;
             }
             _ => {
-                panic!("Received unexpected packet: {packet:?}");
+                error!("Received unexpected packet: {packet:?}");
+                return;
             }
         }
     }

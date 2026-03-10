@@ -1,15 +1,17 @@
 //! Defines a lot of random components of network packets. This is separate from packet.rs to reduce
 //! clutter.
 
+use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::game::info::inventory::slots::{RecipeDisplay, SlotDisplay};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::game_types::EquipmentSlot;
 use crate::protocol_types::datatypes::internal_types::IDSet;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitfield::BitField;
-use sandstone_derive::ByteEnum;
+use sandstone_derive::TypeEnum;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 use uuid::Uuid;
 
@@ -133,7 +135,8 @@ impl McDefault for StonecutterRecipe {
 	}
 }
 
-#[derive(ByteEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(TypeEnum, McDefault, Debug, Clone, PartialEq)]
+#[type_enum(u8)]
 pub enum GameEventType {
 	NoRespawnBlockAvailable = 0,
 	BeginRaining = 1,
@@ -165,7 +168,8 @@ pub struct ModifierData {
 	pub operation: ModifierOperation
 }
 
-#[derive(ByteEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(TypeEnum, McDefault, Debug, Clone, PartialEq)]
+#[type_enum(u8)]
 pub enum ModifierOperation {
 	AddSubtractAmount = 0,
 	AddSubtractPercentage = 1,
@@ -177,3 +181,73 @@ pub enum ClientStatusAction {
 	PerformRespawn = 0,
 	RequestStats = 1,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EquipmentEntry {
+	pub slot: EquipmentSlot,
+	pub item: SlotData,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EquipmentList {
+	pub entries: Vec<EquipmentEntry>,
+}
+
+impl McSerialize for EquipmentList {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		for (i, entry) in self.entries.iter().enumerate() {
+			let mut slot_byte = entry.slot.clone() as u8;
+			if i < self.entries.len() - 1 {
+				slot_byte |= 0x80;
+			}
+			slot_byte.mc_serialize(serializer)?;
+			entry.item.mc_serialize(serializer)?;
+		}
+		Ok(())
+	}
+}
+
+impl McDeserialize for EquipmentList {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized
+	{
+		let mut entries = Vec::new();
+		loop {
+			let raw_byte = u8::mc_deserialize(deserializer)?;
+			let has_next = (raw_byte & 0x80) != 0;
+			let slot_byte = raw_byte & 0x7F;
+
+			let slot = EquipmentSlot::from_value(slot_byte)?;
+			let item = SlotData::mc_deserialize(deserializer)?;
+
+			entries.push(EquipmentEntry { slot, item });
+
+			if !has_next {
+				break;
+			}
+		}
+		Ok(Self { entries })
+	}
+}
+
+impl McDefault for EquipmentList {
+	fn mc_default() -> Self {
+		Self {
+			entries: vec![EquipmentEntry {
+				slot: EquipmentSlot::MainHand,
+				item: SlotData::mc_default(),
+			}],
+		}
+	}
+}
+
+impl McDefault for EquipmentEntry {
+	fn mc_default() -> Self {
+		Self {
+			slot: EquipmentSlot::MainHand,
+			item: SlotData::mc_default(),
+		}
+	}
+}
+

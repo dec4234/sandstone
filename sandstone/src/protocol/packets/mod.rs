@@ -20,7 +20,7 @@ use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, Tag};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, EquipmentList, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, Tag};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -31,7 +31,7 @@ use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::command::Node;
-use crate::protocol_types::datatypes::game_types::{GameDifficulty, Position};
+use crate::protocol_types::datatypes::game_types::{GameDifficulty, Position, WorldEventType};
 use crate::protocol_types::datatypes::internal_types::{Angle, IDorX, LpVec3, Mapping};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitfield::BitField;
@@ -219,10 +219,10 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				head_yaw: Angle,
 				data: VarInt
 			},
-			/*BlockUpdate, BlockUpdatePacket, 0x08 => {
+			BlockUpdate, BlockUpdatePacket, 0x08 => {
 				location: Position,
 				block_id: VarInt
-			},*/
+			},
 			ChangeDifficulty, ChangeDifficultyPacket, 0x0A => {
 				difficulty: GameDifficulty,
 				difficulty_locked: bool
@@ -250,16 +250,21 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				entity_id: i32,
 				entity_status: i8 // todo: create comprehensive enum
 			},
+			TeleportEntity, TeleportEntityPacket, 0x23 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Teleport_Entity"] => {
+				entity_id: VarInt,
+				x: f64,
+				y: f64,
+				z: f64,
+				velocity_x: f64,
+				velocity_y: f64,
+				velocity_z: f64,
+				yaw: f32,
+				pitch: f32,
+				on_ground: bool
+			},
 			GameEvent, GameEventPacket, 0x26 => {
 				event: GameEventType,
 				value: f32
-			},
-			ChunkDataUpdateLight, ChunkDataUpdateLightPacket, 0x2C #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
-				x: i32,
-				z: i32,
-				#[doc = "Chunk byte data"]
-				data: ChunkData,
-				light: LightData
 			},
 			InitializeWorldBorder, InitializeWorldBorderPacket, 0x2A => {
 				x: f64,
@@ -273,6 +278,19 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			},
 			ClientboundKeepAlive, ClientboundKeepAlivePacket, 0x2B => {
 				keep_alive_id: i64
+			},
+			ChunkDataUpdateLight, ChunkDataUpdateLightPacket, 0x2C #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
+				x: i32,
+				z: i32,
+				#[doc = "Chunk byte data"]
+				data: ChunkData,
+				light: LightData
+			},
+			WorldEvent, WorldEventPacket, 0x2D #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#World_Event"] => {
+				event: WorldEventType,
+				location: Position,
+				data: i32,
+				disable_relative_volume: bool
 			},
 			LoginInfo, LoginInfoPacket, 0x30 => {
 				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
@@ -304,6 +322,34 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				portal_cooldown: VarInt,
 				sea_level: VarInt,
 				enforces_secure_chat: bool
+			},
+			UpdateEntityPosition, UpdateEntityPositionPacket, 0x33 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Position"] => {
+				entity_id: VarInt,
+				#[doc = "Change in X position as currentX * 4096 - prevX * 4096"]
+				x_delta: i16,
+				#[doc = "Change in Y position as currentY * 4096 - prevY * 4096"]
+				y_delta: i16,
+				#[doc = "Change in Z position as currentZ * 4096 - prevZ * 4096"]
+				z_delta: i16,
+				on_ground: bool
+			},
+			UpdateEntityPostitionRotation, UpdateEntityPostitionRotationPacket, 0x34 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Position_and_Rotation"] => {
+				entity_id: VarInt,
+				#[doc = "Change in X position as currentX * 4096 - prevX * 4096"]
+				x_delta: i16,
+				#[doc = "Change in Y position as currentY * 4096 - prevY * 4096"]
+				y_delta: i16,
+				#[doc = "Change in Z position as currentZ * 4096 - prevZ * 4096"]
+				z_delta: i16,
+				yaw: Angle,
+				pitch: Angle,
+				on_ground: bool
+			},
+			UpdateEntityRotation, UpdateEntityRotationPacket, 0x36 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Rotation"] => {
+				entity_id: VarInt,
+				yaw: Angle,
+				pitch: Angle,
+				on_ground: bool
 			},
 			PlayerAbilities, PlayerAbilitiesPacket, 0x3E => {
 				flags: PlayerAbilityFlags,
@@ -343,6 +389,10 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				smoking_open: bool,
 				smoking_filter: bool
 			},
+			RemoveEntities, RemoveEntitiesPacket, 0x4B => {
+				#[doc = "A prefixed array of entity ids to be destroyed"]
+				entities: PrefixedArray<VarInt>
+			},
 			Respawn, RespawnPacket, 0x50 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Respawn"] => {
 				dimension_type: VarInt,
 				dimension_name: String,
@@ -357,6 +407,10 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				portal_cooldown: VarInt,
 				sea_level: VarInt,
 				data_kept: RespawnKeptData
+			},
+			SetHeadRotation, SetHeadRotationPacket, 0x51 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Head_Rotation"] => {
+				entity_id: VarInt,
+				head_yaw: Angle
 			},
 			ServerData, ServerDataPacket, 0x54 => {
 				motd: TextComponent,
@@ -375,6 +429,18 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			SetEntityMetadata, SetEntityMetadataPacket, 0x61 => {
 				entity_id: VarInt,
 				metadata: EntityMetadata
+			},
+			LinkEntries, LinkEntriesPacket, 0x62 => {
+				attached_id: i32,
+				holding_id: i32
+			},
+			SetEntityVelocity, SetEntityVelocityPacket, 0x63 => {
+				entity_id: VarInt,
+				velocity: LpVec3
+			},
+			SetEquipment, SetEquipmentPacket, 0x64 => {
+				entity_id: VarInt,
+				equipment: EquipmentList
 			},
 			SetExperience, SetExperiencePacket, 0x65 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Experience"] => {
 				experience_bar: f32,

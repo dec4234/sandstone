@@ -512,6 +512,8 @@ pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
 
     let enum_name_str = name.to_string();
 
+    let from_varint_arms = deserialize_arms.clone();
+
     let expanded = quote! {
         impl McSerialize for #name {
             fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
@@ -531,31 +533,48 @@ pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
                 }
             }
         }
+
+        impl #name {
+            pub fn from_varint(value: i32) -> SerializingResult<'static, Self> {
+                match value {
+                    #(#from_varint_arms)*
+                    _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, value))),
+                }
+            }
+        }
     };
 
     TokenStream::from(expanded)
 }
 
-/// Derive `McSerialize` and `McDeserialize` for unit enums where each variant maps to a `u8`.
+/// Derive `McSerialize` and `McDeserialize` for unit enums where each variant maps to a
+/// primitive type specified via `#[type_enum(T)]` (e.g. `u8`, `i8`, `i32`).
 ///
 /// Each variant must be a unit variant with an explicit discriminant value.
 ///
 /// ```rust,ignore
-/// #[derive(ByteEnum)]
+/// #[derive(TypeEnum)]
+/// #[type_enum(u8)]
 /// pub enum ModifierOperation {
 ///     AddSubtractAmount = 0,
 ///     AddSubtractPercentage = 1,
 ///     MultiplyPercentage = 2,
 /// }
 /// ```
-#[proc_macro_derive(ByteEnum)]
-pub fn derive_byte_enum(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(TypeEnum, attributes(type_enum))]
+pub fn derive_type_enum(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
+    let underlying_type: syn::Type = input.attrs.iter()
+        .find(|attr| attr.path().is_ident("type_enum"))
+        .expect("TypeEnum requires a #[type_enum(T)] attribute")
+        .parse_args()
+        .expect("Expected a type inside #[type_enum(...)], e.g. #[type_enum(u8)]");
+
     let data_enum = match &input.data {
         Data::Enum(data) => data,
-        _ => panic!("ByteEnum can only be derived for enums"),
+        _ => panic!("TypeEnum can only be derived for enums"),
     };
 
     let mut serialize_arms = Vec::new();
@@ -564,7 +583,7 @@ pub fn derive_byte_enum(input: TokenStream) -> TokenStream {
     for variant in &data_enum.variants {
         assert!(
             matches!(variant.fields, Fields::Unit),
-            "ByteEnum only supports unit variants, but {:?} has fields",
+            "TypeEnum only supports unit variants, but {:?} has fields",
             variant.ident
         );
 
@@ -572,7 +591,7 @@ pub fn derive_byte_enum(input: TokenStream) -> TokenStream {
             .discriminant
             .as_ref()
             .expect(&format!(
-                "ByteEnum requires explicit discriminant for variant {}",
+                "TypeEnum requires explicit discriminant for variant {}",
                 variant.ident
             ));
 
@@ -590,10 +609,12 @@ pub fn derive_byte_enum(input: TokenStream) -> TokenStream {
 
     let enum_name_str = name.to_string();
 
+    let from_value_arms = deserialize_arms.clone();
+
     let expanded = quote! {
         impl McSerialize for #name {
             fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-                let id: u8 = match self {
+                let id: #underlying_type = match self {
                     #(#serialize_arms)*
                 };
                 id.mc_serialize(serializer)
@@ -602,10 +623,19 @@ pub fn derive_byte_enum(input: TokenStream) -> TokenStream {
 
         impl McDeserialize for #name {
             fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-                let id = u8::mc_deserialize(deserializer)?;
+                let id = <#underlying_type>::mc_deserialize(deserializer)?;
                 match id {
                     #(#deserialize_arms)*
                     _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, id))),
+                }
+            }
+        }
+
+        impl #name {
+            pub fn from_value(value: #underlying_type) -> SerializingResult<'static, Self> {
+                match value {
+                    #(#from_value_arms)*
+                    _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, value))),
                 }
             }
         }

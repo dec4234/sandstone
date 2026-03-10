@@ -7,7 +7,7 @@ use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
-use sandstone_derive::{McDefault, McDeserialize, McSerialize};
+use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum};
 
 /// A Minecraft position, internally represented as a 64-bit integer.
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
@@ -44,47 +44,129 @@ impl Position {
 	}
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[type_enum(u8)]
 pub enum GameDifficulty {
-	Peaceful,
-	Easy,
-	Normal,
-	Hard
-}
-
-impl McSerialize for GameDifficulty {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		let value: u8 = match self {
-			GameDifficulty::Peaceful => 0,
-			GameDifficulty::Easy => 1,
-			GameDifficulty::Normal => 2,
-			GameDifficulty::Hard => 3
-		};
-		value.mc_serialize(serializer)
-	}
-}
-
-impl McDeserialize for GameDifficulty {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
-	where
-		Self: Sized
-	{
-		let value = u8::mc_deserialize(deserializer)?;
-		let difficulty = match value {
-			0 => GameDifficulty::Peaceful,
-			1 => GameDifficulty::Easy,
-			2 => GameDifficulty::Normal,
-			3 => GameDifficulty::Hard,
-			_ => return Err(SerializingErr::DeserializationError("Invalid game difficulty value".to_string()))
-		};
-		Ok(difficulty)
-	}
+	Peaceful = 0,
+	Easy = 1,
+	Normal = 2,
+	Hard = 3
 }
 
 impl McDefault for GameDifficulty {
 	fn mc_default() -> Self {
 		GameDifficulty::Normal
 	}
+}
+
+#[derive(McDefault, TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[type_enum(u8)]
+pub enum EquipmentSlot {
+	MainHand = 0,
+	OffHand = 1,
+	Boots = 2,
+	Leggigns = 3,
+	Chestplate = 4,
+	Helmet = 5,
+	Body = 6,
+	Saddle = 7,
+}
+
+#[derive(McDefault, TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[type_enum(i32)]
+pub enum WorldEventType {
+	DispenserDispenses = 1000,
+	DispenserFailsToDispense = 1001,
+	DispenserShoots = 1002,
+	FireworkShot = 1004,
+	FireExtinguished = 1009,
+	PlayRecord = 1010,
+	StopRecord = 1011,
+	GhastWarns = 1015,
+	GhastShoots = 1016,
+	EnderDragonShoots = 1017,
+	BlazeShoots = 1018,
+	ZombieAttacksWoodenDoor = 1019,
+	ZombieAttacksIronDoor = 1020,
+	ZombieBreaksWoodenDoor = 1021,
+	WitherBreaksBlock = 1022,
+	WitherSpawned = 1023,
+	WitherShoots = 1024,
+	BatTakesOff = 1025,
+	ZombieInfects = 1026,
+	ZombieVillagerConverted = 1027,
+	EnderDragonDies = 1028,
+	AnvilDestroyed = 1029,
+	AnvilUsed = 1030,
+	AnvilLands = 1031,
+	PortalTravel = 1032,
+	ChorusFlowerGrows = 1033,
+	ChorusFlowerDies = 1034,
+	BrewingStandBrews = 1035,
+	EndPortalCreated = 1038,
+	PhantomBites = 1039,
+	ZombieConvertsToDrowned = 1040,
+	HuskConvertsToZombie = 1041,
+	GrindstoneUsed = 1042,
+	BookPageTurned = 1043,
+	SmithingTableUsed = 1044,
+	PointedDripstoneLanding = 1045,
+	LavaDrippingOnCauldron = 1046,
+	WaterDrippingOnCauldron = 1047,
+	SkeletonConvertsToStray = 1048,
+	CrafterSuccessfullyCrafts = 1049,
+	CrafterFailsToCraft = 1050,
+	ComposterComposts = 1500,
+	LavaConvertsBlock = 1501,
+	RedstoneTorchBurnsOut = 1502,
+	EnderEyePlaced = 1503,
+	FluidDripsFromDripstone = 1504,
+	BoneMealParticles = 1505,
+	DispenserSmoke = 2000,
+	BlockBreak = 2001,
+	SplashPotion = 2002,
+	EyeOfEnderBreak = 2003,
+	SpawnerSpawnsMob = 2004,
+	DragonBreath = 2006,
+	InstantSplashPotion = 2007,
+	EnderDragonDestroysBlock = 2008,
+	WetSpongeVaporizes = 2009,
+	CrafterSmoke = 2010,
+	BeeFertilizesPlant = 2011,
+	TurtleEggPlaced = 2012,
+	SmashAttack = 2013,
+	EndGatewaySpawns = 3000,
+	EnderDragonResurrected = 3001,
+	ElectricSpark = 3002,
+	CopperApplyWax = 3003,
+	CopperRemoveWax = 3004,
+	CopperScrapeOxidation = 3005,
+	SculkCharge = 3006,
+	SculkShriekerShriek = 3007,
+	BlockFinishedBrushing = 3008,
+	SnifferEggCracks = 3009,
+	TrialSpawnerSpawnsMob = 3011,
+	TrialSpawnerSpawnsMobAtLocation = 3012,
+	TrialSpawnerDetectsPlayer = 3013,
+	TrialSpawnerEjectsItem = 3014,
+	VaultActivates = 3015,
+	VaultDeactivates = 3016,
+	VaultEjectsItem = 3017,
+	CobwebWeaved = 3018,
+	OminousTrialSpawnerDetectsPlayer = 3019,
+	TrialSpawnerTurnsOminous = 3020,
+	OminousItemSpawnerSpawnsItem = 3021,
+}
+
+#[derive(TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[type_enum(i32)]
+pub enum SmokeDirection {
+	Down = 0,
+	Up = 1,
+	North = 2,
+	South = 3,
+	West = 4,
+	East = 5,
 }
 
 #[cfg(test)]
