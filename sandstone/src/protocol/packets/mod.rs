@@ -1,10 +1,10 @@
 //! This file defines the packets for the most recent supported version of the Protocol
-//! 
+//!
 //! It has a couple of key responsibilities:
 //! - Define the packets that are used in the protocol
 //! - Define the serialization and deserialization for each packet
 //! - Provide vital information about each packet such as the packet ID, the packet state, and the packet destination
-//! 
+//!
 //! All information for the packets is derived from the wiki. Consider supporting the wiki efforts.
 //! https://minecraft.wiki/w/Java_Edition_protocol
 
@@ -45,7 +45,7 @@ pub mod packet_definer;
 packets!(v1_21 => { // version name is for reference only, has no effect
 	HANDSHAKING => {
 		SERVER => { // Server is the destination
-			Handshaking, HandshakingPacket, 0x00 #[doc = "Used to switch server into a different connection state. Should be sent shortly after TCP connection is opened."] => {
+			Handshaking, 0x00 #[doc = "Used to switch server into a different connection state. Should be sent shortly after TCP connection is opened."] => {
 				#[doc = "See protocol_version.rs for more context"]
 				protocol_version: VarInt,
 				#[doc = "The server address, in the form of a domain name or IP address"]
@@ -58,123 +58,123 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 	},
 	STATUS => {
 		CLIENT => {
-			StatusResponse, StatusResponsePacket, 0x00 => {
+			StatusResponse, 0x00 => {
 				response: StatusResponseSpec
 			},
-			PingResponse, PingResponsePacket, 0x01 => {
+			PingResponse, 0x01 => {
 				payload: u64
 			}
 		},
 		SERVER => {
-			StatusRequest, StatusRequestPacket, 0x00 => {
+			StatusRequest, 0x00 => {
 				// none
 			},
-			PingRequest, PingRequestPacket, 0x01 => {
+			PingRequest, 0x01 => {
 				payload: i64
 			}
 		}
 	},
 	LOGIN => {
 		CLIENT => {
-			LoginDisconnect, LoginDisconnectPacket, 0x00 => {
+			LoginDisconnect, 0x00 => {
 				reason: TextComponent
 			},
-			EncryptionRequest, EncryptionRequestPacket, 0x01 => {
+			EncryptionRequest, 0x01 => {
 				server_id: String,
 				public_key_length: VarInt,
 				public_key: Vec<u8>,
 				verify_token_length: VarInt, // always 4 for Notchian servers
 				verify_token: Vec<u8>
 			},
-			LoginSuccess, LoginSuccessPacket, 0x02 => {
+			LoginSuccess, 0x02 => {
 				uuid: Uuid,
 				username: String,
 				array: PrefixedArray<ProtocolPropertyElement>
 			},
-			SetCompression, SetCompressionPacket, 0x03 => {
+			SetCompression, 0x03 => {
 				#[doc = "The threshold for compression, in bytes. If the packet size is larger than this, it will be compressed."]
 				threshold: VarInt
 			},
-			LoginPluginRequest, LoginPluginRequestPacket, 0x04 => {
+			LoginPluginRequest, 0x04 => {
 				message_id: VarInt,
 				channel: String,
 				data: Vec<u8>
 			},
-			LoginCookieRequest, LoginCookieRequestPacket, 0x05 => {
+			LoginCookieRequest, 0x05 => {
 				key: String
 			}
 		},
 		SERVER => {
-			LoginStart, LoginStartPacket, 0x00 #[doc = "Initiate the login procedure for a client."] => {
+			LoginStart, 0x00 #[doc = "Initiate the login procedure for a client."] => {
 				username: String,
 				uuid: Uuid
 			},
-			EncryptionResponse, EncryptionResponsePacket, 0x01 => {
+			EncryptionResponse, 0x01 => {
 				shared_secret_length: VarInt,
 				shared_secret: Vec<u8>,
 				verify_token_length: VarInt,
 				verify_token: Vec<u8>
 			},
-			LoginPluginResponse, LoginPluginResponsePacket, 0x02 => {
+			LoginPluginResponse, 0x02 => {
 				response: LoginPluginSpec
 			},
-			LoginAcknowledged, LoginAcknowledgedPacket, 0x03 => {
+			LoginAcknowledged, 0x03 => {
 				// none
 			},
-			LoginCookieResponse, LoginCookieResponsePacket, 0x04 => {
+			LoginCookieResponse, 0x04 => {
 				spec: LoginCookieResponseSpec
 			}
 		}
 	},
 	CONFIGURATION => {
 		CLIENT => {
-			ConfigCookieRequest, ConfigCookieRequestPacket, 0x00 => {
+			ConfigCookieRequest, 0x00 => {
 				key: String
 			},
-			ClientboundPluginMessage, ClientboundPluginMessagePacket, 0x01 => {
+			ClientboundPluginMessage, 0x01 => {
 				channel: String,
 				data: Vec<u8>
 			},
-			ConfigDisconnect, ConfigDisconnectPacket, 0x02 => {
+			ConfigDisconnect, 0x02 => {
 				reason: TextComponent
 			},
-			FinishConfiguration, FinishConfigurationPacket, 0x03 => {
+			FinishConfiguration, 0x03 => {
 				// none
 			},
-			KeepAlive, KeepAlivePacket, 0x04 => {
+			KeepAlive, 0x04 => {
 				keep_alive_id: i64
 			},
-			ConfigurationPing, ConfigurationPingPacket, 0x05 => {
+			ConfigurationPing, 0x05 => {
 				payload: i32
 			},
-			ResetChat, ResetChatPacket, 0x06 => {
+			ResetChat, 0x06 => {
 				// none
 			},
-			RegistryData, RegistryDataPacket, 0x07 => {
+			RegistryData, 0x07 => {
 				packet: RegistryDataPacketInternal
 			},
-			RemoveResourcePack, RemoveResourcePackPacket, 0x08 => {
+			RemoveResourcePack, 0x08 => {
 				uuid: PrefixedOptional<Uuid>
 			},
-			AddResourcePack, AddResourcePackPacket, 0x09 => {
+			AddResourcePack, 0x09 => {
 				spec: AddResourcePackSpec
 			},
-			
+
 			// TODO: others here
-			
-			FeatureFlags, FeatureFlagsPacket, 0x0C => {
+
+			FeatureFlags, 0x0C => {
 				total: VarInt,
 				flags: Vec<String>
 			},
-			UpdateTags, UpdateTagsPacket, 0x0D => {
+			UpdateTags, 0x0D => {
 				tags: PrefixedArray<Mapping<PrefixedArray<Tag>>>
 			},
-			ClientboundKnownPacks, ClientboundKnownPacksPacket, 0x0E => {
+			ClientboundKnownPacks, 0x0E => {
 				entries: PrefixedArray<ResourcePackEntry>
 			}
 		},
 		SERVER => {
-			ClientInformation, ClientInformationPacket, 0x00 => {
+			ClientInformation, 0x00 => {
 				locale: String,
 				view_distance: i8,
 				chat_mode: VarInt,
@@ -185,28 +185,28 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				allow_server_listing: bool,
 				particle_status: VarInt
 			},
-			CookieResponse, CookieResponsePacket, 0x01 => {
+			CookieResponse, 0x01 => {
 				key: String,
 				payload: PrefixedOptional<PrefixedArray<u8>>
 			},
-			ServerboundPluginMessage, ServerboundPluginMessagePacket, 0x02 => {
+			ServerboundPluginMessage, 0x02 => {
 				channel: String,
 				data: Vec<u8>
 			},
-			AcknowledgeFinishConfiguration, AcknowledgeFinishConfigurationPacket, 0x03 => {
+			AcknowledgeFinishConfiguration, 0x03 => {
 				// none
 			},
-			ServerboundKnownPacks, ServerboundKnownPacksPacket, 0x07 => {
+			ServerboundKnownPacks, 0x07 => {
 				entries: PrefixedArray<ResourcePackEntry>
 			}
 		}
 	},
 	PLAY => {
 		CLIENT => {
-			BundleDelimiter, BundleDelimiterPacket, 0x00 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Bundle_Delimiter"] => {
+			BundleDelimiter, 0x00 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Bundle_Delimiter"] => {
 				// no fields
 			},
-			SpawnEntity, SpawnEntityPacket, 0x01 => {
+			SpawnEntity, 0x01 => {
 				entity_id: VarInt,
 				entity_uuid: Uuid,
 				typ: VarInt,
@@ -219,45 +219,45 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				head_yaw: Angle,
 				data: VarInt
 			},
-			BlockUpdate, BlockUpdatePacket, 0x08 => {
+			BlockUpdate, 0x08 => {
 				location: Position,
 				block_id: VarInt
 			},
-			ChangeDifficulty, ChangeDifficultyPacket, 0x0A => {
+			ChangeDifficulty, 0x0A => {
 				difficulty: GameDifficulty,
 				difficulty_locked: bool
 			},
-			ChunkBatchFinished, ChunkBatchFinishedPacket, 0x0B => {
+			ChunkBatchFinished, 0x0B => {
 				size: VarInt
 			},
-			ChunkBatchStart, ChunkBatchStartPacket, 0x0C => {
+			ChunkBatchStart, 0x0C => {
 				// no fields
 			},
-			CommandsGraph, CommandsGraphPacket, 0x10 => {
+			CommandsGraph, 0x10 => {
 				nodes: PrefixedArray<Node>,
 				root_index: VarInt
 			},
-			SetContainerContent, SetContainerContentPacket, 0x12 => {
+			SetContainerContent, 0x12 => {
 				window_id: VarInt,
 				state_id: VarInt,
 				slot_data: PrefixedArray<SlotData>,
 				carried_item: SlotData
 			},
-			DamageEvent, DamageEventPacket, 0x19 => {
+			DamageEvent, 0x19 => {
 				entity_id: VarInt,
 				source_type_id: VarInt,
 				source_cause_id: VarInt,
 				source_direct_id: VarInt,
 				source_position: PrefixedOptional<SourcePosition>
 			},
-			DisconnectPlay, DisconnectPlayPacket, 0x20 => {
+			DisconnectPlay, 0x20 => {
 				reason: TextComponent
 			},
-			EntityEvent, EntityEventPacket, 0x22 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses"] => {
+			EntityEvent, 0x22 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses"] => {
 				entity_id: i32,
 				entity_status: i8 // todo: create comprehensive enum
 			},
-			TeleportEntity, TeleportEntityPacket, 0x23 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Teleport_Entity"] => {
+			TeleportEntity, 0x23 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Teleport_Entity"] => {
 				entity_id: VarInt,
 				x: f64,
 				y: f64,
@@ -269,11 +269,11 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				pitch: f32,
 				on_ground: bool
 			},
-			GameEvent, GameEventPacket, 0x26 => {
+			GameEvent, 0x26 => {
 				event: GameEventType,
 				value: f32
 			},
-			InitializeWorldBorder, InitializeWorldBorderPacket, 0x2A => {
+			InitializeWorldBorder, 0x2A => {
 				x: f64,
 				z: f64,
 				old_diameter: f64,
@@ -283,28 +283,28 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				warning_blocks: VarInt,
 				warning_time: VarInt
 			},
-			ClientboundKeepAlive, ClientboundKeepAlivePacket, 0x2B => {
+			ClientboundKeepAlive, 0x2B => {
 				keep_alive_id: i64
 			},
-			ChunkDataUpdateLight, ChunkDataUpdateLightPacket, 0x2C #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
+			ChunkDataUpdateLight, 0x2C #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light"] => {
 				x: i32,
 				z: i32,
 				#[doc = "Chunk byte data"]
 				data: ChunkData,
 				light: LightData
 			},
-			WorldEvent, WorldEventPacket, 0x2D #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#World_Event"] => {
+			WorldEvent, 0x2D #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#World_Event"] => {
 				event: WorldEventType,
 				location: Position,
 				data: i32,
 				disable_relative_volume: bool
 			},
-			UpdateLight, UpdateLightPacket, 0x2F => {
+			UpdateLight, 0x2F => {
 				x_chunk: VarInt,
 				y_chunk: VarInt,
 				data: LightData
 			},
-			LoginInfo, LoginInfoPacket, 0x30 => {
+			LoginInfo, 0x30 => {
 				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
 				entity_id: i32,
 				is_hardcore: bool,
@@ -335,7 +335,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				sea_level: VarInt,
 				enforces_secure_chat: bool
 			},
-			UpdateEntityPosition, UpdateEntityPositionPacket, 0x33 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Position"] => {
+			UpdateEntityPosition, 0x33 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Position"] => {
 				entity_id: VarInt,
 				#[doc = "Change in X position as currentX * 4096 - prevX * 4096"]
 				x_delta: i16,
@@ -345,7 +345,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				z_delta: i16,
 				on_ground: bool
 			},
-			UpdateEntityPostitionRotation, UpdateEntityPostitionRotationPacket, 0x34 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Position_and_Rotation"] => {
+			UpdateEntityPostitionRotation, 0x34 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Position_and_Rotation"] => {
 				entity_id: VarInt,
 				#[doc = "Change in X position as currentX * 4096 - prevX * 4096"]
 				x_delta: i16,
@@ -357,21 +357,21 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				pitch: Angle,
 				on_ground: bool
 			},
-			UpdateEntityRotation, UpdateEntityRotationPacket, 0x36 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Rotation"] => {
+			UpdateEntityRotation, 0x36 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Rotation"] => {
 				entity_id: VarInt,
 				yaw: Angle,
 				pitch: Angle,
 				on_ground: bool
 			},
-			PlayerAbilities, PlayerAbilitiesPacket, 0x3E => {
+			PlayerAbilities, 0x3E => {
 				flags: PlayerAbilityFlags,
 				flying_speed: f32,
 				fov_modifier: f32
 			},
-			PlayerInfoUpdate, PlayerInfoUpdatePacket, 0x44 => {
+			PlayerInfoUpdate, 0x44 => {
 				data: PlayerInfoUpdateData
 			},
-			SyncPlayerPosition, SyncPlayerPositionPacket, 0x46 => {
+			SyncPlayerPosition, 0x46 => {
 				teleport_id: VarInt,
 				x: f64,
 				y: f64,
@@ -384,14 +384,14 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				#[doc = "See https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags for more info"]
 				flags: BitField<i8>
 			},
-			RecipeBookAdd, RecipeBookAddPacket, 0x48 => {
+			RecipeBookAdd, 0x48 => {
 				recipes: PrefixedArray<RecipeBookEntry>,
 				replace: bool
 			},
-			RecipeBookRemove, RecipeBookRemovePacket, 0x49 => {
+			RecipeBookRemove, 0x49 => {
 				recipes: PrefixedArray<VarInt>
 			},
-			RecipeBookSettings, RecipeBookSettingsPacket, 0x4A => {
+			RecipeBookSettings, 0x4A => {
 				crafting_open: bool,
 				crafting_filter: bool,
 				smelting_open: bool,
@@ -401,11 +401,11 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				smoking_open: bool,
 				smoking_filter: bool
 			},
-			RemoveEntities, RemoveEntitiesPacket, 0x4B => {
+			RemoveEntities, 0x4B => {
 				#[doc = "A prefixed array of entity ids to be destroyed"]
 				entities: PrefixedArray<VarInt>
 			},
-			Respawn, RespawnPacket, 0x50 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Respawn"] => {
+			Respawn, 0x50 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Respawn"] => {
 				dimension_type: VarInt,
 				dimension_name: String,
 				hashed_seed: i64,
@@ -420,67 +420,67 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				sea_level: VarInt,
 				data_kept: RespawnKeptData
 			},
-			SetHeadRotation, SetHeadRotationPacket, 0x51 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Head_Rotation"] => {
+			SetHeadRotation, 0x51 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Head_Rotation"] => {
 				entity_id: VarInt,
 				head_yaw: Angle
 			},
-			SectionBlocksUpdate, SectionBlocksUpdatePacket, 0x52 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Section_Blocks_Update"] => {
+			SectionBlocksUpdate, 0x52 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Section_Blocks_Update"] => {
 				chunk_section_position: ChunkSectionPosition,
 				blocks: PrefixedArray<SectionBlockEntry>
 			},
-			ServerData, ServerDataPacket, 0x54 => {
+			ServerData, 0x54 => {
 				motd: TextComponent,
 				icon: PrefixedOptional<PrefixedArray<u8>>
 			},
-			SetCenterChunk, SetCenterChunkPacket, 0x5C => {
+			SetCenterChunk, 0x5C => {
 				x: VarInt,
 				z: VarInt
 			},
-			SetDefaultSpawnPosition, SetDefaultSpawnPositionPacket, 0x5F => {
+			SetDefaultSpawnPosition, 0x5F => {
 				dimension_name: String,
 				location: Position,
 				yaw: f32,
 				pitch: f32
 			},
-			SetEntityMetadata, SetEntityMetadataPacket, 0x61 => {
+			SetEntityMetadata, 0x61 => {
 				entity_id: VarInt,
 				metadata: EntityMetadata
 			},
-			LinkEntries, LinkEntriesPacket, 0x62 => {
+			LinkEntries, 0x62 => {
 				attached_id: i32,
 				holding_id: i32
 			},
-			SetEntityVelocity, SetEntityVelocityPacket, 0x63 => {
+			SetEntityVelocity, 0x63 => {
 				entity_id: VarInt,
 				velocity: LpVec3
 			},
-			SetEquipment, SetEquipmentPacket, 0x64 => {
+			SetEquipment, 0x64 => {
 				entity_id: VarInt,
 				equipment: EquipmentList
 			},
-			SetExperience, SetExperiencePacket, 0x65 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Experience"] => {
+			SetExperience, 0x65 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Experience"] => {
 				experience_bar: f32,
 				level: VarInt,
 				total_experience: VarInt
 			},
-			SetHealth, SetHealthPacket, 0x66 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Health"] => {
+			SetHealth, 0x66 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Health"] => {
 				health: f32,
 				food: VarInt,
 				saturation: f32
 			},
-			SetHeldItem, SetHeldItemPacket, 0x67 => {
+			SetHeldItem, 0x67 => {
 				slot: VarInt
 			},
-			SetPassengers, SetPassengersPacket, 0x69 => {
+			SetPassengers, 0x69 => {
 				entity_id: VarInt,
 				passengers: PrefixedArray<VarInt>
 			},
-			UpdateTime, UpdateTimePacket, 0x6F => {
+			UpdateTime, 0x6F => {
 				world_age: i64,
 				time_of_day: i64,
 				time_of_day_increasing: bool
 			},
-			SoundEffect, SoundEffectPacket, 0x73 => {
+			SoundEffect, 0x73 => {
 				sound_event: IDorX<SoundEvent>,
 				sound_category: SoundCategory,
 				entity_id: VarInt,
@@ -488,14 +488,14 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				pitch: f32,
 				seed: i64
 			},
-			SetTickingState, SetTickingStatePacket, 0x7D => {
+			SetTickingState, 0x7D => {
 				tick_rate: f32,
 				is_frozen: bool
 			},
-			StepTick, StepTickPacket, 0x7E => {
+			StepTick, 0x7E => {
 				tick_steps: VarInt
 			},
-			UpdateAdvancements, UpdateAdvancementsPacket, 0x80 => {
+			UpdateAdvancements, 0x80 => {
 				unimplemented: Vec<u8> // todo: fix UpdateAdvancements
 				/*reset: bool,
 				advancement_mapping: PrefixedArray<Mapping<Advancement>>,
@@ -503,26 +503,26 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				progress_mapping: PrefixedArray<Mapping<PrefixedArray<Mapping<PrefixedOptional<i64>>>>>,
 				show_advancements: bool*/
 			},
-			UpdateAttributes, UpdateAttributesPacket, 0x81 => {
+			UpdateAttributes, 0x81 => {
 				entity_id: VarInt,
 				modifiers: PrefixedArray<AttributeProperty>
 			},
-			UpdateRecipes, UpdateRecipesPacket, 0x83 => {
+			UpdateRecipes, 0x83 => {
 				property_sets: PrefixedArray<PropertySet>,
 				stonecutter_recipes: PrefixedArray<StonecutterRecipe>
 			}
 		},
 		SERVER => {
-			ConfirmTeleport, ConfirmTeleportPacket, 0x00 => {
+			ConfirmTeleport, 0x00 => {
 				teleport_id: VarInt
 			},
-			ClientCommand, ClientCommandPacket, 0x0B #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Command"] => {
+			ClientCommand, 0x0B #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Command"] => {
 				action: ClientStatusAction
 			},
-			ServerboundKeepAlive, ServerboundKeepAlivePacket, 0x1B => {
+			ServerboundKeepAlive, 0x1B => {
 				keep_alive_id: i64
 			},
-			SetPlayerPositionRotation, SetPlayerPositionRotationPacket, 0x1D => {
+			SetPlayerPositionRotation, 0x1D => {
 				x: f64,
 				#[doc = "Feet y position. Head - 1.62"]
 				y: f64,
@@ -531,10 +531,10 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				pitch: f32,
 				flags: BitField<i8>
 			},
-			PlayerLoaded, PlayerLoadedPacket, 0x2B => {
+			PlayerLoaded, 0x2B => {
 				// none
 			},
-			ResourcePackResponse, ResourcePackResponsePacket, 0x30 => {
+			ResourcePackResponse, 0x30 => {
 				uuid: Uuid,
 				result: VarInt
 			}

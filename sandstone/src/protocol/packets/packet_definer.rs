@@ -55,45 +55,46 @@ mod macros {
     #[macro_export]
     macro_rules! packets {
         ($ref_ver: ident => {
-            // These are split into multiple levels to allow for more efficient deserialization 
+            // These are split into multiple levels to allow for more efficient deserialization
             $($state: ident => {
                 $($direction: ident => {
-                   $($name: ident, $name_body: ident, $packetID: literal $(#[$struct_meta: meta])* => {
+                   $($name: ident, $packetID: literal $(#[$struct_meta: meta])* => {
                         $(
                             $(#[$field_meta:meta])*
                             $field: ident: $t: ty
                         ),*
-                    }),* 
+                    }),*
                 }),*
             }),*
         }) => {
+            paste::paste! {
             $(
                 $(
                     $(
                         #[derive(Debug, Clone, PartialEq, sandstone_derive::McDeserialize, sandstone_derive::McSerialize, sandstone_derive::McDefault)]
                         $(#[$struct_meta])*
-                        pub struct $name_body { // The body struct of the packet
+                        pub struct [<$name Packet>] { // The body struct of the packet
                             $(
                                 $(#[$field_meta])*
                                 pub $field: $t
                             ),*
                         }
-                        
-                        impl $name_body {
+
+                        impl [<$name Packet>] {
                             pub fn new($($field: $t),*) -> Self {
                                 Self {
                                     $($field),*
                                 }
                             }
                         }
-                    
-                        impl From<$name_body> for Packet {
-                            fn from(p: $name_body) -> Self {
+
+                        impl From<[<$name Packet>]> for Packet {
+                            fn from(p: [<$name Packet>]) -> Self {
                                 Packet::$name(p)
                             }
                         }
-                    
-                        impl From<Packet> for $name_body {
+
+                        impl From<Packet> for [<$name Packet>] {
                             fn from(p: Packet) -> Self {
                                 match p {
                                     Packet::$name(p) => p,
@@ -104,54 +105,54 @@ mod macros {
                     )*
                 )*
             )*
-            
+
             $crate::as_item!( // weird workaround from mcproto-rs
                 #[derive(Debug, Clone, PartialEq)]
                 pub enum Packet {
-                    $($($($name($name_body),)*)*)*
+                    $($($($name([<$name Packet>]),)*)*)*
                 }
             );
-            
+
             impl Packet {
                 pub fn packet_id(&self) -> VarInt {
                     match self {
                         $($($(Packet::$name(_) => VarInt($packetID as i32),)*)*)*
                     }
                 }
-                
+
                 pub fn state(&self) -> PacketState {
                     match self {
                         $($($(Packet::$name(_) => PacketState::$state,)*)*)*
                     }
                 }
-                
+
                 pub fn direction(&self) -> PacketDirection {
                     match self {
                         $($($(Packet::$name(_) => PacketDirection::$direction,)*)*)*
                     }
                 }
             }
-            
+
             impl McSerialize for Packet {
                 fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
                     let mut length_serializer = McSerializer::new();
                     match self {
                         $($($(Packet::$name(b) => {b.mc_serialize(&mut length_serializer)?}),*)*)*
                     }
-                    
+
                     let packet_id = self.packet_id();
-                    
+
                     let bytes = packet_id.to_bytes(); // getting the bytes is kind of expensive, so cache it
-                    
+
                     VarInt(length_serializer.output.len() as i32 + bytes.len() as i32).mc_serialize(serializer)?;
                     bytes.mc_serialize(serializer)?;
                     serializer.merge(length_serializer);
-                    
-            
+
+
                     Ok(())
                 }
             }
-            
+
             impl StateBasedDeserializer for Packet {
                 /// Deserialize a packet from a byte buffer, given the state and direction of the packet.
                 /// The byte buffer should include the raw packet details such as the packet length and id.
@@ -159,9 +160,9 @@ mod macros {
                     let length = VarInt::mc_deserialize(deserializer)?;
 
                     let mut sub = deserializer.sub_deserializer_length(length.0 as usize)?;
-                    
+
                     let packet_id = VarInt::mc_deserialize(&mut sub)?;
-                    
+
                     $(
                         if state == PacketState::$state {
                             $(
@@ -169,7 +170,7 @@ mod macros {
                                     match packet_id.0 {
                                         $(
                                             $packetID => {
-                                                let a = $name_body::mc_deserialize(&mut sub);
+                                                let a = [<$name Packet>]::mc_deserialize(&mut sub);
 
                                                 if let Ok(a) = a {
                                                     return Ok(Packet::$name(a));
@@ -178,17 +179,18 @@ mod macros {
                                                 }
                                             }
                                         )*
-                                        
+
                                             _ => {}
                                     }
                                 }
                             )*
                         }
                     )*
-                    
+
                     return Err(SerializingErr::NoKnownPacket(format!("Could not find matching packet for destination {:?} and state {:?} with packet id '0x{:X}'", packet_direction, state, packet_id.0)));
                 }
             }
+            } // end paste
         };
     }
     
