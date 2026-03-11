@@ -7,6 +7,7 @@ use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::var_types::VarLong;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum};
 
 /// A Minecraft position, internally represented as a 64-bit integer.
@@ -158,6 +159,70 @@ pub enum WorldEventType {
 	OminousItemSpawnerSpawnsItem = 3021,
 }
 
+/// Packed i64 for coordinates of the affected chunk.
+///
+/// 22 bits for x, z and 20 bits for y
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+pub struct ChunkSectionPosition {
+	data: i64
+}
+
+impl ChunkSectionPosition {
+	pub fn new(section_x: i32, section_y: i32, section_z: i32) -> Self {
+		let data = ((section_x as i64 & 0x3FFFFF) << 42)
+			| (section_y as i64 & 0xFFFFF)
+			| ((section_z as i64 & 0x3FFFFF) << 20);
+		Self { data }
+	}
+
+	/// Chunk X coordinate
+	pub fn section_x(&self) -> i32 {
+		(self.data >> 42) as i32
+	}
+
+	/// Chunk Y coordinate
+	pub fn section_y(&self) -> i32 {
+		((self.data << 44) >> 44) as i32
+	}
+
+	/// Chunk Z coordinate
+	pub fn section_z(&self) -> i32 {
+		((self.data << 22) >> 42) as i32
+	}
+}
+
+/// Packed VarLong of block state id, and local x, y, z coords
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+pub struct SectionBlockEntry {
+	data: VarLong
+}
+
+impl SectionBlockEntry {
+	pub fn new(block_state_id: i32, local_x: u8, local_y: u8, local_z: u8) -> Self {
+		let value = ((block_state_id as i64) << 12)
+			| ((local_x as i64 & 0xF) << 8)
+			| ((local_z as i64 & 0xF) << 4)
+			| (local_y as i64 & 0xF);
+		Self { data: VarLong(value) }
+	}
+
+	pub fn block_state_id(&self) -> i32 {
+		(self.data.0 >> 12) as i32
+	}
+
+	pub fn local_x(&self) -> u8 {
+		((self.data.0 >> 8) & 0xF) as u8
+	}
+
+	pub fn local_y(&self) -> u8 {
+		(self.data.0 & 0xF) as u8
+	}
+
+	pub fn local_z(&self) -> u8 {
+		((self.data.0 >> 4) & 0xF) as u8
+	}
+}
+
 #[derive(TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 #[type_enum(i32)]
 pub enum SmokeDirection {
@@ -169,9 +234,16 @@ pub enum SmokeDirection {
 	East = 5,
 }
 
+#[derive(McDefault, McSerialize, McDeserialize, Debug, PartialOrd, PartialEq, Clone)]
+pub struct SourcePosition {
+	x: f64,
+	y: f64,
+	z: f64
+}
+
 #[cfg(test)]
 mod test {
-	use crate::protocol_types::datatypes::game_types::Position;
+	use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, Position, SectionBlockEntry};
 
 	#[test]
 	fn test_position() {
@@ -184,5 +256,56 @@ mod test {
 		assert_eq!(pos.x(), -1);
 		assert_eq!(pos.y(), -2);
 		assert_eq!(pos.z(), -3);
+	}
+
+	#[test]
+	fn test_chunk_section_position() {
+		let pos = ChunkSectionPosition::new(3, 5, 7);
+		assert_eq!(pos.section_x(), 3);
+		assert_eq!(pos.section_y(), 5);
+		assert_eq!(pos.section_z(), 7);
+	}
+
+	#[test]
+	fn test_chunk_section_position_negative() {
+		let pos = ChunkSectionPosition::new(-1, -4, -10);
+		assert_eq!(pos.section_x(), -1);
+		assert_eq!(pos.section_y(), -4);
+		assert_eq!(pos.section_z(), -10);
+	}
+
+	#[test]
+	fn test_chunk_section_position_zero() {
+		let pos = ChunkSectionPosition::new(0, 0, 0);
+		assert_eq!(pos.section_x(), 0);
+		assert_eq!(pos.section_y(), 0);
+		assert_eq!(pos.section_z(), 0);
+	}
+
+	#[test]
+	fn test_section_block_entry() {
+		let entry = SectionBlockEntry::new(42, 3, 7, 12);
+		assert_eq!(entry.block_state_id(), 42);
+		assert_eq!(entry.local_x(), 3);
+		assert_eq!(entry.local_y(), 7);
+		assert_eq!(entry.local_z(), 12);
+	}
+
+	#[test]
+	fn test_section_block_entry_zero() {
+		let entry = SectionBlockEntry::new(0, 0, 0, 0);
+		assert_eq!(entry.block_state_id(), 0);
+		assert_eq!(entry.local_x(), 0);
+		assert_eq!(entry.local_y(), 0);
+		assert_eq!(entry.local_z(), 0);
+	}
+
+	#[test]
+	fn test_section_block_entry_max_local() {
+		let entry = SectionBlockEntry::new(1, 15, 15, 15);
+		assert_eq!(entry.block_state_id(), 1);
+		assert_eq!(entry.local_x(), 15);
+		assert_eq!(entry.local_y(), 15);
+		assert_eq!(entry.local_z(), 15);
 	}
 }

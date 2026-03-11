@@ -31,7 +31,7 @@ use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::command::Node;
-use crate::protocol_types::datatypes::game_types::{GameDifficulty, Position, WorldEventType};
+use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, GameDifficulty, Position, SectionBlockEntry, SourcePosition, WorldEventType};
 use crate::protocol_types::datatypes::internal_types::{Angle, IDorX, LpVec3, Mapping};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitfield::BitField;
@@ -243,6 +243,13 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				slot_data: PrefixedArray<SlotData>,
 				carried_item: SlotData
 			},
+			DamageEvent, DamageEventPacket, 0x19 => {
+				entity_id: VarInt,
+				source_type_id: VarInt,
+				source_cause_id: VarInt,
+				source_direct_id: VarInt,
+				source_position: PrefixedOptional<SourcePosition>
+			},
 			DisconnectPlay, DisconnectPlayPacket, 0x20 => {
 				reason: TextComponent
 			},
@@ -291,6 +298,11 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				location: Position,
 				data: i32,
 				disable_relative_volume: bool
+			},
+			UpdateLight, UpdateLightPacket, 0x2F => {
+				x_chunk: VarInt,
+				y_chunk: VarInt,
+				data: LightData
 			},
 			LoginInfo, LoginInfoPacket, 0x30 => {
 				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
@@ -412,6 +424,10 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				entity_id: VarInt,
 				head_yaw: Angle
 			},
+			SectionBlocksUpdate, SectionBlocksUpdatePacket, 0x52 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Section_Blocks_Update"] => {
+				chunk_section_position: ChunkSectionPosition,
+				blocks: PrefixedArray<SectionBlockEntry>
+			},
 			ServerData, ServerDataPacket, 0x54 => {
 				motd: TextComponent,
 				icon: PrefixedOptional<PrefixedArray<u8>>
@@ -452,13 +468,17 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				food: VarInt,
 				saturation: f32
 			},
+			SetHeldItem, SetHeldItemPacket, 0x67 => {
+				slot: VarInt
+			},
+			SetPassengers, SetPassengersPacket, 0x69 => {
+				entity_id: VarInt,
+				passengers: PrefixedArray<VarInt>
+			},
 			UpdateTime, UpdateTimePacket, 0x6F => {
 				world_age: i64,
 				time_of_day: i64,
 				time_of_day_increasing: bool
-			},
-			SetHeldItem, SetHeldItemPacket, 0x67 => {
-				slot: VarInt
 			},
 			SoundEffect, SoundEffectPacket, 0x73 => {
 				sound_event: IDorX<SoundEvent>,

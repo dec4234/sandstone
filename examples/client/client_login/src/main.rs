@@ -195,7 +195,7 @@ async fn main() {
     debug!("Sending confirm teleport packet: {confirm:?}");
     client.send_packet(confirm).await.unwrap();
 
-    loop {
+    loop { // todo: separate last of loading packets from play loop packets
         let packet =  match client.receive_packet().await {
             Ok(packet) => {packet}
             Err(e) => {
@@ -361,6 +361,22 @@ async fn main() {
             }
             Packet::WorldEvent(we) => {
                 debug!("World event {we:?}");
+                continue;
+            }
+            Packet::UpdateLight(ul) => {
+                debug!("Update lgiht {ul:?}");
+                continue;
+            }
+            Packet::SectionBlocksUpdate(sbu) => {
+                debug!("Section blocks update {sbu:?}");
+                continue;
+            }
+            Packet::SetPassengers(sp) => {
+                debug!("Set passengers {sp:?}");
+                continue;
+            }
+            Packet::DamageEvent(de) => {
+                debug!("Damage event {de:?}");
                 continue;
             }
             Packet::DisconnectPlay(dp) => {
