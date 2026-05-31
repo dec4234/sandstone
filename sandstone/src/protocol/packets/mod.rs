@@ -29,7 +29,7 @@ use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol::testing::McDefault;
-use crate::protocol_types::datatypes::chat::TextComponent;
+use crate::protocol_types::datatypes::chat::{JsonTextComponent, TextComponent};
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, GameDifficulty, Position, SectionBlockEntry, SourcePosition, WorldEventType};
 use crate::protocol_types::datatypes::internal_types::{Angle, IDorX, LpVec3, Mapping};
@@ -77,7 +77,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 	LOGIN => {
 		CLIENT => {
 			LoginDisconnect, 0x00 => {
-				reason: TextComponent
+				reason: JsonTextComponent
 			},
 			EncryptionRequest, 0x01 => {
 				server_id: String,

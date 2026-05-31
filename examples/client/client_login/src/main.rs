@@ -53,6 +53,10 @@ async fn main() {
         Packet::LoginSuccess(packet) => {
             debug!("Login successful: UUID: {}, Username: {}", packet.uuid, packet.username);
         }
+        Packet::LoginDisconnect(packet) => {
+            debug!("Login disconnected: {packet:?}");
+            return;
+        }
         _ => {
             panic!("Unexpected packet received instead of login success: {login_success:?}");
         }

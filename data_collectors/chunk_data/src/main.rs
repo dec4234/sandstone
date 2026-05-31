@@ -1,3 +1,6 @@
+//! A client side utlity to collect chunk data from a server.
+//! Used to ensure vanilla compatibility and support development.
+
 use log::{debug, error, trace, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::player::ClientStatusAction;
@@ -11,9 +14,6 @@ use std::str::FromStr;
 use tokio::net::TcpStream;
 use uuid::Uuid;
 
-/// This demonstrates the login sequence from a client perspective.
-///
-/// View the README for more information on how to run this example.
 #[tokio::main]
 async fn main() {
     SimpleLogger::new()

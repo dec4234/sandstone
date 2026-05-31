@@ -1,4 +1,4 @@
-//! An NBT implementation without support for sNBT (string NBT). See 
+//! An NBT implementation without support for sNBT (string NBT). See
 //! [here](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/NBT) for more information.
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
@@ -31,7 +31,7 @@ pub enum NbtTag {
 	IntArray(NbtIntArray),
 	LongArray(NbtLongArray),
 	/// Used to mark the absence of a tag, like for an Option
-	None
+	None,
 }
 
 impl NbtTag {
@@ -94,7 +94,7 @@ impl NbtTag {
 			NbtTag::None => "TAG_None".to_string(),
 		}
 	}
-	
+
 	/// Given the type ID, deserialize the corresponding NbtTag.
 	pub(crate) fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
 		match ty {
@@ -107,28 +107,34 @@ impl NbtTag {
 			5 => Ok(NbtTag::Float(f32::mc_deserialize(deserializer)?)),
 			6 => Ok(NbtTag::Double(f64::mc_deserialize(deserializer)?)),
 
-			8 => { // String
+			8 => {
+				// String
 				let len = u16::mc_deserialize(deserializer)?;
 				let bytes = deserializer.slice(len as usize);
 
 				Ok(NbtTag::String(String::from_utf8_lossy(bytes).to_string()))
-			},
+			}
 
-			7 => { // Byte array
+			7 => {
+				// Byte array
 				Ok(NbtTag::ByteArray(NbtByteArray::mc_deserialize(deserializer)?))
-			},
-			11 => { // Int Array
+			}
+			11 => {
+				// Int Array
 				Ok(NbtTag::IntArray(NbtIntArray::mc_deserialize(deserializer)?))
-			},
-			12 => { // Int Array
+			}
+			12 => {
+				// Int Array
 				Ok(NbtTag::LongArray(NbtLongArray::mc_deserialize(deserializer)?))
-			},
+			}
 
-			9 => { // List
+			9 => {
+				// List
 				Ok(NbtTag::List(NbtList::mc_deserialize(deserializer)?))
-			},
+			}
 
-			10 => { // compound
+			10 => {
+				// compound
 				Ok(NbtTag::Compound(NbtCompound::from_no_tag(deserializer)?))
 			}
 
@@ -143,7 +149,8 @@ impl McSerialize for NbtTag {
 		match self {
 			// stuff with special cases
 			NbtTag::End => {}
-			NbtTag::String(s) => { // not the same as regular string serialization (no varint)
+			NbtTag::String(s) => {
+				// not the same as regular string serialization (no varint)
 				(s.len() as u16).mc_serialize(serializer)?;
 				serializer.serialize_bytes(s.as_bytes());
 			}
@@ -165,21 +172,11 @@ impl McSerialize for NbtTag {
 			NbtTag::Double(f) => {
 				serializer.serialize_bytes(f.to_be_bytes().as_slice());
 			}
-			NbtTag::ByteArray(b) => {
-				b.mc_serialize(serializer)?
-			}
-			NbtTag::IntArray(b) => {
-				b.mc_serialize(serializer)?
-			}
-			NbtTag::LongArray(b) => {
-				b.mc_serialize(serializer)?
-			}
-			NbtTag::List(b) => {
-				b.mc_serialize(serializer)?
-			}
-			NbtTag::Compound(c) => {
-				c.serialize_no_tag(serializer)?
-			}
+			NbtTag::ByteArray(b) => b.mc_serialize(serializer)?,
+			NbtTag::IntArray(b) => b.mc_serialize(serializer)?,
+			NbtTag::LongArray(b) => b.mc_serialize(serializer)?,
+			NbtTag::List(b) => b.mc_serialize(serializer)?,
+			NbtTag::Compound(c) => c.serialize_no_tag(serializer)?,
 			_ => {} // do nothing for None
 		}
 
@@ -270,7 +267,10 @@ impl<T: Into<NbtTag>> From<Vec<T>> for NbtTag {
 	}
 }
 
-impl<T: TryFrom<NbtTag>> TryFrom<NbtTag> for Vec<T> where NbtError: From<<T as TryFrom<NbtTag>>::Error> {
+impl<T: TryFrom<NbtTag>> TryFrom<NbtTag> for Vec<T>
+where
+	NbtError: From<<T as TryFrom<NbtTag>>::Error>,
+{
 	type Error = NbtError;
 
 	fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
@@ -311,20 +311,9 @@ impl<T: TryFrom<NbtTag>> TryFrom<NbtTag> for Vec<T> where NbtError: From<<T as T
 	}
 }
 
-primvalue_nbtvalue!(
-    (i8, Byte),
-    (i16, Short),
-    (i32, Int),
-    (i64, Long),
-    (f32, Float),
-    (f64, Double)
-);
+primvalue_nbtvalue!((i8, Byte), (i16, Short), (i32, Int), (i64, Long), (f32, Float), (f64, Double));
 
-list_nbtvalue!(
-    (i8, ByteArray, NbtByteArray, 7),
-    (i32, IntArray, NbtIntArray, 11),
-    (i64, LongArray, NbtLongArray, 12)
-);
+list_nbtvalue!((i8, ByteArray, NbtByteArray, 7), (i32, IntArray, NbtIntArray, 11), (i64, LongArray, NbtLongArray, 12));
 
 /// Effectively a map of NbtTags
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -338,13 +327,13 @@ impl NbtCompound {
 	/// Root name is only present if it is not the root compound of network NBT (1.20.2+).
 	pub fn new<T: Into<String>>(root_name: Option<T>) -> Self {
 		let option: Option<String> = root_name.map(|root_name| root_name.into());
-		
+
 		Self {
 			map: HashMap::new(),
-			root_name: option
+			root_name: option,
 		}
 	}
-	
+
 	/// Create a new NbtCompound without a root name, usually for network nbt or a compound inside a compound.
 	pub fn new_no_name() -> Self {
 		Self::new::<String>(None)
@@ -357,14 +346,15 @@ impl NbtCompound {
 	#[inline]
 	pub fn add<K: Into<String>, V: Into<NbtTag>>(&mut self, name: K, tag: V) {
 		let tag = tag.into();
-		
+
 		if tag == NbtTag::End {
 			return; // do not add None tag
 		}
-		
+
 		self.map.insert(name.into(), tag);
 	}
 
+	/// Get the tag mapped to the given name. Returns 'None' if the name does not exist in the compound.
 	pub fn get<T: Into<String>>(&self, name: T) -> Option<&NbtTag> {
 		self.map.get(&name.into())
 	}
@@ -373,7 +363,7 @@ impl NbtCompound {
 	pub fn remove<T: Into<String>>(&mut self, name: T) {
 		self.map.remove(&name.into());
 	}
-	
+
 	/// Deserialize compounds with a root name
 	pub fn from_root<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, NbtCompound> {
 		let t = u8::mc_deserialize(deserializer)?;
@@ -389,7 +379,8 @@ impl NbtCompound {
 		loop {
 			let tag = deserializer.pop();
 
-			if tag.is_none() || tag.unwrap() == 0 { // END Tag
+			if tag.is_none() || tag.unwrap() == 0 {
+				// END Tag
 				break;
 			}
 
@@ -410,7 +401,8 @@ impl NbtCompound {
 		loop {
 			let tag = deserializer.pop();
 
-			if tag.is_none() || tag.unwrap() == 0 { // END Tag
+			if tag.is_none() || tag.unwrap() == 0 {
+				// END Tag
 				break;
 			}
 
@@ -449,18 +441,34 @@ impl NbtCompound {
 		serializer.serialize_u8(0); // end tag
 		Ok(())
 	}
+
+	/// Get the boolean value of a tag, where 0 is false and any other value is true. Returns 'None' if the tag is not a byte or the tag is not present.
+	pub fn get_bool<T: Into<String>>(&self, name: T) -> Option<bool> {
+		match self.get(name) {
+			Some(NbtTag::Byte(b)) => Some(*b != 0),
+			_ => None,
+		}
+	}
+
+	/// Get the string value of a tag. Returns 'None' if the tag is not a string or the tag is not present.
+	pub fn get_string<T: Into<String>>(&self, name: T) -> Option<String> {
+		match self.get(name) {
+			Some(NbtTag::String(s)) => Some(s.clone()),
+			_ => None,
+		}
+	}
 }
 
 impl Index<&str> for NbtCompound {
 	type Output = NbtTag;
 
-	/// Returns a reference to the value inside of the HashMap mapped to the given key. 
+	/// Returns a reference to the value inside of the HashMap mapped to the given key.
 	/// Returns `NbtTag::None` if the key does not exist.
 	fn index(&self, index: &str) -> &Self::Output {
 		if !self.map.contains_key(index) {
 			return &NbtTag::None;
 		}
-		
+
 		&self.map[index]
 	}
 }
@@ -479,7 +487,10 @@ impl McSerialize for NbtCompound {
 
 impl McDeserialize for NbtCompound {
 	/// Deserialize a compound without a root name, such as network NBT or compounds in compounds.
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let t = u8::mc_deserialize(deserializer)?;
 
 		if t == 0 {
@@ -554,17 +565,17 @@ impl NbtList {
 		Self {
 			type_id: 0, // set to END by default
 			list: vec![],
-			count: 0
+			count: 0,
 		}
 	}
-	
+
 	pub fn from_vec(vec: Vec<NbtTag>) -> Result<Self, NbtError> {
 		let mut list = NbtList::new();
-		
+
 		for tag in vec {
 			list.add_tag(tag)?;
 		}
-		
+
 		Ok(list)
 	}
 
@@ -624,7 +635,7 @@ impl McDeserialize for NbtList {
 		let length = i32::mc_deserialize(deserializer)?;
 
 		if t == 0 && length > 0 {
-			return Err(SerializingErr::UniqueFailure("Type cannot be END when length is positive".to_string()))
+			return Err(SerializingErr::UniqueFailure("Type cannot be END when length is positive".to_string()));
 		}
 
 		let mut list = NbtList::new();
@@ -633,7 +644,7 @@ impl McDeserialize for NbtList {
 			let tag = NbtTag::deserialize_specific(deserializer, t)?;
 
 			if tag.get_type_id() != t {
-				return Err(SerializingErr::UniqueFailure("Type must be the same as the type for the list".to_string()))
+				return Err(SerializingErr::UniqueFailure("Type must be the same as the type for the list".to_string()));
 			}
 
 			if let Err(_) = list.add_tag(tag) {

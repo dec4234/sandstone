@@ -47,6 +47,8 @@ pub enum SerializingErr {
 	InconsistentField(String),
 	#[error("The deserialized data is not valid for the range of possible values: {0}")]
 	OutOfBounds(String),
+	#[error("Failed to serialize: {0}")]
+	FailedToSerializeJSON(String),
 }
 
 impl PartialEq for SerializingErr {

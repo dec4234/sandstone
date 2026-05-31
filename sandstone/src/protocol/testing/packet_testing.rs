@@ -4,7 +4,7 @@ use crate::protocol::packets::packet_component::LoginPluginSpec;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::{LoginDisconnectPacket, LoginPluginResponsePacket, Packet};
 use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
-use crate::protocol_types::datatypes::chat::TextComponent;
+use crate::protocol_types::datatypes::chat::{JsonTextComponent, TextComponent};
 
 #[test]
 pub fn test_basic_deserialization() {
@@ -73,7 +73,7 @@ pub fn test_cross_serialization() {
 	let mut serializer = McSerializer::new();
 	
 	let packet = Packet::LoginDisconnect(LoginDisconnectPacket {
-		reason: TextComponent::from("Hello, world!".to_string())
+		reason: JsonTextComponent::from(TextComponent::from("Hello, world!".to_string()))
 	});
 	
 	packet.mc_serialize(&mut serializer).unwrap();
