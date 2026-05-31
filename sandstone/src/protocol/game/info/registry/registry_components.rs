@@ -13,6 +13,47 @@ use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use sandstone_derive::{AsNbt, FromNbt, McDefault, McDeserialize};
 use serde::{Deserialize, Serialize};
 
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct WolfSounds {
+	pub pant_sound: String,
+	pub hurt_sound: String,
+	pub growl_sound: String,
+	pub whine_sound: String,
+	pub death_sound: String,
+	pub ambient_sound: String,
+	pub step_sound: String
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct PigSounds {
+	pub ambient_sound: String,
+	pub death_sound: String,
+	pub hurt_sound: String,
+	pub step_sound: String,
+	pub eat_sound: String,
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct CatSounds {
+	pub hurt_sound: String,
+	pub purr_sound: String,
+	pub eat_sound: String,
+	pub hiss_sound: String,
+	pub ambient_sound: String,
+	pub beg_for_food_sound: String,
+	pub death_sound: String,
+	pub purreow_sound: String,
+	pub stray_ambient_sound: String,
+}
+
+#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
+pub struct ChickenSounds {
+	pub ambient_sound: String,
+	pub death_sound: String,
+	pub hurt_sound: String,
+	pub step_sound: String,
+}
+
 /// Used for some sections of registry components such as painting_variant
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct NbtTranslateColor {

@@ -1,9 +1,95 @@
 //! Define the default values for the different registry entries according to the defaults generally
 //! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
 
-use crate::protocol::game::info::registry::registry_components::{MonsterSpawnLightLevel, NbtTranslateColor, WolfVariantAssets};
-use crate::protocol::game::info::registry::{BannerPattern, CatVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigVariant, WolfSoundVariant, WolfVariant, ZombieNautilusVariant};
+use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfSounds, WolfVariantAssets};
+use crate::protocol::game::info::registry::{
+	BannerPattern, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
+	WolfVariant, ZombieNautilusVariant,
+};
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+
+impl Default for BannerPattern {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:base".to_string(),
+			translation_key: "block.minecraft.banner.base".to_string(),
+		}
+	}
+}
+
+impl Default for CatSoundVariant {
+	fn default() -> Self {
+		Self {
+			baby_sounds: CatSounds {
+				hurt_sound: "minecraft:entity.baby_cat.hurt".to_string(),
+				purr_sound: "minecraft:entity.baby_cat.purr".to_string(),
+				eat_sound: "minecraft:entity.baby_cat.eat".to_string(),
+				hiss_sound: "minecraft:entity.baby_cat.hiss".to_string(),
+				ambient_sound: "minecraft:entity.baby_cat.ambient".to_string(),
+				beg_for_food_sound: "minecraft:entity.baby_cat.beg_for_food".to_string(),
+				death_sound: "minecraft:entity.baby_cat.death".to_string(),
+				purreow_sound: "minecraft:entity.baby_cat.purreow".to_string(),
+				stray_ambient_sound: "minecraft:entity.baby_cat.stray_ambient".to_string(),
+			},
+			adult_sounds: CatSounds {
+				hurt_sound: "minecraft:entity.cat.hurt".to_string(),
+				purr_sound: "minecraft:entity.cat.purr".to_string(),
+				eat_sound: "minecraft:entity.cat.eat".to_string(),
+				hiss_sound: "minecraft:entity.cat.hiss".to_string(),
+				ambient_sound: "minecraft:entity.cat.ambient".to_string(),
+				beg_for_food_sound: "minecraft:entity.cat.beg_for_food".to_string(),
+				death_sound: "minecraft:entity.cat.death".to_string(),
+				purreow_sound: "minecraft:entity.cat.purreow".to_string(),
+				stray_ambient_sound: "minecraft:entity.cat.stray_ambient".to_string(),
+			},
+		}
+	}
+}
+
+impl Default for CatVariant {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:entity/cat/black".to_string(),
+		}
+	}
+}
+
+impl Default for ChickenSoundVariant {
+	fn default() -> Self {
+		Self {
+			baby_sounds: ChickenSounds {
+				hurt_sound: "minecraft:entity.baby_chicken.hurt".to_string(),
+				ambient_sound: "minecraft:entity.baby_chicken.ambient".to_string(),
+				death_sound: "minecraft:entity.baby_chicken.death".to_string(),
+				step_sound: "minecraft:entity.baby_chicken.step".to_string(),
+			},
+			adult_sounds: ChickenSounds {
+				hurt_sound: "minecraft:entity.chicken.hurt".to_string(),
+				ambient_sound: "minecraft:entity.chicken.ambient".to_string(),
+				death_sound: "minecraft:entity.chicken.death".to_string(),
+				step_sound: "minecraft:entity.chicken.step".to_string(),
+			},
+		}
+	}
+}
+
+impl Default for ChickenVariant {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:entity/chicken/warm_chicken".to_string(),
+			model: None,
+		}
+	}
+}
+
+impl Default for CowVariant {
+	fn default() -> Self {
+		Self {
+			asset_id: "minecraft:entity/cow/warm_cow".to_string(),
+			model: Some("warm".to_string()),
+		}
+	}
+}
 
 impl Default for DimensionType {
 	fn default() -> Self {
@@ -26,23 +112,20 @@ impl Default for DimensionType {
 	}
 }
 
-impl Default for BannerPattern {
+impl Default for FrogVariant {
 	fn default() -> Self {
 		Self {
-			asset_id: "minecraft:base".to_string(),
-			translation_key: "block.minecraft.banner.base".to_string(),
+			asset_id: "minecraft:entity/frog/warm_frog".to_string(),
 		}
 	}
 }
 
-impl Default for WolfVariant {
+impl Default for MonsterSpawnLightLevel {
 	fn default() -> Self {
 		Self {
-			assets: WolfVariantAssets {
-				wild: "minecraft:entity/wolf/wolf_woods".to_string(),
-				tame: "minecraft:entity/wolf/wolf_woods_tame".to_string(),
-				angry: "minecraft:entity/wolf/wolf_woods_angry".to_string()
-			}
+			isRange: false,
+			level: Some(7),
+			range: None,
 		}
 	}
 }
@@ -53,14 +136,35 @@ impl Default for PaintingVariant {
 			asset_id: "minecraft:alban".to_string(),
 			author: Some(NbtTranslateColor {
 				translate: "painting.minecraft.alban.author".to_string(),
-				color: Some("gray".to_string())
+				color: Some("gray".to_string()),
 			}),
 			height: 1,
 			title: NbtTranslateColor {
 				translate: "painting.minecraft.alban.title".to_string(),
-				color: Some("yellow".to_string())
+				color: Some("yellow".to_string()),
 			},
 			width: 1,
+		}
+	}
+}
+
+impl Default for PigSoundVariant {
+	fn default() -> Self {
+		Self {
+			baby_sounds: PigSounds {
+				death_sound: "minecraft:entity.baby_pig.death".to_string(),
+				hurt_sound: "minecraft:entity.baby_pig.hurt".to_string(),
+				ambient_sound: "minecraft:entity.baby_pig.ambient".to_string(),
+				eat_sound: "minecraft:entity.baby_pig.eat".to_string(),
+				step_sound: "minecraft:entity.baby_pig.step".to_string(),
+			},
+			adult_sounds: PigSounds {
+				death_sound: "minecraft:entity.pig_big.death".to_string(),
+				hurt_sound: "minecraft:entity.pig_big.hurt".to_string(),
+				ambient_sound: "minecraft:entity.pig_big.ambient".to_string(),
+				eat_sound: "minecraft:entity.pig_big.eat".to_string(),
+				step_sound: "minecraft:entity.pig.step".to_string(),
+			},
 		}
 	}
 }
@@ -77,56 +181,36 @@ impl Default for PigVariant {
 impl Default for WolfSoundVariant {
 	fn default() -> Self {
 		Self {
-			pant_sound: "minecraft:entity.wolf.pant".to_string(),
-			hurt_sound: "minecraft:entity.wolf.hurt".to_string(),
-			growl_sound: "minecraft:entity.wolf.growl".to_string(),
-			whine_sound: "minecraft:entity.wolf.whine".to_string(),
-			death_sound: "minecraft:entity.wolf.death".to_string(),
-			ambient_sound: "minecraft:entity.wolf.ambient".to_string(),
+			baby_sounds: WolfSounds {
+				pant_sound: "minecraft:entity.baby_wolf.pant".to_string(),
+				hurt_sound: "minecraft:entity.baby_wolf.hurt".to_string(),
+				growl_sound: "minecraft:entity.baby_wolf.growl".to_string(),
+				whine_sound: "minecraft:entity.baby_wolf.whine".to_string(),
+				death_sound: "minecraft:entity.baby_wolf.death".to_string(),
+				ambient_sound: "minecraft:entity.baby_wolf.ambient".to_string(),
+				step_sound: "minecraft:entity.baby_wolf.step".to_string(),
+			},
+			adult_sounds: WolfSounds {
+				pant_sound: "minecraft:entity.wolf.pant".to_string(),
+				hurt_sound: "minecraft:entity.wolf.hurt".to_string(),
+				growl_sound: "minecraft:entity.wolf.growl".to_string(),
+				whine_sound: "minecraft:entity.wolf.whine".to_string(),
+				death_sound: "minecraft:entity.wolf.death".to_string(),
+				ambient_sound: "minecraft:entity.wolf.ambient".to_string(),
+				step_sound: "minecraft:entity.wolf.step".to_string(),
+			},
 		}
 	}
 }
 
-impl Default for FrogVariant {
+impl Default for WolfVariant {
 	fn default() -> Self {
 		Self {
-			asset_id: "minecraft:entity/frog/warm_frog".to_string(),
-		}
-	}
-}
-
-impl Default for CatVariant {
-	fn default() -> Self {
-		Self {
-			asset_id: "minecraft:entity/cat/black".to_string(),
-		}
-	}
-}
-
-impl Default for CowVariant {
-	fn default() -> Self {
-		Self {
-			asset_id: "minecraft:entity/cow/warm_cow".to_string(),
-			model: Some("warm".to_string()),
-		}
-	}
-}
-
-impl Default for ChickenVariant {
-	fn default() -> Self {
-		Self {
-			asset_id: "minecraft:entity/chicken/warm_chicken".to_string(),
-			model: None,
-		}
-	}
-}
-
-impl Default for MonsterSpawnLightLevel {
-	fn default() -> Self {
-		Self {
-			isRange: false,
-			level: Some(7),
-			range: None,
+			assets: WolfVariantAssets {
+				wild: "minecraft:entity/wolf/wolf_woods".to_string(),
+				tame: "minecraft:entity/wolf/wolf_woods_tame".to_string(),
+				angry: "minecraft:entity/wolf/wolf_woods_angry".to_string(),
+			},
 		}
 	}
 }

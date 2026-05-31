@@ -1,4 +1,6 @@
 #![allow(non_snake_case)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::new_without_default)]
 
 //! Registry data structures for specific details about biomes, dimensions, datapacks, etc.
 //!
@@ -7,7 +9,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::{EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, WolfVariantAssets};
+use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfSounds, WolfVariantAssets};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -194,6 +196,7 @@ macro_rules! registry_entry_optional {
 }
 
 // https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
+// Check out the registry_data utility to collect samples from a vanilla server.
 registry_entry!(
 	"minecraft:banner_pattern", BannerPattern => {
 		asset_id: String,
@@ -206,9 +209,19 @@ registry_entry!(
 		chat: NbtCompound,
 		narration: NbtCompound
 	},
+	"minecraft:chicken_sound_variant", ChickenSoundVariant => {
+		baby_sounds: ChickenSounds,
+		adult_sounds: ChickenSounds
+	},
 	"minecraft:chicken_variant", ChickenVariant => {
 		asset_id: String,
 		model: Option<String>
+	},
+	"minecraft:cow_sound_variant", CowSoundVariant => {
+		ambient_sound: String,
+		death_sound: String,
+		hurt_sound: String,
+		step_sound: String
 	},
 	"minecraft:cow_variant", CowVariant => {
 		asset_id: String,
@@ -267,6 +280,10 @@ registry_entry!(
 		title: NbtTranslateColor,
 		width: i32
 	},
+	"minecraft:pig_sound_variant", PigSoundVariant => {
+		baby_sounds: PigSounds,
+		adult_sounds: PigSounds
+	},
 	"minecraft:pig_variant", PigVariant => {
 		asset_id: String,
 		model: Option<String>
@@ -281,15 +298,18 @@ registry_entry!(
 		description: NbtTranslateColor
 	},
 	"minecraft:wolf_sound_variant", WolfSoundVariant => {
-		pant_sound: String,
-		hurt_sound: String,
-		growl_sound: String,
-		whine_sound: String,
-		death_sound: String,
-		ambient_sound: String
+		baby_sounds: WolfSounds,
+		adult_sounds: WolfSounds
+	},
+	"minecraft:cat_sound_variant", CatSoundVariant => {
+		baby_sounds: CatSounds,
+		adult_sounds: CatSounds
 	},
 	"minecraft:wolf_variant", WolfVariant => {
 		assets: WolfVariantAssets
+	},
+	"minecraft:world_clock", WorldClock => {
+
 	},
 	"minecraft:worldgen/biome", Biome => {
 		downfall: f32,
