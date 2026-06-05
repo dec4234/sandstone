@@ -28,7 +28,7 @@ async fn main() {
     let mut client = CraftConnection::from_connection(socket, PacketDirection::CLIENT).unwrap();
 
     let handshake = Packet::Handshaking(HandshakingPacket {
-        protocol_version: VarInt(ProtocolVerison::latest().get_version_number() as i32),
+        protocol_version: VarInt(ProtocolVerison::V1_21.get_version_number() as i32),
         server_address: "127.0.0.1".to_string(),
         port: 25565,
         next_state: VarInt(2),
@@ -368,7 +368,7 @@ async fn main() {
                 continue;
             }
             Packet::UpdateLight(ul) => {
-                debug!("Update lgiht {ul:?}");
+                debug!("Update light {ul:?}");
                 continue;
             }
             Packet::SectionBlocksUpdate(sbu) => {
@@ -386,6 +386,10 @@ async fn main() {
             Packet::DisconnectPlay(dp) => {
                 debug!("Disconnected: {dp:?}");
                 break;
+            }
+            Packet::RecipeBookAdd(rba) => {
+                debug!("Received recipe book add: {rba:?}");
+                continue;
             }
             _ => {
                 error!("Received unexpected packet: {packet:?}");
