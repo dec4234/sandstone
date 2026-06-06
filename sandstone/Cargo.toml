@@ -13,28 +13,22 @@ categories = ["network-programming", "game-development", "game-engines"]
 exclude = ["src/sandstone-derive"]
 
 [dependencies]
-simple_logger = "5.0.0"
-tokio = {version = "1.45.0", features = ["full"]}
-#rayon = "1.10.0"
-cfb8 = {version = "0.8.1", features = ["std"]}
+tokio = {version = "1.52.3", features = ["full"]}
+cfb8 = {version = "0.9.1", features = ["std"]}
 hex = "0.4.3"
-serde_json = "1.0.140"
-serde = {version = "1.0.219", features = ["derive"]}
-uuid = {version = "1.16.0", features = ["v4"]}
+serde_json = "1.0.150"
+serde = {version = "1.0.228", features = ["derive"]}
+uuid = {version = "1.23.2", features = ["v4"]}
 base64 = "0.22.1"
-log = "0.4.27"
-image = {version = "0.25.6", features = ["default", "png"]}
+log = "0.4.32"
+image = {version = "0.25.10", features = ["default", "png"]}
 #flate2 = {version = "1.0.30", features = ["zlib"]}
-regex = "1.11.1"
+regex = "1.12.3"
 thiserror = "2.0.12"
-aes = "0.8.4"
+aes = "0.9.1"
 
 paste = "1.0"
 sandstone-derive = {path = "src/sandstone-derive"} #todo: implications of local reference
-
-[dev-dependencies]
-#craftio-rs = "0.1.0"
-#mcproto-rs = {version = "0.2.0", features = ["v1_15_2"]}
 
 [lints.rust]
 mismatched_lifetime_syntaxes = "allow"

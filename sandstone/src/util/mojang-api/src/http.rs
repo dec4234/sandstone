@@ -2,12 +2,12 @@
 //! 
 //! This file is taken from my previous project, Rustiny: https://github.com/dec4234/Rustiny/blob/master/src/api/ApiClient.rs
 
-use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
 use log::{debug, error, info, trace};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -150,4 +150,6 @@ pub enum HttpError {
     Utf8Error(#[from] std::string::FromUtf8Error),
     #[error("Received error code: {0}")]
     StatusCode(String),
+    #[error(transparent)]
+    UuidError(#[from] uuid::Error)
 }

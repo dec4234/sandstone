@@ -1,6 +1,6 @@
 //! Collect registry data and save it as JSON files for development purposes.
 
-use log::{debug, error, LevelFilter};
+use log::{debug, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use sandstone::protocol::packets::{HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
