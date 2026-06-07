@@ -14,17 +14,6 @@ use sandstone_derive::{AsNbt, FromNbt, McDefault, McDeserialize};
 use serde::{Deserialize, Serialize};
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
-pub struct WolfSounds {
-	pub pant_sound: String,
-	pub hurt_sound: String,
-	pub growl_sound: String,
-	pub whine_sound: String,
-	pub death_sound: String,
-	pub ambient_sound: String,
-	pub step_sound: String
-}
-
-#[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct PigSounds {
 	pub ambient_sound: String,
 	pub death_sound: String,

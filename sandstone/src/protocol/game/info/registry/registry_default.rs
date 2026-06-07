@@ -1,11 +1,9 @@
 //! Define the default values for the different registry entries according to the defaults generally
 //! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
 
-use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfSounds, WolfVariantAssets};
-use crate::protocol::game::info::registry::{
-	BannerPattern, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
-	WolfVariant, ZombieNautilusVariant,
-};
+use crate::nbt_compound;
+use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfVariantAssets};
+use crate::protocol::game::info::registry::{BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant, WolfVariant, ZombieNautilusVariant};
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 
 impl Default for BannerPattern {
@@ -13,6 +11,24 @@ impl Default for BannerPattern {
 		Self {
 			asset_id: "minecraft:base".to_string(),
 			translation_key: "block.minecraft.banner.base".to_string(),
+		}
+	}
+}
+
+impl Default for Biome {
+	/// Matches "minecraft:plains".
+	fn default() -> Self {
+		Self {
+			attributes: Some(nbt_compound! {
+				"minecraft:visual/sky_color" => "#78a7ff"
+			}),
+			downfall: 0.4,
+			effects: nbt_compound! {
+				"water_color" => "#3f76e4"
+			},
+			has_precipitation: true,
+			temperature: 0.8,
+			temperature_modifier: None,
 		}
 	}
 }
@@ -181,24 +197,12 @@ impl Default for PigVariant {
 impl Default for WolfSoundVariant {
 	fn default() -> Self {
 		Self {
-			baby_sounds: WolfSounds {
-				pant_sound: "minecraft:entity.baby_wolf.pant".to_string(),
-				hurt_sound: "minecraft:entity.baby_wolf.hurt".to_string(),
-				growl_sound: "minecraft:entity.baby_wolf.growl".to_string(),
-				whine_sound: "minecraft:entity.baby_wolf.whine".to_string(),
-				death_sound: "minecraft:entity.baby_wolf.death".to_string(),
-				ambient_sound: "minecraft:entity.baby_wolf.ambient".to_string(),
-				step_sound: "minecraft:entity.baby_wolf.step".to_string(),
-			},
-			adult_sounds: WolfSounds {
-				pant_sound: "minecraft:entity.wolf.pant".to_string(),
-				hurt_sound: "minecraft:entity.wolf.hurt".to_string(),
-				growl_sound: "minecraft:entity.wolf.growl".to_string(),
-				whine_sound: "minecraft:entity.wolf.whine".to_string(),
-				death_sound: "minecraft:entity.wolf.death".to_string(),
-				ambient_sound: "minecraft:entity.wolf.ambient".to_string(),
-				step_sound: "minecraft:entity.wolf.step".to_string(),
-			},
+			ambient_sound: "minecraft:entity.wolf.ambient".to_string(),
+			death_sound: "minecraft:entity.wolf.death".to_string(),
+			growl_sound: "minecraft:entity.wolf.growl".to_string(),
+			hurt_sound: "minecraft:entity.wolf.hurt".to_string(),
+			pant_sound: "minecraft:entity.wolf.pant".to_string(),
+			whine_sound: "minecraft:entity.wolf.whine".to_string(),
 		}
 	}
 }

@@ -9,7 +9,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfSounds, WolfVariantAssets};
+use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfVariantAssets};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -298,8 +298,12 @@ registry_entry!(
 		description: NbtTranslateColor
 	},
 	"minecraft:wolf_sound_variant", WolfSoundVariant => {
-		baby_sounds: WolfSounds,
-		adult_sounds: WolfSounds
+		ambient_sound: String,
+		death_sound: String,
+		growl_sound: String,
+		hurt_sound: String,
+		pant_sound: String,
+		whine_sound: String
 	},
 	"minecraft:cat_sound_variant", CatSoundVariant => {
 		baby_sounds: CatSounds,
@@ -312,6 +316,7 @@ registry_entry!(
 
 	},
 	"minecraft:worldgen/biome", Biome => {
+		attributes: Option<NbtCompound>,
 		downfall: f32,
 		effects: NbtCompound,
 		has_precipitation: bool,

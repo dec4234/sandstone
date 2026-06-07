@@ -9,6 +9,20 @@ pub mod nbt_error;
 
 #[macro_use]
 mod macros {
+	/// Create an [`NbtCompound`](crate::protocol_types::datatypes::nbt::nbt::NbtCompound) without a
+	/// root name, analogous to how `map!` creates a `HashMap`. Keys are anything `Into<String>` and
+	/// values are anything `Into<NbtTag>`.
+	#[macro_export]
+	macro_rules! nbt_compound {
+        ($($k:expr => $v:expr),* $(,)?) => {
+            {
+                let mut compound = $crate::protocol_types::datatypes::nbt::nbt::NbtCompound::new_no_name();
+                $(compound.add($k, $v);)*
+                compound
+            }
+        };
+    }
+
     /// Used to generate the NbtValue trait for primitive types
 	#[macro_export]
 	macro_rules! primvalue_nbtvalue {

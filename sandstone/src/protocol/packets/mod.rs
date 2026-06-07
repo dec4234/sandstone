@@ -20,7 +20,7 @@ use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, EquipmentList, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, Tag};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, EquipmentList, GameEventType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, StonecutterRecipe, Tag};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -382,7 +382,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				yaw: f32,
 				pitch: f32,
 				#[doc = "See https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags for more info"]
-				flags: BitField<i8>
+				flags: BitField<i32>
 			},
 			RecipeBookAdd, 0x48 => {
 				recipes: PrefixedArray<RecipeBookEntry>,
@@ -516,20 +516,47 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			ConfirmTeleport, 0x00 => {
 				teleport_id: VarInt
 			},
+			ChunkBatchReceived, 0x0A #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Batch_Received"] => {
+				#[doc = "Chunks received per tick"]
+				rate: f32
+			},
 			ClientCommand, 0x0B #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Command"] => {
 				action: ClientStatusAction
+			},
+			ClientTickEnd, 0x0C => {
+				// none
 			},
 			ServerboundKeepAlive, 0x1B => {
 				keep_alive_id: i64
 			},
-			SetPlayerPositionRotation, 0x1D => {
+			SetPlayerPosition, 0x1D => { // TODO: position and movement validation -- check docs here?
+				x: f64,
+				#[doc = "Feet y position. Head - 1.62"]
+				y: f64,
+				z: f64,
+				flags: PlayerPositionFlags
+			},
+			SetPlayerPositionRotation, 0x1E => {
 				x: f64,
 				#[doc = "Feet y position. Head - 1.62"]
 				y: f64,
 				z: f64,
 				yaw: f32,
 				pitch: f32,
-				flags: BitField<i8>
+				flags: PlayerPositionFlags
+			},
+			SetPlayerRotation, 0x1F => {
+				yaw: f32,
+				pitch: f32,
+				flags: PlayerPositionFlags
+			},
+			PlayerCommand, 0x29 => {
+				entity_id: VarInt,	
+				#[doc = "0 to 100 for jumping on a horse"]
+				jump_boost: VarInt // todo: FixedVarInt?
+			},
+			PlayerInput, 0x2A => {
+				flags: PlayerInputFlags	
 			},
 			PlayerLoaded, 0x2B => {
 				// none

@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 //! AES/CFB8 encryption utilities. https://wiki.vg/Protocol_Encryption
 
-use aes::cipher::{AsyncStreamCipher, KeyIvInit};
+use aes::cipher::KeyIvInit;
 
 type Aes128Cfb8Enc = cfb8::Encryptor<aes::Aes128>;
 type Aes128Cfb8Dec = cfb8::Decryptor<aes::Aes128>;

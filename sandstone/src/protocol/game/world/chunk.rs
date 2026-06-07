@@ -164,6 +164,55 @@ pub struct PalletedContainer {
 }
 
 impl PalletedContainer {
+	/// Build a single-valued container where every entry is the same value (bits per entry of 0).
+	/// Used for all-air block sections and single-biome sections.
+	pub fn single_valued(value: VarInt) -> Self {
+		Self {
+			bits_per_entry: 0,
+			palette: PalleteFormat::SingleValued(value),
+			data: vec![],
+		}
+	}
+
+	/// Build an indirect container from a palette of distinct values and the per-entry indices into
+	/// that palette. `indices.len()` is the number of entries in the section (4096 for blocks, 64
+	/// for biomes). `typ` selects the valid bits-per-entry range. Errors if the palette is too large
+	/// to be represented in the indirect range for `typ` (the caller should use the direct format
+	/// instead in that case).
+	pub fn indirect<'a>(palette: Vec<VarInt>, indices: &[u16], typ: PaletteFormatType) -> SerializingResult<'a, Self> {
+		if palette.is_empty() {
+			return Err(SerializingErr::OutOfBounds("Indirect palette must contain at least one entry".to_string()));
+		}
+
+		// smallest bpe that can index the palette
+		let needed = (usize::BITS - (palette.len() - 1).leading_zeros()).max(1) as u8;
+		let (min_bpe, max_bpe) = match typ {
+			BLOCKS => (4u8, 8u8),
+			BIOMES => (1u8, 3u8),
+		};
+		if needed > max_bpe {
+			return Err(SerializingErr::InvalidBitsPerEntry);
+		}
+		let bpe = needed.max(min_bpe);
+
+		let per_long = entries_per_i64(bpe);
+		let mut data: Vec<PackedEntries> = Vec::new();
+		for (i, &index) in indices.iter().enumerate() {
+			let long_index = i / per_long as usize;
+			let slot = (i % per_long as usize) as u8;
+			if long_index >= data.len() {
+				data.push(PackedEntries::new(bpe));
+			}
+			data[long_index].set_entry(slot, index as u64);
+		}
+
+		Ok(Self {
+			bits_per_entry: bpe,
+			palette: PalleteFormat::Indirect(IndirectFormat { palette: PrefixedArray::new(palette) }),
+			data,
+		})
+	}
+
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, num_entries: u16, typ: PaletteFormatType) -> SerializingResult<'a, Self> where Self: Sized {
 		let bpe = u8::mc_deserialize(deserializer)?;
 		let palette = PalleteFormat::mc_deserialize(deserializer, bpe, typ)?;
@@ -259,6 +308,12 @@ pub struct Heightmap {
 	data: PrefixedArray<i64>,
 }
 
+impl Heightmap {
+	pub fn new(typ: VarInt, data: PrefixedArray<i64>) -> Self {
+		Self { typ, data }
+	}
+}
+
 /// A block entity is something like a chest or other block which has NBT.
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct BlockEntity {
@@ -322,6 +377,39 @@ mod test {
 		assert_eq!(entries_per_i64(8), 8);
 	}
 	
+	#[test]
+	fn test_paletted_container_builders_round_trip() {
+		use crate::protocol::game::world::chunk::{ChunkSection, PaletteFormatType, PalletedContainer};
+		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+		use crate::protocol_types::datatypes::var_types::VarInt;
+
+		// 4 distinct block states spread across the 4096 entries, plus a single-valued biome.
+		let palette = vec![VarInt(0), VarInt(1), VarInt(10), VarInt(9)];
+		let mut indices = vec![0u16; 4096];
+		for i in 0..256 {
+			indices[i] = 1; // bottom layer -> palette index 1
+		}
+		let block_states = PalletedContainer::indirect(palette, &indices, PaletteFormatType::BLOCKS).unwrap();
+		let biomes = PalletedContainer::single_valued(VarInt(40));
+
+		let section = ChunkSection {
+			block_count: 256,
+			block_states,
+			biomes,
+		};
+
+		// The property we care about: the builder produces bytes the existing deserializer accepts
+		// and reconstructs identically.
+		let mut serializer = McSerializer::new();
+		section.mc_serialize(&mut serializer).unwrap();
+		let bytes: Vec<u8> = serializer.into();
+		let mut deserializer = McDeserializer::new(&bytes);
+		let result = ChunkSection::mc_deserialize(&mut deserializer).unwrap();
+
+		assert_eq!(section, result);
+		assert!(deserializer.is_at_end());
+	}
+
 	#[test]
 	fn test_light_array() {
 		let mut light_array = super::LightArray::new();

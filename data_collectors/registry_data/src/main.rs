@@ -1,5 +1,8 @@
 //! Collect registry data and save it as JSON files for development purposes.
 
+#![allow(elided_lifetimes_in_paths)]
+#![allow(mismatched_lifetime_syntaxes)]
+
 use log::{debug, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};

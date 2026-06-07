@@ -11,6 +11,7 @@ use crate::protocol_types::datatypes::game_types::Position;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 pub mod chunk;
+pub mod generator;
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Copy, Clone)]
 pub struct BlockPos {
