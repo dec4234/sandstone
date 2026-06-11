@@ -1,7 +1,7 @@
 //! This module defines the network protocol for the server and client.
-//! 
+//!
 //! This includes data types, serializers, packet implementations and client & server handlers.
-//! 
+//!
 //! See the documentation for the [client](client) and [server](server) modules for more information on how to use the network API.
 
 use crate::network::network_error::NetworkError;
@@ -11,14 +11,18 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
+use flate2::read::ZlibDecoder;
+use flate2::write::ZlibEncoder;
+use flate2::Compression;
 use log::{debug, error, trace};
 use std::fmt::Display;
+use std::io::{Read, Write};
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-pub mod network_error;
 pub mod client;
+pub mod network_error;
 pub mod server;
 
 /// The maximum size of a packet in bytes.
@@ -35,7 +39,7 @@ pub struct CraftConnection {
 	pub tcp_stream: TcpStream,
 	pub socket_addr: SocketAddr,
 	pub packet_state: PacketState,
-	pub compression_threshold: Option<i32>,
+	pub compression_threshold: Option<u32>,
 	pub protocol_version: Option<VarInt>,
 	pub client_type: PacketDirection,
 	/// Reusable buffer for packet reads, avoids allocating per packet
@@ -44,7 +48,7 @@ pub struct CraftConnection {
 
 impl CraftConnection {
 	/// Create a new `CraftClient` from a `TcpStream`. This will set the `TcpStream` to use `nodelay` and return an error if it fails to do so.
-	/// 
+	///
 	/// Set client_type to `PacketDirection::CLIENT` if this is a client, or `PacketDirection::SERVER` if this is a server's connection to a client.
 	pub fn from_connection(tcp_stream: TcpStream, client_type: PacketDirection) -> Result<Self, NetworkError> {
 		tcp_stream.set_nodelay(true)?; // disable Nagle's algorithm - according to WIKI specs
@@ -68,10 +72,79 @@ impl CraftConnection {
 
 		trace!("Sending to {self} : {output:?}");
 
-		// TODO: compress & encrypt here
+		let mut prefix_deserializer = McDeserializer::new(output);
+		VarInt::mc_deserialize(&mut prefix_deserializer)?;
+		let prefix_len = prefix_deserializer.index;
+		let body = &output[prefix_len..];
 
-		self.tcp_stream.write_all(output).await?;
+		let mut frame = McSerializer::new();
+		if let Some(threshold) = self.compression_threshold {
+			if body.len() >= threshold as usize {
+				let mut enc = ZlibEncoder::new(Vec::new(), Compression::default());
+				enc.write_all(body)?;
+				let compressed = enc.finish()?;
+
+				let mut inner = McSerializer::new();
+				VarInt(body.len() as i32).mc_serialize(&mut inner)?;
+				inner.output.extend_from_slice(&compressed);
+
+				VarInt(inner.output.len() as i32).mc_serialize(&mut frame)?;
+				frame.merge(inner);
+			} else {
+				let mut inner = McSerializer::new();
+				VarInt(0).mc_serialize(&mut inner)?;
+				inner.output.extend_from_slice(body);
+
+				VarInt(inner.output.len() as i32).mc_serialize(&mut frame)?;
+				frame.merge(inner);
+			}
+			trace!("Compressed packet for {self} : {} bytes compressed to {} bytes", body.len(), frame.output.len());
+			self.tcp_stream.write_all(&frame.output).await?;
+		} else {
+			self.tcp_stream.write_all(output).await?;
+		}
+
+		// TODO: encrypt here
+
 		Ok(())
+	}
+
+	/// Given the body of a received packet frame (everything after the outer length VarInt),
+	/// produce a length-prefixed buffer (`VarInt(len) + Packet ID + Data`) ready for
+	/// `Packet::deserialize_state`.
+	///
+	/// When compression is enabled the frame body begins with a Data Length VarInt followed by
+	/// either the raw Packet ID + Data (Data Length == 0, packet was below the threshold) or the
+	/// zlib-compressed Packet ID + Data (Data Length == uncompressed length).
+	///
+	/// See <https://minecraft.wiki/w/Java_Edition_protocol/Packets#With_compression>
+	fn build_deserializer_buffer(&self, frame_body: &[u8]) -> Result<Vec<u8>, NetworkError> {
+		let body: Vec<u8> = if self.compression_threshold.is_some() {
+			let mut sub = McDeserializer::new(frame_body);
+			let data_length = VarInt::mc_deserialize(&mut sub)?;
+			let remaining = &frame_body[sub.index..];
+
+			if data_length.0 == 0 {
+				// Packet was below the threshold and sent uncompressed
+				remaining.to_vec()
+			} else {
+				if data_length.0 as usize > PACKET_MAX_SIZE {
+					return Err(NetworkError::PacketTooLarge);
+				}
+
+				let mut decoder = ZlibDecoder::new(remaining);
+				let mut decompressed = Vec::with_capacity(data_length.0 as usize);
+				decoder.read_to_end(&mut decompressed)?;
+				decompressed
+			}
+		} else {
+			frame_body.to_vec()
+		};
+
+		let mut serializer = McSerializer::new();
+		VarInt(body.len() as i32).mc_serialize(&mut serializer)?;
+		serializer.output.extend_from_slice(&body);
+		Ok(serializer.output)
 	}
 
 	/// Receive a minecraft packet from the client. This will block until a packet is received. This removes data from the TCP buffer
@@ -122,9 +195,10 @@ impl CraftConnection {
 
 		trace!("Received from {} : {:?}", self, &self.read_buffer[..total_len]);
 
-		// TODO: decompress & decrypt here
+		// TODO: decrypt here
 
-		let mut deserializer = McDeserializer::new(&self.read_buffer[..total_len]);
+		let buffer = self.build_deserializer_buffer(&self.read_buffer[varint_len..total_len])?;
+		let mut deserializer = McDeserializer::new(&buffer);
 		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, self.client_type)?;
 
 		Ok(packet)
@@ -155,9 +229,10 @@ impl CraftConnection {
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		// TODO: decompress & decrypt here
+		// TODO: decrypt here
 
-		let mut deserializer = McDeserializer::new(&buffer);
+		let deser_buf = self.build_deserializer_buffer(&buffer[var_len..])?;
+		let mut deserializer = McDeserializer::new(&deser_buf);
 		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
 
 		Ok(packet)
@@ -232,9 +307,10 @@ impl CraftConnection {
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		// TODO: decompress & decrypt here
+		// TODO: decrypt here
 
-		let mut deserializer = McDeserializer::new(&buffer);
+		let deser_buf = self.build_deserializer_buffer(&buffer[varint_len..])?;
+		let mut deserializer = McDeserializer::new(&deser_buf);
 		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
 
 		Ok(packet)
@@ -259,7 +335,8 @@ impl CraftConnection {
 
 		trace!("Peeked from {} : {:?}", self, &buffer);
 
-		if length == 0 { // connection closed
+		if length == 0 {
+			// connection closed
 			self.close().await;
 			return Err(NetworkError::NoDataReceived);
 		}
@@ -274,7 +351,11 @@ impl CraftConnection {
 	}
 
 	/// Enable compression on the connection. This will compress packets that are larger than the threshold.
-	pub fn enable_compression(&mut self, threshold: Option<i32>) {
+	///
+	/// Set `threshold` to `None` to disable compression, or to `Some(value)` to enable compression with the given threshold in bytes.
+	///
+	/// Packets cannot be larger than 2^21 − 1 or 2097151 bytes (the maximum that can be sent in a 3-byte VarInt).
+	pub fn enable_compression(&mut self, threshold: Option<u32>) {
 		self.compression_threshold = threshold;
 	}
 
@@ -293,11 +374,7 @@ impl CraftConnection {
 
 impl Display for CraftConnection {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let s = if let Ok(addr) = self.tcp_stream.peer_addr() {
-			format!("{addr}")
-		} else {
-			"Unknown".to_string()
-		};
+		let s = if let Ok(addr) = self.tcp_stream.peer_addr() { format!("{addr}") } else { "Unknown".to_string() };
 
 		write!(f, "{}", format!("CraftConnection: {s}"))
 	}

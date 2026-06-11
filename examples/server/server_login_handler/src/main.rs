@@ -13,10 +13,7 @@ use sandstone::protocol::game::info::registry::registry_generator;
 use sandstone::protocol::game::world::generator::superflat;
 use sandstone::protocol::packets::packet_component::{GameEventType, Tag};
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::{
-	ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, ClientboundKnownPacksPacket, FinishConfigurationPacket, GameEventPacket, LoginInfoPacket,
-	LoginSuccessPacket, Packet, SetCenterChunkPacket, StatusResponsePacket, SyncPlayerPositionPacket, UpdateTagsPacket,
-};
+use sandstone::protocol::packets::{ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, ClientboundKnownPacksPacket, FinishConfigurationPacket, GameEventPacket, LoginInfoPacket, LoginSuccessPacket, Packet, SetCenterChunkPacket, SetCompressionPacket, StatusResponsePacket, SyncPlayerPositionPacket, UpdateTagsPacket};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::status::{DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler};
@@ -67,6 +64,11 @@ async fn main() {
 				continue;
 			}
 		}
+
+		let set_compression = Packet::SetCompression(SetCompressionPacket::new(VarInt(400)));
+		client.send_packet(set_compression).await.unwrap();
+		client.enable_compression(Some(400));
+		debug!("Sent set compression to {client} and enabled compression");
 
 		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), "TestUser".to_string(), PrefixedArray::new(vec![])));
 		client.send_packet(login_success).await.unwrap();
