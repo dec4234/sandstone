@@ -74,6 +74,7 @@ The actual TODO list is massive, but here are the current priorities for the pro
   - [ ] Document all public functions
     - [ ] Better examples and documentation for packet reading
   - [ ] License notices in all files
+- Block id's not correct for bedrock or dirt?
 
 ## Disclaimer
 Please note that this project is under heavy development and functions might not be heavily optimized yet.<br>

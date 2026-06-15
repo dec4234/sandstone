@@ -9,10 +9,11 @@ use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
 
+// Global block-state IDs for protocol 774 (1.21.6). See the blocks report / minecraft-data.
 const AIR: i32 = 0;
 const GRASS_BLOCK: i32 = 9; // grass_block, snowy=false
 const DIRT: i32 = 10;
-const BEDROCK: i32 = 79;
+const BEDROCK: i32 = 85;
 
 // biome ID that matches the index in the registry for biomes
 const PLAINS_BIOME: i32 = 0;
@@ -47,7 +48,7 @@ fn bottom_section() -> ChunkSection {
 	let mut indices = vec![0u16; 4096];
 
 	for y in 0..16usize {
-		let block: u16 = match y { // todo: fix block ids, dirt is water? bedrock is some ocean plant
+		let block: u16 = match y {
 			0 => 1,     // bedrock
 			1 | 2 => 2, // dirt
 			3 => 3,     // grass_block
