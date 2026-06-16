@@ -76,6 +76,12 @@ The actual TODO list is massive, but here are the current priorities for the pro
   - [ ] License notices in all files
 - Block id's not correct for bedrock or dirt?
 
+## Usage
+This library currently supports **1.21.11**. 
+
+In the event that you need to generate block and item data for another version, you should set the version in this environment variable.
+`SANDSTONE_MC_VERSION_RESOLVED` = default is "1.21.11""
+
 ## Disclaimer
 Please note that this project is under heavy development and functions might not be heavily optimized yet.<br>
 Please also note that encryption has not been rigorously tested for security, so please use online features with caution.

@@ -7,7 +7,7 @@
 //! use sandstone::protocol::game::info::content::Block;
 //!
 //! let id = Block::Bedrock::get_id();
-//! let info = Block::Bedrock::info(); // full BlockInfo metadata
+//! let display = Block::Bedrock::get_display_name();
 //! ```
 
 pub use mc_data::*;

@@ -10,11 +10,10 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
 use mc_data::Block;
 
-// Global block-state IDs for protocol 774 (1.21.6). See the blocks report / minecraft-data.
-const AIR: i32 = Block::Air::get_max_id() as i32;
-const GRASS_BLOCK: i32 = Block::GrassBlock::get_max_id() as i32; // grass_block, snowy=false
-const DIRT: i32 = Block::Dirt::get_max_id() as i32;
-const BEDROCK: i32 = Block::Bedrock::get_max_id() as i32;
+const AIR: i32 = Block::Air::get_max_state_id() as i32;
+const GRASS_BLOCK: i32 = Block::GrassBlock::get_max_state_id() as i32;
+const DIRT: i32 = Block::Dirt::get_max_state_id() as i32;
+const BEDROCK: i32 = Block::Bedrock::get_max_state_id() as i32;
 
 // biome ID that matches the index in the registry for biomes
 const PLAINS_BIOME: i32 = 0;

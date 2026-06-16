@@ -6,12 +6,12 @@
 //! version (see `build.rs`), embedded into the binary, and exposed two ways:
 //!
 //! - The generated [`Block`] / [`Item`] namespaces give a zero-sized, type-safe handle for
-//!   every entry with `const` accessors:
+//!   every entry, with one getter per field present in the source data:
 //!   ```
 //!   # use mc_data::Block;
 //!   let id = Block::Bedrock::get_id();
 //!   let name = Block::Bedrock::get_name();
-//!   let full = Block::Bedrock::info(); // &'static BlockInfo
+//!   let display = Block::Bedrock::get_display_name();
 //!   ```
 //! - The [`blocks`] / [`items`] data tables expose the full [`BlockInfo`] / [`ItemInfo`]
 //!   metadata, with `*_by_id` / `*_by_name` lookups.
@@ -107,12 +107,12 @@ mod tests {
 		assert_eq!(Item::Air::get_id(), 0);
 
 		// `get_*` accessors must agree with the full metadata table.
-		let info = Block::Stone::info();
+		let info = block_by_name("stone").expect("stone block exists");
 		assert_eq!(info.id, Block::Stone::get_id());
 		assert_eq!(info.name, Block::Stone::get_name());
 		assert_eq!(info.displayName, Block::Stone::get_display_name());
-		assert_eq!(info.minStateId, Block::Stone::get_min_id());
-		assert_eq!(info.maxStateId, Block::Stone::get_max_id());
+		assert_eq!(info.minStateId, Block::Stone::get_min_state_id());
+		assert_eq!(info.maxStateId, Block::Stone::get_max_state_id());
 
 		// The headline ergonomic the namespace exists for.
 		assert_eq!(block_by_name("bedrock").unwrap().id, Block::Bedrock::get_id());
