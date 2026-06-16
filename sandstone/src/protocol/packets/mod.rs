@@ -20,7 +20,7 @@ use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StonecutterRecipe, Tag};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StatisticAward, StonecutterRecipe, Tag};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -33,7 +33,7 @@ use crate::protocol_types::datatypes::chat::{JsonTextComponent, TextComponent};
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, GameDifficulty, Position, SectionBlockEntry, SourcePosition, WorldEventType};
 use crate::protocol_types::datatypes::internal_types::{Angle, IDorX, LpVec3, Mapping};
-use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
+use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitfield::BitField;
 use packet_component::ProtocolPropertyElement;
@@ -222,7 +222,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				entries: PrefixedArray<ResourcePackEntry>
 			},
 			ConfigCustomClickAction, 0x08 => {
-				// TODO: identifier + NBT payload
+				id: String,
+				payload: NbtCompound
 			}
 		}
 	},
@@ -249,7 +250,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				animation: u8
 			},
 			AwardStatistics, 0x03 => {
-				// TODO: prefixed array of (category id, statistic id, value)
+				stats: PrefixedArray<StatisticAward>
 			},
 			AcknowledgeBlockChange, 0x04 => {
 				sequence_id: VarInt
