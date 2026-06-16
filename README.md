@@ -51,30 +51,7 @@ Here is an outline of the major project goals for sandstone.
 - Rigorous testing of all aspects of the protocol to ensure parity with the vanilla client and server.
 - Extremely detailed documentation for all library functions, with examples for all major functions.
 
-## TODO
-The actual TODO list is massive, but here are the current priorities for the project.
-
-- [x] Figure out what to do with packets and begin implementing a full version
-  - [ ] Deserialize given standard info tests
-  - [x] How to handle optional fields ... See Packet::LoginPluginResponse
-  - [x] Implement Java's [bitset](https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html) for bit fields
-  - [ ] Maybe implement an Identifier struct? - See minecraft api types
-- [x] Utilities
-  - [ ] Thread pool for new connections
-  - [ ] Auto generate serialization/deserialization tests for all packets?
-    - [ ] Macro
-    - [ ] Default field trait? Derive?
-- [ ] Begin basic login procedure handler?
-- [ ] Compression support
-- [ ] Encryption support
-- [ ] Client-side networking
-- [ ] Begin server structure 
-- [ ] Documentation
-  - [x] Give explainer line for every file
-  - [ ] Document all public functions
-    - [ ] Better examples and documentation for packet reading
-  - [ ] License notices in all files
-- Block id's not correct for bedrock or dirt?
+See more in the [TODO](TODO.md)
 
 ## Usage
 This library currently supports **1.21.11**. 

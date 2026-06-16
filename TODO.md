@@ -1,0 +1,21 @@
+# TODO
+- [x] Figure out what to do with packets and begin implementing a full version
+    - [ ] Deserialize given standard info tests
+    - [x] How to handle optional fields ... See Packet::LoginPluginResponse
+    - [x] Implement Java's [bitset](https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html) for bit fields
+    - [ ] Maybe implement an Identifier struct? - See minecraft api types
+- [x] Utilities
+    - [ ] Thread pool for new connections
+    - [ ] Auto generate serialization/deserialization tests for all packets?
+        - [ ] Macro
+        - [ ] Default field trait? Derive?
+- [ ] Begin basic login procedure handler?
+- [ ] Encryption support
+- [ ] Client-side networking
+- [ ] Documentation
+    - [ ] Document all public functions
+        - [ ] Better examples and documentation for packet reading
+- [ ] sNBT
+- [ ] Anvil format
+- [ ] World generation?
+- [ ] Feature flags

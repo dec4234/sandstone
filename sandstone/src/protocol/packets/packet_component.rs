@@ -7,6 +7,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::EquipmentSlot;
 use crate::protocol_types::datatypes::internal_types::IDSet;
 use crate::protocol_types::datatypes::var_types::VarInt;
@@ -371,5 +372,52 @@ pub enum PlayerCommandAction {
 	StopJumpWithHorse = 4,
 	OpenVehicleInventory = 5,
 	StartFlyingWithElytra = 6,
+}
+
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum InteractType {
+	Interact = 0,
+	Attack = 1,
+	InteractAt = 2,
+}
+
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum InteractHand {
+	Main = 0,
+	OffHand = 1
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct CustomReportDetails {
+	title: String,
+	description: String
+}
+
+/// A single entry in the Server Links packet. The label is a discriminated union: the
+/// `is_built_in` boolean selects between a known [ServerLinkStandardLabel] (VarInt enum) and
+/// a custom [TextComponent]. Exactly one of `built_in_label`/`custom_label` is present on the wire.
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ServerLink {
+	is_built_in: bool,
+	#[mc(deserialize_if = is_built_in)]
+	built_in_label: Option<ServerLinkStandardLabel>,
+	#[mc(deserialize_if = !is_built_in)]
+	custom_label: Option<TextComponent>,
+	url: String
+}
+
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum ServerLinkStandardLabel {
+	#[doc = "Displayed on connection error screen; included as a comment in the disconnection report."]
+	BugReport = 0,
+	CommunityGuidelines = 1,
+	Support = 2,
+	Status = 3,
+	Feedback = 4,
+	Community = 5,
+	Website = 6,
+	Forums = 7,
+	News = 8,
+	Announcements = 9
 }
 
