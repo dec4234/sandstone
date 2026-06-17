@@ -1,8 +1,10 @@
 //! Defines a lot of random components of network packets. This is separate from packet.rs to reduce
 //! clutter.
 
+use crate::bitflag;
 use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::game::info::inventory::slots::{RecipeDisplay, SlotDisplay};
+use crate::protocol::game::world::chunk::BiomeByteData;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
@@ -11,7 +13,6 @@ use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::EquipmentSlot;
 use crate::protocol_types::datatypes::internal_types::IDSet;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use crate::util::java::bitfield::BitField;
 use sandstone_derive::TypeEnum;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 use uuid::Uuid;
@@ -64,42 +65,9 @@ pub struct ProtocolPropertyElement {
 	pub signature: PrefixedOptional<String>
 }
 
-#[derive(McDefault, Debug, Clone, PartialEq, Eq)]
-pub struct PlayerAbilityFlags {
-	pub invulnerable: bool,
-	pub flying: bool,
-	pub allow_flying: bool,
-	pub creative_mode: bool
-}
-
-impl McSerialize for PlayerAbilityFlags {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		let mut field = BitField::new(0u8);
-		
-		field.set_bit(0, self.invulnerable);
-		field.set_bit(1, self.flying);
-		field.set_bit(2, self.allow_flying);
-		field.set_bit(3, self.creative_mode);
-		
-		field.mc_serialize(serializer)
-	}
-}
-
-impl McDeserialize for PlayerAbilityFlags {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
-	where
-		Self: Sized
-	{
-		let field = BitField::<u8>::mc_deserialize(deserializer)?;
-		
-		Ok(Self {
-			invulnerable: field.get_bit(0),
-			flying: field.get_bit(1),
-			allow_flying: field.get_bit(2),
-			creative_mode: field.get_bit(3)
-		})
-	}
-}
+bitflag!(PlayerAbilityFlags: u8 {
+	invulnerable, flying, allow_flying, creative_mode
+});
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PropertySet {
@@ -252,116 +220,13 @@ impl McDefault for EquipmentEntry {
 	}
 }
 
-#[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
-pub struct PlayerPositionFlags {
-	pub flags: BitField<u8>
-}
+bitflag!(PlayerPositionFlags: u8 {
+	on_ground, pushing_against_wall
+});
 
-impl PlayerPositionFlags {
-	pub fn new(on_ground: bool, pushing_against_wall: bool) -> Self {
-		let mut flags = BitField::new(0);
-		flags.set_bit(0, on_ground);
-		flags.set_bit(1, pushing_against_wall);
-		Self { flags }
-	}
-
-	pub fn set_on_ground(&mut self, on_ground: bool) {
-		self.flags.set_bit(0, on_ground);
-	}
-
-	pub fn set_pushing_against_wall(&mut self, pushing_against_wall: bool) {
-		self.flags.set_bit(1, pushing_against_wall);
-	}
-
-	pub fn on_ground(&self) -> bool {
-		self.flags.get_bit(0)
-	}
-
-	pub fn pushing_against_wall(&self) -> bool {
-		self.flags.get_bit(1)
-	}
-}
-
-impl McDefault for PlayerPositionFlags {
-	fn mc_default() -> Self {
-		Self::new(true, false)
-	}
-}
-
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
-pub struct PlayerInputFlags {
-	pub flags: BitField<u8>
-}
-
-impl PlayerInputFlags {
-	pub fn new(forward: bool, backward: bool, left: bool, right: bool, jumping: bool, sneaking: bool, sprinting: bool) -> Self {
-		let mut flags = BitField::new(0);
-		flags.set_bit(0, forward);
-		flags.set_bit(1, backward);
-		flags.set_bit(2, left);
-		flags.set_bit(3, right);
-		flags.set_bit(4, jumping);
-		flags.set_bit(5, sneaking);
-		flags.set_bit(6, sprinting);
-		Self { flags }
-	}
-
-	pub fn set_forward(&mut self, forward: bool) {
-		self.flags.set_bit(0, forward);
-	}
-
-	pub fn set_backward(&mut self, backward: bool) {
-		self.flags.set_bit(1, backward);
-	}
-
-	pub fn set_left(&mut self, left: bool) {
-		self.flags.set_bit(2, left);
-	}
-
-	pub fn set_right(&mut self, right: bool) {
-		self.flags.set_bit(3, right);
-	}
-
-	pub fn set_jumping(&mut self, jumping: bool) {
-		self.flags.set_bit(4, jumping);
-	}
-
-	pub fn set_sneaking(&mut self, sneaking: bool) {
-		self.flags.set_bit(5, sneaking);
-	}
-
-	pub fn set_sprinting(&mut self, sprinting: bool) {
-		self.flags.set_bit(6, sprinting);
-	}
-
-	pub fn forward(&self) -> bool {
-		self.flags.get_bit(0)
-	}
-
-	pub fn backward(&self) -> bool {
-		self.flags.get_bit(1)
-	}
-
-	pub fn left(&self) -> bool {
-		self.flags.get_bit(2)
-	}
-
-	pub fn right(&self) -> bool {
-		self.flags.get_bit(3)
-	}
-
-	pub fn jumping(&self) -> bool {
-		self.flags.get_bit(4)
-	}
-
-	pub fn sneaking(&self) -> bool {
-		self.flags.get_bit(5)
-	}
-
-	pub fn sprinting(&self) -> bool {
-		self.flags.get_bit(6)
-	}
-}
+bitflag!(PlayerInputFlags: u8 {
+	forward, backward, left, right, jumping, sneaking, sprinting
+});
 
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 pub enum PlayerCommandAction {
@@ -525,3 +390,66 @@ pub enum StatID {
 	InteractWithSmithingTable = 75,
 }
 
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[repr(i32)]
+pub enum BossBarUpdateAction {
+	Add {
+		title: TextComponent,
+		health: f32,
+		color: BossBarColor,
+		division: BossBarDivisions,
+		flags: BossBarFlags
+	} = 0,
+	Remove = 1,
+	UpdateHealth {
+		health: f32,
+	} = 2,
+	UpdateTitle {
+		title: TextComponent,
+	} = 3,
+	UpdateStyle {
+		color: BossBarColor,
+		dividers: BossBarDivisions
+	} = 4,
+	UpdateFlags {
+		flags: BossBarFlags
+	} = 5
+}
+
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum BossBarColor {
+	Pink = 0,
+	Blue = 1,
+	Red = 2,
+	Green = 3,
+	Yellow = 4,
+	Purple = 5,
+	White = 6,
+}
+
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum BossBarDivisions {
+	NoDivision = 0,
+	SixNotches = 1,
+	TenNotches = 2,
+	TwelveNotches = 3,
+	TwentyNotches = 4
+}
+
+bitflag!(BossBarFlags: u8 {
+	should_darken_sky, is_dragon_bar, create_fog
+});
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ChunkBiomeData {
+	pub z: i32,
+	pub x: i32,
+	/// Chunk data structure, with sections containing only the Biomes field
+	pub data: BiomeByteData,
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct TooltipMatch {
+	pub matc: String,
+	pub tooltip: PrefixedOptional<TextComponent>
+}

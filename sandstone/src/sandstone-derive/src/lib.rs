@@ -51,6 +51,15 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
             for variant in enu.variants.iter() {
                 let variant_name = &variant.ident;
 
+                let discriminant = &variant
+                    .discriminant
+                    .as_ref()
+                    .unwrap_or_else(|| panic!(
+                        "McSerialize enum requires an explicit discriminant for variant {}",
+                        variant_name
+                    ))
+                    .1;
+
                 let pattern = match &variant.fields {
                     Fields::Named(fields) => {
                         let names: Vec<_> = fields
@@ -91,6 +100,7 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
 
                 match_arms.push(quote! {
                     #pattern => {
+                        VarInt(#discriminant).mc_serialize(serializer)?;
                         #serialize_fields
                     }
                 });
@@ -134,6 +144,67 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
 pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+
+    // Enums deserialize by reading a leading VarInt discriminant, then deserializing the body of
+    // the matching variant. This mirrors the wire format written by the McSerialize enum derive.
+    if let Data::Enum(data_enum) = &input.data {
+        let mut deserialize_arms = Vec::new();
+
+        for variant in &data_enum.variants {
+            let variant_ident = &variant.ident;
+
+            let discriminant = &variant
+                .discriminant
+                .as_ref()
+                .unwrap_or_else(|| panic!(
+                    "McDeserialize enum requires an explicit discriminant for variant {}",
+                    variant_ident
+                ))
+                .1;
+
+            let construct = match &variant.fields {
+                Fields::Named(fields) => {
+                    let names: Vec<_> = fields.named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
+                    let types: Vec<_> = fields.named.iter().map(|f| &f.ty).collect();
+                    quote! {
+                        #(let #names = <#types as McDeserialize>::mc_deserialize(deserializer)?;)*
+                        Ok(#name::#variant_ident { #(#names),* })
+                    }
+                }
+                Fields::Unnamed(fields) => {
+                    let vars: Vec<_> = (0..fields.unnamed.len())
+                        .map(|i| Ident::new(&format!("f{}", i), Span::call_site()))
+                        .collect();
+                    let types: Vec<_> = fields.unnamed.iter().map(|f| &f.ty).collect();
+                    quote! {
+                        #(let #vars = <#types as McDeserialize>::mc_deserialize(deserializer)?;)*
+                        Ok(#name::#variant_ident(#(#vars),*))
+                    }
+                }
+                Fields::Unit => quote! { Ok(#name::#variant_ident) },
+            };
+
+            deserialize_arms.push(quote! {
+                #discriminant => { #construct }
+            });
+        }
+
+        let enum_name_str = name.to_string();
+
+        let expanded = quote! {
+            impl McDeserialize for #name {
+                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
+                    let __id = VarInt::mc_deserialize(deserializer)?.0;
+                    match __id {
+                        #(#deserialize_arms)*
+                        _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, __id))),
+                    }
+                }
+            }
+        };
+
+        return TokenStream::from(expanded);
+    }
 
     let mut init_stmts = Vec::new();
     let mut field_names = Vec::new();

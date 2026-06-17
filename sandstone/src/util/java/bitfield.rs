@@ -90,6 +90,63 @@ impl <T: BitFieldInteger + McSerialize + McDeserialize + McDefault> McDefault fo
 	}
 }
 
+/// Define a struct backed by a [`BitField`] from just a list of flag names.
+///
+/// Each flag is assigned a bit index in declaration order (the first flag is bit 0).
+/// The macro generates the struct, a `new(...)` constructor taking each flag as a `bool`,
+/// a getter `flag(&self) -> bool` and a setter `set_flag(&mut self, value: bool)` per flag.
+///
+/// The backing integer type may be specified explicitly; it defaults to `u8`.
+///
+/// # Examples
+/// ```ignore
+/// bitflag!(PlayerInputFlags: u8 {
+///     forward, backward, left, right, jumping, sneaking, sprinting
+/// });
+/// ```
+#[macro_export]
+macro_rules! bitflag {
+	($name:ident { $($flag:ident),* $(,)? }) => {
+		$crate::bitflag!($name: u8 { $($flag),* });
+	};
+	($name:ident: $repr:ty { $($flag:ident),* $(,)? }) => {
+		#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+		pub struct $name {
+			pub flags: $crate::util::java::bitfield::BitField<$repr>,
+		}
+
+		impl $name {
+			#[allow(clippy::too_many_arguments)]
+			pub fn new($($flag: bool),*) -> Self {
+				let mut flags = $crate::util::java::bitfield::BitField::new(0);
+				let mut index = 0usize;
+				$(
+					flags.set_bit(index, $flag);
+					index += 1;
+				)*
+				let _ = index;
+				Self { flags }
+			}
+
+			$crate::bitflag!(@methods 0usize; $($flag),*);
+		}
+	};
+	(@methods $index:expr; ) => {};
+	(@methods $index:expr; $flag:ident $(, $rest:ident)*) => {
+		paste::paste! {
+			pub fn $flag(&self) -> bool {
+				self.flags.get_bit($index)
+			}
+
+			pub fn [<set_ $flag>](&mut self, value: bool) {
+				self.flags.set_bit($index, value);
+			}
+		}
+
+		$crate::bitflag!(@methods $index + 1usize; $($rest),*);
+	};
+}
+
 /// A number that can be used for a fixed-length bit field.
 pub trait BitFieldInteger:
 Copy
@@ -148,6 +205,38 @@ mod test {
 		bitfield.flip();
 		assert_eq!(bitfield.get_bit(0), true);
 		assert_eq!(bitfield.get_bit(1), true);
+	}
+
+	// The generated getters/setters must map each flag to its declaration-order bit index;
+	// a wrong index would silently corrupt the wire format, so assert the raw bits directly.
+	#[test]
+	fn test_bitflag_macro() {
+		use crate::protocol::serialization::{
+			McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult,
+		};
+		use crate::protocol::serialization::serializer_error::SerializingErr;
+		use crate::protocol::testing::McDefault;
+		use sandstone_derive::{McDefault, McDeserialize, McSerialize};
+
+		crate::bitflag!(TestFlags: u8 { a, b, c });
+
+		// `new` assigns flags to bits 0, 1, 2 in order.
+		let f = TestFlags::new(true, false, true);
+		assert_eq!(f.flags.get_bit(0), true);
+		assert_eq!(f.flags.get_bit(1), false);
+		assert_eq!(f.flags.get_bit(2), true);
+
+		assert_eq!(f.a(), true);
+		assert_eq!(f.b(), false);
+		assert_eq!(f.c(), true);
+
+		// Setters target the matching bit.
+		let mut f = TestFlags::new(false, false, false);
+		f.set_b(true);
+		assert_eq!(f.flags.get_bit(1), true);
+		assert_eq!(f.b(), true);
+		assert_eq!(f.a(), false);
+		assert_eq!(f.c(), false);
 	}
 }
 

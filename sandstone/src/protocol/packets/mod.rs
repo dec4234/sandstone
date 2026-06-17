@@ -20,7 +20,7 @@ use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StatisticAward, StonecutterRecipe, Tag};
+use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StatisticAward, StonecutterRecipe, Tag, TooltipMatch};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -277,7 +277,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				block_id: VarInt
 			},
 			BossBar, 0x09 => {
-				// TODO: uuid + action union with branching fields
+				uuid: Uuid,
+				action: BossBarUpdateAction
 			},
 			ChangeDifficulty, 0x0A => {
 				difficulty: GameDifficulty,
@@ -290,13 +291,16 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				// no fields
 			},
 			ChunkBiomes, 0x0D => {
-				// TODO: prefixed array of chunk biome data
+				chunk_biome_data: PrefixedArray<ChunkBiomeData>
 			},
 			ClearTitles, 0x0E => {
 				reset: bool
 			},
 			CommandSuggestionsResponse, 0x0F => {
-				// TODO: matches array with optional tooltips
+				id: VarInt,
+				start: VarInt,
+				length: VarInt,
+				matches: PrefixedArray<TooltipMatch>
 			},
 			CommandsGraph, 0x10 => {
 				nodes: PrefixedArray<Node>,

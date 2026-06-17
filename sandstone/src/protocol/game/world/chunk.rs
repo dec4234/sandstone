@@ -156,6 +156,58 @@ impl McDeserialize for ChunkSection {
 	}
 }
 
+/// Same as [ChunkSection] but only contains the biome data.
+#[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
+pub struct BiomeSection {
+	/// Consists of 64 entries, representing 4×4×4 biome regions in the chunk section
+	pub biomes: PalletedContainer
+}
+
+impl McDeserialize for BiomeSection {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		Ok(Self {
+			biomes: PalletedContainer::mc_deserialize(deserializer, 64, BIOMES)?
+		})
+	}
+}
+
+/// Same as [ChunkByteData] but the sections contain only the biome data. Used by the Chunk Biomes
+/// packet, which is serialized to/from a length-prefixed byte array.
+#[derive(McDefault, Debug, Clone, PartialEq)]
+pub struct BiomeByteData {
+	/// This array is NOT length-prefixed. The number of elements matches the number of chunk sections
+	/// in the dimension. Sections are sent bottom-to-top.
+	pub data: Vec<BiomeSection>,
+}
+
+// convert the section data into a PrefixedArray<u8>
+impl McSerialize for BiomeByteData {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		let mut small_serializer = McSerializer::new();
+
+		self.data.mc_serialize(&mut small_serializer)?;
+
+		let prefixed_array = PrefixedArray::new(small_serializer.output);
+		prefixed_array.mc_serialize(serializer)?;
+
+		Ok(())
+	}
+}
+
+impl McDeserialize for BiomeByteData {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let prefixed_array = PrefixedArray::<u8>::mc_deserialize(deserializer)?;
+
+		let mut small_deserializer = McDeserializer::new(&prefixed_array.vec);
+
+		let data = Vec::mc_deserialize(&mut small_deserializer)?;
+
+		Ok(Self {
+			data
+		})
+	}
+}
+
 #[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
 pub struct PalletedContainer {
 	pub bits_per_entry: u8,
