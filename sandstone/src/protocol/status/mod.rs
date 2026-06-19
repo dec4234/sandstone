@@ -6,20 +6,23 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::{debug, trace};
 
-use crate::network::client::client_handlers::{HandshakeHandler, PingHandler, StatusHandler};
+use crate::network::client::client_handlers::{ServerHandshakeHandler, ServerPingHandler, ServerStatusHandler};
 use crate::network::network_error::NetworkError;
+use crate::network::server::server_handler::ClientStatusHandler;
 use crate::network::CraftConnection;
 use crate::protocol::packets::packet_definer::PacketState;
-use crate::protocol::packets::{Packet, PingResponsePacket, StatusResponsePacket};
+use crate::protocol::packets::{HandshakingPacket, Packet, PingResponsePacket, StatusRequestPacket, StatusResponsePacket};
+use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol_types::datatypes::var_types::VarInt;
+use crate::protocol_types::protocol_verison::ProtocolVerison;
 
 pub mod status_components;
 
 /// The default server-list status handler. Not sure why you wouldn't want to use it, but it's here.
-pub struct DefaultStatusHandler;
+pub struct DefaultServerStatusHandler;
 
-impl StatusHandler for DefaultStatusHandler {
-	async fn handle_status<P: PingHandler>(connection: &mut CraftConnection, status_response: StatusResponsePacket, _ping_handler: P) -> Result<(), NetworkError> {
+impl ServerStatusHandler for DefaultServerStatusHandler {
+	async fn handle_status<P: ServerPingHandler>(connection: &mut CraftConnection, status_response: StatusResponsePacket, _ping_handler: P) -> Result<(), NetworkError> {
 		if connection.packet_state != PacketState::STATUS {
 			return Err(NetworkError::InvalidPacketState);
 		}
@@ -58,10 +61,10 @@ impl StatusHandler for DefaultStatusHandler {
 	}
 }
 
-/// The default ping handler. Not sure why you wouldn't want to use it, but it's here.
-pub struct DefaultPingHandler;
+/// The default server ping handler. Not sure why you wouldn't want to use it, but it's here.
+pub struct DefaultServerPingHandler;
 
-impl PingHandler for DefaultPingHandler {
+impl ServerPingHandler for DefaultServerPingHandler {
 	async fn handle_ping(connection: &mut CraftConnection) -> Result<(), NetworkError> {
 		if connection.packet_state != PacketState::STATUS {
 			return Err(NetworkError::InvalidPacketState);
@@ -92,9 +95,9 @@ impl PingHandler for DefaultPingHandler {
 }
 
 /// The default handshake handler. Not sure why you wouldn't want to use it, but it's here.
-pub struct DefaultHandshakeHandler;
+pub struct DefaultServerHandshakeHandler;
 
-impl HandshakeHandler for DefaultHandshakeHandler {
+impl ServerHandshakeHandler for DefaultServerHandshakeHandler {
 	async fn handle_handshake(client: &mut CraftConnection) -> Result<(), NetworkError> {
 		if client.packet_state != PacketState::HANDSHAKING {
 			return Err(NetworkError::InvalidPacketState);
@@ -122,5 +125,44 @@ impl HandshakeHandler for DefaultHandshakeHandler {
 		debug!("Handshake complete for {}", client);
 
 		Ok(())
+	}
+}
+
+pub struct DefaultClientStatusHandler;
+
+impl ClientStatusHandler for DefaultClientStatusHandler {
+	async fn handle_status(connection: &mut CraftConnection) -> Result<StatusResponseSpec, NetworkError> {
+		if connection.packet_state != PacketState::HANDSHAKING {
+			return Err(NetworkError::InvalidPacketState);
+		}
+
+		let handshake = Packet::Handshaking(HandshakingPacket {
+			protocol_version: VarInt(ProtocolVerison::latest().get_version_number() as i32),
+			server_address: connection.hostname.clone().unwrap_or_else(|| connection.socket_addr.ip().to_string()),
+			port: 25565, // unused
+			next_state: VarInt(PacketState::STATUS.get_id().unwrap() as i32),
+		});
+
+		connection.send_packet(handshake).await?;
+		
+		connection.change_state(PacketState::STATUS);
+
+		let status_request = Packet::StatusRequest(StatusRequestPacket {
+
+		});
+
+		connection.send_packet(status_request).await?;
+
+		let status_response = connection.receive_packet().await?;
+
+		match status_response {
+			Packet::StatusResponse(response) => {
+				debug!("Received status response from {}", connection);
+				Ok(response.response)
+			}
+			_ => {
+				Err(NetworkError::ExpectedDifferentPacket("Invalid packet received, expected status response".to_string()))
+			}
+		}
 	}
 }

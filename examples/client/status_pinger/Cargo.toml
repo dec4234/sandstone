@@ -1,5 +1,5 @@
 [package]
-name = "client_login"
+name = "status_pinger"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,4 +8,3 @@ sandstone = {path = "../../../sandstone"}
 tokio = {version = "1.45.0", features = ["full", "macros"]}
 simple_logger = "5.0.0"
 log = "0.4.27"
-uuid = { version = "1.16.0", features = ["v4"] }

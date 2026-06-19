@@ -5,7 +5,7 @@
 
 use log::{debug, LevelFilter};
 use sandstone::network::CraftConnection;
-use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
+use sandstone::protocol::packets::packet_definer::PacketState;
 use sandstone::protocol::packets::{HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
 use sandstone::protocol::serialization::serializer_error::SerializingErr;
 use sandstone::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -24,7 +24,6 @@ use simple_logger::SimpleLogger;
 use std::fs;
 use std::str::FromStr;
 use std::time::Duration;
-use tokio::net::TcpStream;
 use uuid::Uuid;
 
 /// This collects registry data sent by the server to the client during the login process and saves
@@ -37,10 +36,8 @@ async fn main() {
         .unwrap();
     debug!("Starting client");
 
-    let socket = TcpStream::connect("127.0.0.1:25565").await.unwrap();
-
     // Create the client from the socket
-    let mut client = CraftConnection::from_connection(socket, PacketDirection::CLIENT).unwrap();
+    let mut client = CraftConnection::connect("127.0.0.1:25565").await.unwrap();
 
     let handshake = Packet::Handshaking(HandshakingPacket {
         protocol_version: VarInt(ProtocolVerison::latest().get_version_number() as i32),

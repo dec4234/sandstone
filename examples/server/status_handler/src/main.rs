@@ -2,13 +2,13 @@ use log::{debug, LevelFilter};
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
 
-use sandstone::network::client::client_handlers::{HandshakeHandler, StatusHandler};
+use sandstone::network::client::client_handlers::{ServerHandshakeHandler, ServerStatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::PacketDirection;
 use sandstone::protocol::packets::StatusResponsePacket;
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::status::{
-    DefaultHandshakeHandler, DefaultPingHandler, DefaultStatusHandler,
+    DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler,
 };
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 
@@ -45,13 +45,13 @@ async fn main() {
         let image = image::open("examples/status_handler/src/server-icon.png").unwrap();
         response.set_favicon_image(image);
 
-        DefaultHandshakeHandler::handle_handshake(&mut client)
+        DefaultServerHandshakeHandler::handle_handshake(&mut client)
             .await
             .unwrap();
-        DefaultStatusHandler::handle_status(
+        DefaultServerStatusHandler::handle_status(
             &mut client,
             StatusResponsePacket::new(response),
-            DefaultPingHandler,
+            DefaultServerPingHandler,
         )
         .await
         .unwrap();

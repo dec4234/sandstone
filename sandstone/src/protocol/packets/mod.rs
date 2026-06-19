@@ -557,7 +557,9 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				// no fields
 			},
 			CombatDeath, 0x42 => {
-				// TODO: player id + death message
+				#[doc = "Entity ID of the player that died (should match the client's entity ID)"]
+				id: VarInt,
+				message: TextComponent
 			},
 			PlayerInfoRemove, 0x43 => {
 				players: PrefixedArray<Uuid>
@@ -590,7 +592,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				flags: BitField<i32>
 			},
 			PlayerRotation, 0x47 => {
-				// TODO
+				#[doc = "Rotation on the X axis, in degrees."]
+				yaw: f32,
+				relative_yaw: bool,
+				#[doc = "Rotation on the Y axis, in degrees."]
+				pitch: f32,
+				relative_pitch: bool
 			},
 			RecipeBookAdd, 0x48 => {
 				recipes: PrefixedArray<RecipeBookEntry>,

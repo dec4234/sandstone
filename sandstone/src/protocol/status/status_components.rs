@@ -6,6 +6,7 @@ use std::io::Cursor;
 
 use crate::protocol::packets::StatusResponsePacket;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -19,13 +20,19 @@ use uuid::Uuid;
 #[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 pub struct StatusResponseSpec {
-	version: VersionInfo,
-	players: PlayerInfo,
-	description: DescriptionInfo,
+	pub version: VersionInfo,
+	// `players` is optional; omitted by servers that hide their player list.
+	#[serde(default)]
+	pub players: PlayerInfo,
+	pub description: TextComponent,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	favicon: Option<String>,
-	enforcesSecureChat: bool,
-	previewsChat: bool,
+	pub favicon: Option<String>,
+	// Optional/non-standard trailing fields: vanilla third-party servers (e.g. Hypixel) omit
+	// `enforcesSecureChat`, and `previewsChat` is not part of the modern protocol at all.
+	#[serde(default)]
+	pub enforcesSecureChat: bool,
+	#[serde(default)]
+	pub previewsChat: bool,
 }
 
 impl StatusResponseSpec {
@@ -42,9 +49,7 @@ impl StatusResponseSpec {
 				online: 0,
 				sample: Vec::new(),
 			},
-			description: DescriptionInfo {
-				text: description.into().replace("&", "§")
-			},
+			description: TextComponent::new(description.into().replace("&", "§")),
 			favicon: None,
 			enforcesSecureChat: false,
 			previewsChat: false,
@@ -76,9 +81,7 @@ impl StatusResponseSpec {
 	/// Set the description/MOTD of the server, which is displayed in the server list.
 	/// The description will have its color codes translated from the symbol '&' to the symbol '§'.
 	pub fn set_description(&mut self, description: String) {
-		self.description = DescriptionInfo {
-			text: description
-		};
+		self.description = TextComponent::new(description);
 	}
 
 	/// Set the player list preview response, seen when the user hovers over the player count.
@@ -136,15 +139,21 @@ impl From<StatusResponseSpec> for StatusResponsePacket {
 /// connecting client.
 #[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VersionInfo {
+	// On 1.20+ servers `name` may be omitted; the Notchian client treats it as "Old" if so.
+	#[serde(default = "version_name_default")]
 	name: String,
 	protocol: i16,
 }
 
-#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+fn version_name_default() -> String {
+	"Old".to_string()
+}
+
+#[derive(McDefault, Default, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerInfo {
-	max: i32,
-	online: i32,
-	sample: Vec<PlayerSample>,
+	pub max: i32,
+	pub online: i32,
+	pub sample: Vec<PlayerSample>,
 }
 
 impl PlayerInfo {
@@ -155,12 +164,6 @@ impl PlayerInfo {
 	pub fn set_player_sample(&mut self, players: Vec<PlayerSample>) {
 		self.sample = players;
 	}
-}
-
-/// Represents the description/MOTD of the server, which is displayed in the server list.
-#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DescriptionInfo { // TODO: update to chat thing?
-	text: String,
 }
 
 /// Represents a single entry in the player list sample response, seen when the user hovers over the player count.

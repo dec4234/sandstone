@@ -14,6 +14,9 @@ use crate::protocol_types::protocol_verison::ProtocolVerison;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
+use hickory_resolver::proto::rr::rdata::SRV;
+use hickory_resolver::proto::rr::RecordRef;
+use hickory_resolver::Resolver;
 use log::{debug, error, trace};
 use std::fmt::Display;
 use std::io::{Read, Write};
@@ -25,6 +28,11 @@ pub mod client;
 pub mod network_error;
 pub mod server;
 
+/// A type that is an alias for [PacketDirection] to prevent some naming confusion for connection intialization.
+pub type ConnectionRole = PacketDirection;
+
+/// Default minecraft server port.
+pub const DEFAULT_PORT: u16 = 25565;
 /// The maximum size of a packet in bytes.
 const PACKET_MAX_SIZE: usize = 2097151;
 // max of 3 byte VarInt
@@ -38,23 +46,73 @@ pub(crate) const CONTINUE_BIT: u8 = 0b10000000;
 pub struct CraftConnection {
 	pub tcp_stream: TcpStream,
 	pub socket_addr: SocketAddr,
+	/// The hostname the client dialed (e.g. `hypixel.net`), if known. Used as the handshake
+	/// `server_address` so proxied servers (BungeeCord/Velocity) can route the connection.
+	/// Falls back to the peer IP when `None`.
+	pub hostname: Option<String>,
 	pub packet_state: PacketState,
 	pub compression_threshold: Option<u32>,
 	pub protocol_version: Option<VarInt>,
-	pub client_type: PacketDirection,
+	pub client_type: ConnectionRole,
 	/// Reusable buffer for packet reads, avoids allocating per packet
 	read_buffer: Vec<u8>,
 }
 
 impl CraftConnection {
-	/// Create a new `CraftClient` from a `TcpStream`. This will set the `TcpStream` to use `nodelay` and return an error if it fails to do so.
+	/// Dial a server and create a client `CraftConnection`. The `address` (e.g. `hypixel.net`)
+	/// is used both to open the socket and is stored as the handshake `server_address`, so proxied
+	/// servers (BungeeCord/Velocity) can route the connection. Use this for all client connections.
 	///
-	/// Set client_type to `PacketDirection::CLIENT` if this is a client, or `PacketDirection::SERVER` if this is a server's connection to a client.
-	pub fn from_connection(tcp_stream: TcpStream, client_type: PacketDirection) -> Result<Self, NetworkError> {
+	/// Sets client_type to [ConnectionRole::CLIENT] since this is a client connection to a server.
+	pub async fn connect(address: impl AsRef<str>) -> Result<Self, NetworkError> {
+		let address = address.as_ref();
+		// the handshake server_address is the host without the port. When an explicit port is given
+		// we dial it directly; otherwise we resolve the Minecraft SRV record (matching the Notchian
+		// client) and fall back to the default port when no SRV record exists.
+		let (host, dial) = match address.rsplit_once(':') {
+			Some((host, _)) => (host.to_string(), address.to_string()),
+			None => {
+				let host = address.to_string();
+				let dial = Self::resolve_srv(&host).await.unwrap_or_else(|| format!("{host}:{DEFAULT_PORT}"));
+				(host, dial)
+			}
+		};
+		let tcp_stream = TcpStream::connect(dial).await?;
+
+		let mut connection = Self::from_connection(tcp_stream, ConnectionRole::CLIENT)?;
+		// keep the originally dialed hostname for the handshake so proxied servers route correctly
+		connection.hostname = Some(host);
+
+		Ok(connection)
+	}
+
+	/// Resolve the Minecraft SRV record (`_minecraft._tcp.<host>`) for `host`, returning a
+	/// `target:port` dial string when a record exists. Minecraft servers commonly publish an SRV
+	/// record so the apex domain (e.g. `2b2t.org`) can point its A record at a website while the
+	/// actual server lives elsewhere; without this lookup such hostnames connect to the wrong
+	/// endpoint and hang. Returns `None` (so the caller falls back to `host:25565`) on any DNS
+	/// failure or when no record is published.
+	async fn resolve_srv(host: &str) -> Option<String> {
+		let resolver = Resolver::builder_tokio().ok()?.build().ok()?;
+		let lookup = resolver.srv_lookup(format!("_minecraft._tcp.{host}.")).await.ok()?;
+		let srv = lookup.answers().iter().find_map(|r| RecordRef::<SRV>::try_from(r).ok())?;
+		let srv = srv.data();
+		let target = srv.target.to_utf8();
+		let target = target.trim_end_matches('.');
+		Some(format!("{target}:{}", srv.port))
+	}
+
+	/// Create a `CraftConnection` from an already-established `TcpStream`. This is for server-side
+	/// connections accepted from a listener; clients should use [`CraftConnection::connect`] so the
+	/// dialed hostname is preserved. Sets the `TcpStream` to use `nodelay`, returning an error if it fails to do so.
+	///
+	/// Set client_type to [ConnectionRole::CLIENT] if this is a client, or [ConnectionRole::SERVER] if this is a server's connection to a client.
+	pub fn from_connection(tcp_stream: TcpStream, client_type: ConnectionRole) -> Result<Self, NetworkError> {
 		tcp_stream.set_nodelay(true)?; // disable Nagle's algorithm - according to WIKI specs
 
 		Ok(Self {
 			socket_addr: tcp_stream.peer_addr()?,
+			hostname: None,
 			tcp_stream,
 			packet_state: PacketState::HANDSHAKING,
 			compression_threshold: None,
@@ -346,6 +404,8 @@ impl CraftConnection {
 
 	/// Change the internal Packet State. This is used to categorize what kind of packets are being sent/received.
 	/// See [PacketState] for more information.
+	///
+	/// This does not inform the connected server or client of the change in state.
 	pub fn change_state(&mut self, state: PacketState) {
 		self.packet_state = state;
 	}
@@ -376,6 +436,6 @@ impl Display for CraftConnection {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let s = if let Ok(addr) = self.tcp_stream.peer_addr() { format!("{addr}") } else { "Unknown".to_string() };
 
-		write!(f, "{}", format!("CraftConnection: {s}"))
+		write!(f, "CraftConnection: {s}")
 	}
 }

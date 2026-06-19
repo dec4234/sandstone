@@ -4,14 +4,13 @@
 use log::{debug, error, trace, LevelFilter};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::player::ClientStatusAction;
-use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
+use sandstone::protocol::packets::packet_definer::PacketState;
 use sandstone::protocol::packets::{AcknowledgeFinishConfigurationPacket, ClientCommandPacket, ConfirmTeleportPacket, HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKeepAlivePacket, ServerboundKnownPacksPacket};
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use simple_logger::SimpleLogger;
 use std::str::FromStr;
-use tokio::net::TcpStream;
 use uuid::Uuid;
 
 #[tokio::main]
@@ -22,10 +21,8 @@ async fn main() {
         .unwrap();
     debug!("Starting client");
 
-    let socket = TcpStream::connect("127.0.0.1:25565").await.unwrap();
-
     // Create the client from the socket
-    let mut client = CraftConnection::from_connection(socket, PacketDirection::CLIENT).unwrap();
+    let mut client = CraftConnection::connect("127.0.0.1:25565").await.unwrap();
 
     let handshake = Packet::Handshaking(HandshakingPacket {
         protocol_version: VarInt(ProtocolVerison::latest().get_version_number() as i32),
