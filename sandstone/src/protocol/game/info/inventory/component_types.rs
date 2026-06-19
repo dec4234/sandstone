@@ -571,7 +571,7 @@ pub struct PaintingVariant {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IdOrPaintingVariant {
 	Registry(VarInt),
-	Inline(PaintingVariant),
+	Inline(Box<PaintingVariant>),
 }
 
 impl McSerialize for IdOrPaintingVariant {
@@ -593,7 +593,7 @@ impl McDeserialize for IdOrPaintingVariant {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let typ = VarInt::mc_deserialize(deserializer)?.0;
 		if typ == 0 {
-			Ok(IdOrPaintingVariant::Inline(PaintingVariant::mc_deserialize(deserializer)?))
+			Ok(IdOrPaintingVariant::Inline(Box::new(PaintingVariant::mc_deserialize(deserializer)?)))
 		} else {
 			Ok(IdOrPaintingVariant::Registry(VarInt(typ - 1)))
 		}

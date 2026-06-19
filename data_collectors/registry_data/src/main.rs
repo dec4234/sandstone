@@ -30,177 +30,172 @@ use uuid::Uuid;
 /// it as JSON files in the `reg_data` directory.
 #[tokio::main]
 async fn main() {
-    SimpleLogger::new()
-        .with_level(LevelFilter::Debug)
-        .init()
-        .unwrap();
-    debug!("Starting client");
+	SimpleLogger::new().with_level(LevelFilter::Debug).init().unwrap();
+	debug!("Starting client");
 
-    // Create the client from the socket
-    let mut client = CraftConnection::connect("127.0.0.1:25565").await.unwrap();
+	// Create the client from the socket
+	let mut client = CraftConnection::connect("127.0.0.1:25565").await.unwrap();
 
-    let handshake = Packet::Handshaking(HandshakingPacket {
-        protocol_version: VarInt(ProtocolVerison::latest().get_version_number() as i32),
-        server_address: "127.0.0.1".to_string(),
-        port: 25565,
-        next_state: VarInt(2),
-    });
+	let handshake = Packet::Handshaking(HandshakingPacket {
+		protocol_version: VarInt(ProtocolVerison::latest().get_version_number() as i32),
+		server_address: "127.0.0.1".to_string(),
+		port: 25565,
+		next_state: VarInt(2),
+	});
 
-    debug!("Sending handshake packet: {handshake:?}");
-    client.send_packet(handshake).await.unwrap();
-    
-    let login_start = Packet::LoginStart(LoginStartPacket {
-        username: "dec4234".to_string(),
-        uuid: Uuid::from_str("ef39c197-3c3d-4776-a226-22096378a966").unwrap(),
-    });
+	debug!("Sending handshake packet: {handshake:?}");
+	client.send_packet(handshake).await.unwrap();
 
-    debug!("Sending login start packet: {login_start:?}");
-    client.send_packet(login_start).await.unwrap();
+	let login_start = Packet::LoginStart(LoginStartPacket {
+		username: "dec4234".to_string(),
+		uuid: Uuid::from_str("ef39c197-3c3d-4776-a226-22096378a966").unwrap(),
+	});
 
-    client.change_state(PacketState::LOGIN);
+	debug!("Sending login start packet: {login_start:?}");
+	client.send_packet(login_start).await.unwrap();
 
-    let login_success = client.receive_packet().await.unwrap();
+	client.change_state(PacketState::LOGIN);
 
-    match login_success {
-        Packet::LoginSuccess(packet) => {
-            debug!("Login successful: UUID: {}, Username: {}", packet.uuid, packet.username);
-        }
-        _ => {
-            panic!("Unexpected packet received instead of login success: {login_success:?}");
-        }
-    }
+	let login_success = client.receive_packet().await.unwrap();
 
-    let login_ack = Packet::LoginAcknowledged(LoginAcknowledgedPacket {});
-    client.send_packet(login_ack).await.unwrap();
-    debug!("Sending login acknowledged packet");
+	match login_success {
+		Packet::LoginSuccess(packet) => {
+			debug!("Login successful: UUID: {}, Username: {}", packet.uuid, packet.username);
+		}
+		_ => {
+			panic!("Unexpected packet received instead of login success: {login_success:?}");
+		}
+	}
 
-    client.change_state(PacketState::CONFIGURATION);
+	let login_ack = Packet::LoginAcknowledged(LoginAcknowledgedPacket {});
+	client.send_packet(login_ack).await.unwrap();
+	debug!("Sending login acknowledged packet");
 
-    loop {
-        let packet = client.receive_packet().await.unwrap();
+	client.change_state(PacketState::CONFIGURATION);
 
-        match packet {
-            Packet::ClientboundPluginMessage(_) => {
-                debug!("Received clientbound plugin message: {packet:?}");
-                continue;
-            }
-            Packet::FeatureFlags(_) => {
-                debug!("Received feature flags: {packet:?}");
-                continue;
-            }
-            Packet::ClientboundKnownPacks(_) => {
-                debug!("Received known packs: {packet:?}");
-                break;
-            }
-            _ => {
-                panic!("Received unexpected packet: {packet:?}");
-            }
-        }
-    }
+	loop {
+		let packet = client.receive_packet().await.unwrap();
 
-    let serverbound_known_packs = Packet::ServerboundKnownPacks(ServerboundKnownPacksPacket {
-        entries: PrefixedArray::new(vec![]),
-    });
+		match packet {
+			Packet::ClientboundPluginMessage(_) => {
+				debug!("Received clientbound plugin message: {packet:?}");
+				continue;
+			}
+			Packet::FeatureFlags(_) => {
+				debug!("Received feature flags: {packet:?}");
+				continue;
+			}
+			Packet::ClientboundKnownPacks(_) => {
+				debug!("Received known packs: {packet:?}");
+				break;
+			}
+			_ => {
+				panic!("Received unexpected packet: {packet:?}");
+			}
+		}
+	}
 
-    debug!("Sending serverbound known packs: {serverbound_known_packs:?}");
-    client.send_packet(serverbound_known_packs).await.unwrap();
+	let serverbound_known_packs = Packet::ServerboundKnownPacks(ServerboundKnownPacksPacket { entries: PrefixedArray::new(vec![]) });
 
-    debug!("Current dir is: {}", std::env::current_dir().unwrap().display());
+	debug!("Sending serverbound known packs: {serverbound_known_packs:?}");
+	client.send_packet(serverbound_known_packs).await.unwrap();
 
-    loop {
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        let length = VarInt::from_tcp_stream(&client.tcp_stream).unwrap();
+	debug!("Current dir is: {}", std::env::current_dir().unwrap().display());
 
-        match client.receive_with_length::<RawPacket<RegPacket>>(length.0 as usize).await {
-            Ok(raw) => {
-                let regpacket = raw.data;
+	loop {
+		tokio::time::sleep(Duration::from_millis(100)).await;
+		let length = VarInt::from_tcp_stream(&client.tcp_stream).unwrap();
 
-                let id = regpacket.id.clone().replace("minecraft:", "").replace("/", "_");
+		match client.receive_with_length::<RawPacket<RegPacket>>(length.0 as usize).await {
+			Ok(raw) => {
+				let regpacket = raw.data;
 
-                // Ensure the output directory exists
-                let output_dir = "reg_data";
-                fs::create_dir_all(output_dir).unwrap();
+				let id = regpacket.id.clone().replace("minecraft:", "").replace("/", "_");
 
-                // Create a unique filename, e.g., using the regpacket id
-                let filename = format!("{output_dir}/{id}.json");
+				// Ensure the output directory exists
+				let output_dir = "reg_data";
+				fs::create_dir_all(output_dir).unwrap();
 
-                // Serialize to JSON and write to file
-                let json = serde_json::to_string_pretty(&regpacket).unwrap();
-                debug!("Saved registry data for {id} to {filename}");
-                fs::write(&filename, json).unwrap();
-            }
-            Err(_) => {
-                debug!("Error received while parsing Registry Packet, assuming no more registry packets.");
-                break;
-            }
-        }
-    }
+				// Create a unique filename, e.g., using the regpacket id
+				let filename = format!("{output_dir}/{id}.json");
+
+				// Serialize to JSON and write to file
+				let json = serde_json::to_string_pretty(&regpacket).unwrap();
+				debug!("Saved registry data for {id} to {filename}");
+				fs::write(&filename, json).unwrap();
+			}
+			Err(_) => {
+				debug!("Error received while parsing Registry Packet, assuming no more registry packets.");
+				break;
+			}
+		}
+	}
 }
 
 #[derive(Debug)]
 pub struct RawPacket<T: McDeserialize + McSerialize> {
-    pub id: VarInt,
-    pub data: T
+	pub id: VarInt,
+	pub data: T,
 }
 
 impl<T: McDeserialize + McSerialize> McDeserialize for RawPacket<T> {
-    fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
-    where
-        Self: Sized
-    {
-        Ok(Self {
-            id: VarInt::mc_deserialize(deserializer)?,
-            data: T::mc_deserialize(deserializer)?
-        })
-    }
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
+		Ok(Self {
+			id: VarInt::mc_deserialize(deserializer)?,
+			data: T::mc_deserialize(deserializer)?,
+		})
+	}
 }
 
 impl<T: McDeserialize + McSerialize> McSerialize for RawPacket<T> {
-    fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-        self.id.mc_serialize(serializer)?;
-        self.data.mc_serialize(serializer)?;
-        Ok(())
-    }
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		self.id.mc_serialize(serializer)?;
+		self.data.mc_serialize(serializer)?;
+		Ok(())
+	}
 }
 
 #[derive(Debug, McDeserialize, McSerialize)]
 pub struct RegPacket {
-    pub id: String,
-    pub entries: PrefixedArray<Entry>
+	pub id: String,
+	pub entries: PrefixedArray<Entry>,
 }
 
 impl Serialize for RegPacket {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer
-    {
-        let mut state = serializer.serialize_struct("RegPacket", 2)?;
-        state.serialize_field("id", &self.id)?;
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		let mut state = serializer.serialize_struct("RegPacket", 2)?;
+		state.serialize_field("id", &self.id)?;
 
-        // Use slice() to get the actual entries for serialization
-        state.serialize_field("entries", self.entries.slice())?;
+		// Use slice() to get the actual entries for serialization
+		state.serialize_field("entries", self.entries.slice())?;
 
-        state.end()
-    }
+		state.end()
+	}
 }
 
 #[derive(Debug, McDeserialize, McSerialize)]
 pub struct Entry {
-    pub identifier: String,
-    pub data: PrefixedOptional<NbtCompound>
+	pub identifier: String,
+	pub data: PrefixedOptional<NbtCompound>,
 }
 
 impl Serialize for Entry {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer
-    {
-        let mut state = serializer.serialize_struct("Entry", 2)?;
-        state.serialize_field("identifier", &self.identifier)?;
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		let mut state = serializer.serialize_struct("Entry", 2)?;
+		state.serialize_field("identifier", &self.identifier)?;
 
-        if self.data.is_present() {
-            state.serialize_field("data", &self.data.value().unwrap())?;
-        }
-        state.end()
-    }
+		if self.data.is_present() {
+			state.serialize_field("data", &self.data.value().unwrap())?;
+		}
+		state.end()
+	}
 }

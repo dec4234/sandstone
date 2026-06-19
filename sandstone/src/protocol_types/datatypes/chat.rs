@@ -52,7 +52,9 @@ pub struct TextComponent {
 impl TextComponent {
 	/// Create a plain literal-text component (`ComponentType::Text`).
 	pub fn new<T: Into<String>>(text: T) -> Self {
-		Self::from_content(ComponentType::Text { text: text.into() })
+		Self::from_content(ComponentType::Text {
+			text: text.into(),
+		})
 	}
 
 	/// Create a component wrapping the given content type, with no formatting applied.
@@ -82,7 +84,9 @@ impl TextComponent {
 
 	/// Create a keybind component (`ComponentType::Keybind`).
 	pub fn keybind<T: Into<String>>(keybind: T) -> Self {
-		Self::from_content(ComponentType::Keybind { keybind: keybind.into() })
+		Self::from_content(ComponentType::Keybind {
+			keybind: keybind.into(),
+		})
 	}
 
 	/// Create a scoreboard-value component (`ComponentType::Score`).
@@ -188,7 +192,10 @@ impl From<NbtTag> for TextComponent {
 impl From<TextComponent> for NbtTag {
 	fn from(component: TextComponent) -> Self {
 		if component.is_plain() {
-			if let ComponentType::Text { text } = component.content {
+			if let ComponentType::Text {
+				text,
+			} = component.content
+			{
 				return NbtTag::String(text);
 			}
 		}
@@ -479,7 +486,9 @@ impl ComponentType {
 		}
 
 		if let Some(text) = compound.get_string("text") {
-			ComponentType::Text { text }
+			ComponentType::Text {
+				text,
+			}
 		} else if let Some(translate) = compound.get_string("translate") {
 			ComponentType::Translatable {
 				translate,
@@ -496,7 +505,9 @@ impl ComponentType {
 				separator: get_separator("separator"),
 			}
 		} else if let Some(keybind) = compound.get_string("keybind") {
-			ComponentType::Keybind { keybind }
+			ComponentType::Keybind {
+				keybind,
+			}
 		} else if let Some(nbt) = compound.get_string("nbt") {
 			ComponentType::Nbt {
 				nbt,
@@ -507,7 +518,9 @@ impl ComponentType {
 				storage: compound.get_string("storage"),
 			}
 		} else {
-			ComponentType::Text { text: String::new() }
+			ComponentType::Text {
+				text: String::new(),
+			}
 		}
 	}
 
@@ -515,10 +528,16 @@ impl ComponentType {
 	/// into the given NBT compound.
 	fn write_to_compound(self, compound: &mut NbtCompound) {
 		match self {
-			ComponentType::Text { text } => {
+			ComponentType::Text {
+				text,
+			} => {
 				compound.add("text", NbtTag::String(text));
 			}
-			ComponentType::Translatable { translate, fallback, with } => {
+			ComponentType::Translatable {
+				translate,
+				fallback,
+				with,
+			} => {
 				compound.add("type", NbtTag::String("translatable".to_string()));
 				compound.add("translate", NbtTag::String(translate));
 				if let Some(fallback) = fallback {
@@ -531,18 +550,25 @@ impl ComponentType {
 					}
 				}
 			}
-			ComponentType::Score { score } => {
+			ComponentType::Score {
+				score,
+			} => {
 				compound.add("type", NbtTag::String("score".to_string()));
 				compound.add("score", NbtTag::Compound(score.into()));
 			}
-			ComponentType::Selector { selector, separator } => {
+			ComponentType::Selector {
+				selector,
+				separator,
+			} => {
 				compound.add("type", NbtTag::String("selector".to_string()));
 				compound.add("selector", NbtTag::String(selector));
 				if let Some(separator) = separator {
 					compound.add("separator", NbtTag::from(*separator));
 				}
 			}
-			ComponentType::Keybind { keybind } => {
+			ComponentType::Keybind {
+				keybind,
+			} => {
 				compound.add("type", NbtTag::String("keybind".to_string()));
 				compound.add("keybind", NbtTag::String(keybind));
 			}
@@ -622,7 +648,10 @@ pub struct ClickEvent {
 
 impl ClickEvent {
 	fn new<T: Into<String>>(action: T, value: String) -> Self {
-		Self { action: action.into(), value }
+		Self {
+			action: action.into(),
+			value,
+		}
 	}
 
 	pub fn open_url<T: Into<String>>(url: T) -> Self {
@@ -678,7 +707,10 @@ pub struct HoverEvent {
 
 impl HoverEvent {
 	fn new<T: Into<String>>(action: T, contents: HoverComponent) -> Self {
-		Self { action: action.into(), contents }
+		Self {
+			action: action.into(),
+			contents,
+		}
 	}
 
 	pub fn show_text<T: Into<String>>(text: T) -> Self {
@@ -688,7 +720,11 @@ impl HoverEvent {
 	pub fn show_item<T: Into<String>>(id: String, count: i32, tag: Option<String>) -> Self {
 		let s = { if let Some(compound) = tag { compound } else { "".to_string() } };
 
-		let item = ItemHover { id, count, tag: Some(s) };
+		let item = ItemHover {
+			id,
+			count,
+			tag: Some(s),
+		};
 
 		Self::new("show_item", HoverComponent::String(serde_json::to_string(&item).unwrap()))
 	}
@@ -786,8 +822,18 @@ mod tests {
 	#[test]
 	fn json_infers_type_from_content_field() {
 		let cases = [
-			(r#"{"text":"hi"}"#, ComponentType::Text { text: "hi".to_string() }),
-			(r#"{"keybind":"key.jump"}"#, ComponentType::Keybind { keybind: "key.jump".to_string() }),
+			(
+				r#"{"text":"hi"}"#,
+				ComponentType::Text {
+					text: "hi".to_string(),
+				},
+			),
+			(
+				r#"{"keybind":"key.jump"}"#,
+				ComponentType::Keybind {
+					keybind: "key.jump".to_string(),
+				},
+			),
 			(
 				r#"{"selector":"@a","separator":{"text":", "}}"#,
 				ComponentType::Selector {
@@ -837,7 +883,12 @@ mod tests {
 		let json = r#"["first",{"text":"second"},"third"]"#;
 		let parsed: TextComponent = serde_json::from_str(json).unwrap();
 
-		assert_eq!(parsed.content, ComponentType::Text { text: "first".to_string() });
+		assert_eq!(
+			parsed.content,
+			ComponentType::Text {
+				text: "first".to_string()
+			}
+		);
 		assert_eq!(parsed.extra, Some(vec![TextComponent::new("second"), TextComponent::new("third")]));
 	}
 

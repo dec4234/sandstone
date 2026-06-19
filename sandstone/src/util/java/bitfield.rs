@@ -1,4 +1,4 @@
-//! A bit field is a fixed length primitive unsigned or signed integer that packs its data into 
+//! A bit field is a fixed length primitive unsigned or signed integer that packs its data into
 //! individual bits.
 
 use crate::protocol::serialization::McDeserialize;
@@ -10,7 +10,7 @@ use crate::protocol::testing::McDefault;
 use std::ops::{BitAnd, BitOr, Not, Shl, Shr, Sub};
 
 /// A simple bit field internally represented by any primitive signed or unsigned integer.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BitField<T: BitFieldInteger + McSerialize + McDeserialize> {
 	bits: T,
 }
@@ -18,7 +18,9 @@ pub struct BitField<T: BitFieldInteger + McSerialize + McDeserialize> {
 impl<T: BitFieldInteger + McSerialize + McDeserialize> BitField<T> {
 	/// Create a new BitField with the given starting value.
 	pub fn new(start: T) -> Self {
-		Self { bits: start }
+		Self {
+			bits: start,
+		}
 	}
 
 	/// Get the bit at a paritcular index in the BitField
@@ -28,7 +30,7 @@ impl<T: BitFieldInteger + McSerialize + McDeserialize> BitField<T> {
 	}
 
 	/// Set the bit at a particular location.
-	/// 
+	///
 	/// # Parameters
 	/// - value: true to set the bit to 1, false to set the bit to 0
 	pub fn set_bit(&mut self, index: usize, value: bool) {
@@ -56,7 +58,7 @@ impl<T: BitFieldInteger + McSerialize + McDeserialize> BitField<T> {
 	}
 
 	/// Given a particular start and end index, slice the bitfield into a sub-bitfield.
-	/// 
+	///
 	/// # Parameters
 	/// - start: The starting index (inclusive)
 	/// - end: The ending index (exclusive)
@@ -68,23 +70,25 @@ impl<T: BitFieldInteger + McSerialize + McDeserialize> BitField<T> {
 	}
 }
 
-impl <T: BitFieldInteger + McSerialize + McDeserialize> McSerialize for BitField<T> {
+impl<T: BitFieldInteger + McSerialize + McDeserialize> McSerialize for BitField<T> {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		self.bits.mc_serialize(serializer)?;
-		
+
 		Ok(())
 	}
 }
 
-impl <'a, T: BitFieldInteger + McSerialize + McDeserialize> McDeserialize for BitField<T> {
+impl<'a, T: BitFieldInteger + McSerialize + McDeserialize> McDeserialize for BitField<T> {
 	fn mc_deserialize(deserializer: &mut McDeserializer) -> SerializingResult<'a, BitField<T>> {
 		let bits = T::mc_deserialize(deserializer)?;
-		
-		Ok(Self { bits })
+
+		Ok(Self {
+			bits,
+		})
 	}
 }
 
-impl <T: BitFieldInteger + McSerialize + McDeserialize + McDefault> McDefault for BitField<T> {
+impl<T: BitFieldInteger + McSerialize + McDeserialize + McDefault> McDefault for BitField<T> {
 	fn mc_default() -> Self {
 		BitField::new(T::mc_default())
 	}
@@ -148,16 +152,7 @@ macro_rules! bitflag {
 }
 
 /// A number that can be used for a fixed-length bit field.
-pub trait BitFieldInteger:
-Copy
-+ PartialEq
-+ BitAnd<Output = Self>
-+ BitOr<Output = Self>
-+ Not<Output = Self>
-+ Shl<usize, Output = Self>
-+ Shr<usize, Output = Self>
-+ Sub<Output = Self>
-{
+pub trait BitFieldInteger: Copy + PartialEq + BitAnd<Output = Self> + BitOr<Output = Self> + Not<Output = Self> + Shl<usize, Output = Self> + Shr<usize, Output = Self> + Sub<Output = Self> {
 	fn zero() -> Self;
 	fn one() -> Self;
 	fn max_value() -> Self;
@@ -211,10 +206,8 @@ mod test {
 	// a wrong index would silently corrupt the wire format, so assert the raw bits directly.
 	#[test]
 	fn test_bitflag_macro() {
-		use crate::protocol::serialization::{
-			McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult,
-		};
 		use crate::protocol::serialization::serializer_error::SerializingErr;
+		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 		use crate::protocol::testing::McDefault;
 		use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
@@ -239,6 +232,3 @@ mod test {
 		assert_eq!(f.c(), false);
 	}
 }
-
-
-

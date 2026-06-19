@@ -24,16 +24,16 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::AsNbt;
 use sandstone_derive::{FromNbt, McDefault, McSerialize};
 
+pub mod registry_components;
 pub mod registry_default;
 pub mod registry_generator;
-pub mod registry_components;
 
 #[derive(McDefault, Debug, Clone, PartialEq)]
 pub struct RegistryDataPacketInternal {
 	/// The registry type this data is for, e.g. "minecraft:dimension_type"
 	pub registry_id: String,
 	pub num_entries: VarInt, // can't use PrefixedArray because we have custom deserialization
-	pub entries: Vec<RegistryEntry>
+	pub entries: Vec<RegistryEntry>,
 }
 
 impl McSerialize for RegistryDataPacketInternal {
@@ -47,7 +47,10 @@ impl McSerialize for RegistryDataPacketInternal {
 
 impl McDeserialize for RegistryDataPacketInternal {
 	/// Deserialize the registry data packet according to the number of entries specified.
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let id = String::mc_deserialize(deserializer)?;
 		let num_entries = VarInt::mc_deserialize(deserializer)?;
 
@@ -92,10 +95,7 @@ impl RegistryEntry {
 
 		let data = if is_present {
 			let reg_type = registry_type.clone();
-			let data = RegistryType::deserialize(deserializer, registry_type)
-				.map_err(|e| SerializingErr::DeserializationError(
-					format!("registry '{}', entry '{}': {}", reg_type, id, e)
-				))?;
+			let data = RegistryType::deserialize(deserializer, registry_type).map_err(|e| SerializingErr::DeserializationError(format!("registry '{}', entry '{}': {}", reg_type, id, e)))?;
 			Some(data)
 		} else {
 			None

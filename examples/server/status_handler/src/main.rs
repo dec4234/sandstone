@@ -7,9 +7,7 @@ use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::PacketDirection;
 use sandstone::protocol::packets::StatusResponsePacket;
 use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
-use sandstone::protocol::status::{
-    DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler,
-};
+use sandstone::protocol::status::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 
 /// This demonstrates how to respond to a status request from a client.
@@ -23,37 +21,25 @@ use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 /// The status procedure can be found [here](https://wiki.vg/Server_List_Ping)
 #[tokio::main]
 async fn main() {
-    SimpleLogger::new()
-        .with_level(LevelFilter::Trace)
-        .init()
-        .unwrap();
-    debug!("Starting server");
+	SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();
+	debug!("Starting server");
 
-    let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
+	let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
-    loop {
-        let (socket, _) = server.accept().await.unwrap();
+	loop {
+		let (socket, _) = server.accept().await.unwrap();
 
-        let mut client = CraftConnection::from_connection(socket, PacketDirection::SERVER).unwrap();
+		let mut client = CraftConnection::from_connection(socket, PacketDirection::SERVER).unwrap();
 
-        let mut response = StatusResponseSpec::new(
-            ProtocolVerison::latest(),
-            "&a&lThis is a test description &b§kttt",
-        );
-        response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
+		let mut response = StatusResponseSpec::new(ProtocolVerison::latest(), "&a&lThis is a test description &b§kttt");
+		response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
 
-        let image = image::open("examples/status_handler/src/server-icon.png").unwrap();
-        response.set_favicon_image(image);
+		let image = image::open("examples/status_handler/src/server-icon.png").unwrap();
+		response.set_favicon_image(image);
 
-        DefaultServerHandshakeHandler::handle_handshake(&mut client)
-            .await
-            .unwrap();
-        DefaultServerStatusHandler::handle_status(
-            &mut client,
-            StatusResponsePacket::new(response),
-            DefaultServerPingHandler,
-        )
-        .await
-        .unwrap();
-    }
+		DefaultServerHandshakeHandler::handle_handshake(&mut client).await.unwrap();
+		DefaultServerStatusHandler::handle_status(&mut client, StatusResponsePacket::new(response), DefaultServerPingHandler)
+			.await
+			.unwrap();
+	}
 }

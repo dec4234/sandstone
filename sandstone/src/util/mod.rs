@@ -1,6 +1,5 @@
 //! Important utility functions and macros used throughout the library.
 
-pub(crate) mod threadpool;
 pub mod encryption;
 pub mod java;
 

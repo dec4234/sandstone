@@ -25,7 +25,7 @@ mod test {
 		let mut compound2 = NbtCompound::new::<String>(None);
 		compound2.add("byte", 13i8);
 		compound.add("compound", compound2);
-		
+
 		let mut serializer = McSerializer::new();
 		compound.mc_serialize(&mut serializer).unwrap();
 
@@ -88,7 +88,7 @@ mod test {
 		assert_eq!(outer["mid1"], deserialized["mid1"]);
 		assert_eq!(outer["mid2"], deserialized["mid2"]);
 	}
-	
+
 	/// Test network compound deserialization.
 	#[test]
 	fn test_network() {
@@ -99,13 +99,13 @@ mod test {
 		compound.add("f32", -3.6f32);
 		compound.add("f64", -3.6789f64);
 		compound.add("str", "hello");
-		
+
 		let mut serializer = McSerializer::new();
 		compound.mc_serialize(&mut serializer).unwrap();
 
 		let mut deserializer = McDeserializer::new(&serializer.output);
 		let deserialized = NbtCompound::mc_deserialize(&mut deserializer).unwrap();
-		
+
 		assert_eq!(deserialized["i8"], NbtTag::Byte(123i8));
 		assert_eq!(deserialized["i16"], NbtTag::Short(1234i16));
 		assert_eq!(deserialized["i32"], NbtTag::Int(12345i32));
@@ -113,17 +113,17 @@ mod test {
 		assert_eq!(deserialized["f64"], NbtTag::Double(-3.6789f64));
 		assert_eq!(deserialized["str"], NbtTag::String("hello".to_string()));
 	}
-	
+
 	/// Test how NbtTag::None behaves when serialized and deserialized. It can be present in a compound but
 	/// it should not be included in the serialization output.
 	#[test]
 	fn test_none() {
 		let mut compound = NbtCompound::new(Some("A"));
 		compound.add("none", NbtTag::None);
-		
+
 		assert_eq!(compound["none"], NbtTag::None); // actually mapped to None inside of the compound
 		assert_eq!(compound["abc123"], NbtTag::None); // not because 'None' was added to the compound, but because it returns None when a certain key is not found
-		
+
 		let mut serializer = McSerializer::new();
 		compound.mc_serialize(&mut serializer).unwrap();
 
@@ -132,7 +132,7 @@ mod test {
 			Ok(NbtTag::Compound(c)) => {
 				assert_eq!(c["none"], NbtTag::None);
 				assert_eq!(c["abc123"], NbtTag::None);
-			},
+			}
 			_ => panic!("Expected NbtTag::Compound"),
 		}
 	}
@@ -156,10 +156,10 @@ mod test {
 
 		let as_test = test.as_nbt();
 		let nbt: NbtCompound = test.into();
-		
+
 		assert_eq!(as_test, nbt);
 	}
-	
+
 	/// Test that a struct can be converted into an NbtCompound using the `as_nbt` function.
 	#[test]
 	fn test_as_nbt() {
@@ -180,7 +180,7 @@ mod test {
 	#[test]
 	fn test_from_nbt() {
 		let mut nbt = NbtCompound::new(Some("Test"));
-		
+
 		nbt.add("a", NbtTag::Int(42));
 		nbt.add("b", NbtTag::String("Hello".to_string()));
 		nbt.add("c", NbtTag::Double(3.19));
@@ -198,7 +198,7 @@ mod test {
 		b: Option<String>,
 		c: Option<f64>,
 	}
-	
+
 	/// Test struct with None values to and from NBT.
 	#[test]
 	fn test_simple_none_nbt() {
@@ -207,16 +207,16 @@ mod test {
 			b: None,
 			c: None,
 		};
-		
+
 		let nbt: NbtCompound = test.clone().into();
 		assert_eq!(nbt["a"], NbtTag::Int(0));
 		assert_eq!(nbt["b"], NbtTag::None);
 		assert_eq!(nbt["c"], NbtTag::None);
-		
+
 		let test2: OptionTestStruct = nbt.try_into().unwrap();
 		assert_eq!(test, test2);
 	}
-	
+
 	/// Test for struct with Option fields to and from NBT
 	#[test]
 	fn test_simple_option_nbt() {
@@ -225,12 +225,12 @@ mod test {
 			b: Some("Hello".to_string()),
 			c: Some(2.6),
 		};
-		
+
 		let nbt: NbtCompound = test.clone().into();
 		assert_eq!(nbt["a"], NbtTag::Int(0));
 		assert_eq!(nbt["b"], NbtTag::String("Hello".to_string()));
 		assert_eq!(nbt["c"], NbtTag::Double(2.6));
-		
+
 		let test2: OptionTestStruct = nbt.try_into().unwrap();
 		assert_eq!(test, test2);
 	}
@@ -274,7 +274,16 @@ mod test {
 		let deserialized: Vec<i64> = nbt_list.try_into().unwrap();
 		assert_eq!(deserialized, v);
 
-		let v = vec![ListTestStruct { i: 1, str: "one".to_string() }, ListTestStruct { i: 2, str: "two".to_string() }];
+		let v = vec![
+			ListTestStruct {
+				i: 1,
+				str: "one".to_string(),
+			},
+			ListTestStruct {
+				i: 2,
+				str: "two".to_string(),
+			},
+		];
 		let nbt_list = NbtTag::from(v.clone());
 		let deserialized: Vec<ListTestStruct> = nbt_list.try_into().unwrap();
 		assert_eq!(deserialized, v);

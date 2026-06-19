@@ -1,5 +1,5 @@
 //! Testing Mojang API endpoints and processing.
-//! 
+//!
 //! TODO: Rate limiting issues - can these be fixed to overcome ignoring these tests?
 
 #[cfg(test)]
@@ -73,7 +73,9 @@ mod test {
 	#[ignore]
 	#[tokio::test]
 	pub async fn test_bulk_usernames() {
-		let resp = get_uuids_from_usernames(vec!["Notch".to_string(), "jeb_".to_string(), "dec4234".to_string(), "dinnerbone".to_string()]).await.unwrap();
+		let resp = get_uuids_from_usernames(vec!["Notch".to_string(), "jeb_".to_string(), "dec4234".to_string(), "dinnerbone".to_string()])
+			.await
+			.unwrap();
 
 		assert_eq!(resp.len(), 4);
 		assert_eq!(resp[0].id, "ef39c1973c3d4776a22622096378a966");
@@ -103,7 +105,7 @@ mod test {
 
 		let _texture = response.properties[0].get_skin_details().unwrap();
 	}
-	
+
 	#[ignore]
 	#[tokio::test]
 	pub async fn test_blocked_servers() {

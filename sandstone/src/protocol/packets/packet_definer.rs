@@ -11,49 +11,49 @@ pub enum PacketDirection {
 }
 
 /// Used to help discern the type of packet being received. Note that different states could have
-/// packets with the same ids. 
+/// packets with the same ids.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum PacketState {
 	STATUS,
 	HANDSHAKING,
 	LOGIN,
-    CONFIGURATION,
+	CONFIGURATION,
 	PLAY,
-    TRANSFER // is this actually a distinct state or is it just login
+	TRANSFER, // is this actually a distinct state or is it just login
 }
 
 impl PacketState {
-    /// Converts an u8 to a PacketState. Returns None if the id is unknown.
-    pub fn from_id(id: u8) -> Option<PacketState> {
-        match id {
-            1 => Some(PacketState::STATUS),
-            2 => Some(PacketState::LOGIN),
-            3 => Some(PacketState::TRANSFER),
-            _ => None // others are unknown at this time
-        }
-    }
-    
-    /// Gets the ID of the packet state. Returns None if the state is unknown.
-    pub fn get_id(&self) -> Option<u8> {
-        match self {
-            PacketState::STATUS => Some(1),
-            PacketState::LOGIN => Some(2),
-            PacketState::TRANSFER => Some(3),
-            _ => None
-        }
-    }
+	/// Converts an u8 to a PacketState. Returns None if the id is unknown.
+	pub fn from_id(id: u8) -> Option<PacketState> {
+		match id {
+			1 => Some(PacketState::STATUS),
+			2 => Some(PacketState::LOGIN),
+			3 => Some(PacketState::TRANSFER),
+			_ => None, // others are unknown at this time
+		}
+	}
+
+	/// Gets the ID of the packet state. Returns None if the state is unknown.
+	pub fn get_id(&self) -> Option<u8> {
+		match self {
+			PacketState::STATUS => Some(1),
+			PacketState::LOGIN => Some(2),
+			PacketState::TRANSFER => Some(3),
+			_ => None,
+		}
+	}
 }
 
 #[macro_use]
 mod macros {
-    /// Internal Only. This is the complex macro used to define every packet in the game. First, we it define the packet with all of its fields,
-    /// then it adds it to a central enum. This enum is used to deserialize the raw incoming packets from a connection since otherwise
-    /// we can only determine the packet based on the id and current state of the connection.
-    /// 
-    /// Generally, this is an internal macro, but you may need to work on it in order to change packets around based on
-    /// different game versions. Needless to say, this packet is only used for a single Minecraft version at a time.
-    #[macro_export]
-    macro_rules! packets {
+	/// Internal Only. This is the complex macro used to define every packet in the game. First, we it define the packet with all of its fields,
+	/// then it adds it to a central enum. This enum is used to deserialize the raw incoming packets from a connection since otherwise
+	/// we can only determine the packet based on the id and current state of the connection.
+	///
+	/// Generally, this is an internal macro, but you may need to work on it in order to change packets around based on
+	/// different game versions. Needless to say, this packet is only used for a single Minecraft version at a time.
+	#[macro_export]
+	macro_rules! packets {
         ($ref_ver: ident => {
             // These are split into multiple levels to allow for more efficient deserialization
             $($state: ident => {
@@ -193,14 +193,14 @@ mod macros {
             } // end paste
         };
     }
-    
-    #[macro_export]
-    macro_rules! pac {
+
+	#[macro_export]
+	macro_rules! pac {
         ($stru: ident => {
             ($state: ident) => {
                 $($name: ident, $name_body: ident, $packetID: literal => {
                     $($field: ident: $t: ty),*
-                }),* 
+                }),*
             },*
         }) => {
             $(
@@ -210,7 +210,7 @@ mod macros {
                 }
                 )*
             )*
-            
+
             pub enum stru {
                 $(
                     $(
@@ -218,19 +218,19 @@ mod macros {
                     )*
                 )*
             }
-            
+
             impl stru {
                 pub fn here() {
-                    
+
                 }
             }
         }
     }
 
-    /// Defines the structs for some fields for packets. This is most frequently used for nested
-    /// fields without the use of Optional<T>
-    #[macro_export]
-    macro_rules! component_struct {
+	/// Defines the structs for some fields for packets. This is most frequently used for nested
+	/// fields without the use of Optional<T>
+	#[macro_export]
+	macro_rules! component_struct {
         ($name: ident => {
             $($field: ident: $t: ty),*
         }) => {

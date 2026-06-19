@@ -49,20 +49,20 @@ pub struct LoginCookieResponseSpec {
 pub struct ResourcePackEntry {
 	pub namespace: String,
 	pub id: String,
-	pub version: String
+	pub version: String,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct Tag {
 	pub identifier: String,
-	pub entries: PrefixedArray<VarInt>
+	pub entries: PrefixedArray<VarInt>,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ProtocolPropertyElement {
 	pub name: String,
 	pub value: String,
-	pub signature: PrefixedOptional<String>
+	pub signature: PrefixedOptional<String>,
 }
 
 bitflag!(PlayerAbilityFlags: u8 {
@@ -72,7 +72,7 @@ bitflag!(PlayerAbilityFlags: u8 {
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PropertySet {
 	pub identifier: String,
-	pub items: PrefixedArray<VarInt>
+	pub items: PrefixedArray<VarInt>,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
@@ -88,7 +88,7 @@ pub struct RecipeBookEntry {
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct StonecutterRecipe {
 	pub id_set: IDSet,
-	pub slot_display: SlotDisplay
+	pub slot_display: SlotDisplay,
 }
 
 impl McDefault for StonecutterRecipe {
@@ -99,7 +99,7 @@ impl McDefault for StonecutterRecipe {
 				tag_name: None,
 				ids: Some(vec![VarInt(0), VarInt(1), VarInt(2)]),
 			},
-			slot_display: SlotDisplay::Empty
+			slot_display: SlotDisplay::Empty,
 		}
 	}
 }
@@ -127,14 +127,14 @@ pub enum GameEventType {
 pub struct AttributeProperty {
 	pub id: VarInt,
 	pub value: f64,
-	pub modifiers: PrefixedArray<ModifierData>
+	pub modifiers: PrefixedArray<ModifierData>,
 }
 
 #[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
 pub struct ModifierData {
 	pub id: String,
 	pub amount: f64,
-	pub operation: ModifierOperation
+	pub operation: ModifierOperation,
 }
 
 #[derive(TypeEnum, McDefault, Debug, Clone, PartialEq)]
@@ -179,7 +179,7 @@ impl McSerialize for EquipmentList {
 impl McDeserialize for EquipmentList {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
 	where
-		Self: Sized
+		Self: Sized,
 	{
 		let mut entries = Vec::new();
 		loop {
@@ -190,13 +190,18 @@ impl McDeserialize for EquipmentList {
 			let slot = EquipmentSlot::from_value(slot_byte)?;
 			let item = SlotData::mc_deserialize(deserializer)?;
 
-			entries.push(EquipmentEntry { slot, item });
+			entries.push(EquipmentEntry {
+				slot,
+				item,
+			});
 
 			if !has_next {
 				break;
 			}
 		}
-		Ok(Self { entries })
+		Ok(Self {
+			entries,
+		})
 	}
 }
 
@@ -249,13 +254,13 @@ pub enum InteractType {
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 pub enum InteractHand {
 	Main = 0,
-	OffHand = 1
+	OffHand = 1,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct CustomReportDetails {
 	pub title: String,
-	pub description: String
+	pub description: String,
 }
 
 /// A single entry in the Server Links packet. The label is a discriminated union: the
@@ -268,7 +273,7 @@ pub struct ServerLink {
 	pub built_in_label: Option<ServerLinkStandardLabel>,
 	#[mc(deserialize_if = !is_built_in)]
 	pub custom_label: Option<TextComponent>,
-	pub url: String
+	pub url: String,
 }
 
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
@@ -283,14 +288,14 @@ pub enum ServerLinkStandardLabel {
 	Website = 6,
 	Forums = 7,
 	News = 8,
-	Announcements = 9
+	Announcements = 9,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct StatisticAward {
 	pub category: StatCategory,
 	pub stat_id: StatID,
-	pub value: VarInt
+	pub value: VarInt,
 }
 
 /// Statistic categories defined in the `minecraft:stat_type` registry. Each category determines
@@ -398,7 +403,7 @@ pub enum BossBarUpdateAction {
 		health: f32,
 		color: BossBarColor,
 		division: BossBarDivisions,
-		flags: BossBarFlags
+		flags: BossBarFlags,
 	} = 0,
 	Remove = 1,
 	UpdateHealth {
@@ -409,11 +414,11 @@ pub enum BossBarUpdateAction {
 	} = 3,
 	UpdateStyle {
 		color: BossBarColor,
-		dividers: BossBarDivisions
+		dividers: BossBarDivisions,
 	} = 4,
 	UpdateFlags {
-		flags: BossBarFlags
-	} = 5
+		flags: BossBarFlags,
+	} = 5,
 }
 
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
@@ -433,7 +438,7 @@ pub enum BossBarDivisions {
 	SixNotches = 1,
 	TenNotches = 2,
 	TwelveNotches = 3,
-	TwentyNotches = 4
+	TwentyNotches = 4,
 }
 
 bitflag!(BossBarFlags: u8 {
@@ -451,5 +456,5 @@ pub struct ChunkBiomeData {
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct TooltipMatch {
 	pub matc: String,
-	pub tooltip: PrefixedOptional<TextComponent>
+	pub tooltip: PrefixedOptional<TextComponent>,
 }

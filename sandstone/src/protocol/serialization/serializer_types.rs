@@ -22,13 +22,17 @@ impl McDeserialize for String {
 		let bounds: (usize, usize) = (deserializer.index, deserializer.index + var_output.0 as usize);
 
 		if bounds.1 > deserializer.data.len() {
-			return Err(SerializingErr::OutOfBounds(format!("String length prefix of {} exceeds remaining input length of {}", var_output.0, deserializer.data.len() - deserializer.index)));
+			return Err(SerializingErr::OutOfBounds(format!(
+				"String length prefix of {} exceeds remaining input length of {}",
+				var_output.0,
+				deserializer.data.len() - deserializer.index
+			)));
 		}
 
 		let s = String::from_utf8(deserializer.data[bounds.0..bounds.1].to_vec())?;
 
 		deserializer.increment(var_output.0 as usize); // length of string
-		
+
 		Ok(s)
 	}
 }
@@ -43,8 +47,8 @@ impl McSerialize for bool {
 	/// Serializes a bool as a single byte, 1 for true and 0 for false.
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match *self {
-			true => {serializer.serialize_u8(1)}
-			false => {serializer.serialize_u8(0)}
+			true => serializer.serialize_u8(1),
+			false => serializer.serialize_u8(0),
 		}
 
 		Ok(())
@@ -56,9 +60,9 @@ impl McDeserialize for bool {
 		let b = u8::mc_deserialize(deserializer)?;
 
 		match b {
-			0 => {Ok(false)},
-			1 => {Ok(true)},
-			_ => {Err(SerializingErr::UniqueFailure("Byte received does not match any bool value.".to_string()))}
+			0 => Ok(false),
+			1 => Ok(true),
+			_ => Err(SerializingErr::UniqueFailure("Byte received does not match any bool value.".to_string())),
 		}
 	}
 }
@@ -96,7 +100,7 @@ mod macros {
 					if deserializer.index + length > deserializer.data.len() {
 						return Err(SerializingErr::InputEnded);
 					}
-					
+
                     let split = deserializer.data[deserializer.index..].split_at(length);
 
                     let b = <$t>::from_be_bytes(split.0.try_into()?);
@@ -113,7 +117,10 @@ mod macros {
 
 impl<T: McSerialize> McSerialize for Vec<T> {
 	/// Serialize the contents of the Vec<T> to the serializer without any length prefix.
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()>
+	where
+		T: McSerialize,
+	{
 		for item in self {
 			item.mc_serialize(serializer)?;
 		}
@@ -124,7 +131,11 @@ impl<T: McSerialize> McSerialize for Vec<T> {
 
 impl<T: McDeserialize> McDeserialize for Vec<T> {
 	/// Deserializes a Vec<T> from the deserializer until the end of the input is reached.
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+		T: McDeserialize,
+	{
 		let mut vec = vec![];
 
 		while !deserializer.is_at_end() {
@@ -135,10 +146,12 @@ impl<T: McDeserialize> McDeserialize for Vec<T> {
 	}
 }
 
-
 impl<T: McSerialize> McSerialize for Option<T> {
 	/// Ensure that you mean to use this rather than a [PrefixedOptional<T>] This is a simple serialization
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()>
+	where
+		T: McSerialize,
+	{
 		if let Some(item) = self {
 			item.mc_serialize(serializer)?;
 		}
@@ -149,33 +162,44 @@ impl<T: McSerialize> McSerialize for Option<T> {
 
 impl<T: McDeserialize> McDeserialize for Option<T> {
 	/// Ensure that you mean to use this rather than a [PrefixedOptional<T>].
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+		T: McDeserialize,
+	{
 		if deserializer.is_at_end() {
 			return Ok(None);
 		}
-		
+
 		Ok(Some(T::mc_deserialize(deserializer)?))
 	}
 }
 
 // not sure if this will ever be needed, but it's nice to have
 impl<T: McSerialize> McSerialize for Box<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()>
+	where
+		T: McSerialize,
+	{
 		(**self).mc_serialize(serializer)
 	}
 }
 
 impl<T: McDeserialize> McDeserialize for Box<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+		T: McDeserialize,
+	{
 		Ok(Box::new(T::mc_deserialize(deserializer)?))
 	}
 }
 
 /// # PrefixedArray (Protocol Type)
 /// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array.
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub struct PrefixedArray<T: McSerialize + McDeserialize> {
-	pub(crate) vec: Vec<T>
+	pub(crate) vec: Vec<T>,
 }
 
 impl<T: McDeserialize + McSerialize> PrefixedArray<T> {
@@ -187,13 +211,16 @@ impl<T: McDeserialize + McSerialize> PrefixedArray<T> {
 impl<T: McSerialize + McDeserialize> PrefixedArray<T> {
 	pub fn new(vec: Vec<T>) -> Self {
 		Self {
-			vec
+			vec,
 		}
 	}
 }
 
 impl<T: McSerialize + McDeserialize> McSerialize for PrefixedArray<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()>
+	where
+		T: McSerialize,
+	{
 		VarInt(self.vec.len() as i32).mc_serialize(serializer)?;
 		for item in &self.vec {
 			item.mc_serialize(serializer)?;
@@ -204,7 +231,11 @@ impl<T: McSerialize + McDeserialize> McSerialize for PrefixedArray<T> {
 }
 
 impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+		T: McDeserialize,
+	{
 		let var_output = VarInt::mc_deserialize(deserializer)?;
 		let mut vec = Vec::with_capacity(var_output.0 as usize);
 
@@ -222,7 +253,7 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrefixedOptional<T: McSerialize + McDeserialize> {
 	pub(crate) is_present: bool,
-	pub(crate) value: Option<T>
+	pub(crate) value: Option<T>,
 }
 
 impl<T: McDeserialize + McSerialize> PrefixedOptional<T> {
@@ -241,13 +272,16 @@ impl<T: McSerialize + McDeserialize> PrefixedOptional<T> {
 		let is_present = value.is_some();
 		Self {
 			is_present,
-			value
+			value,
 		}
 	}
 }
 
 impl<T: McSerialize + McDeserialize> McSerialize for PrefixedOptional<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> where T: McSerialize {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()>
+	where
+		T: McSerialize,
+	{
 		if self.is_present {
 			serializer.serialize_u8(1);
 			self.value.as_ref().unwrap().mc_serialize(serializer)?;
@@ -260,27 +294,27 @@ impl<T: McSerialize + McDeserialize> McSerialize for PrefixedOptional<T> {
 }
 
 impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedOptional<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized, T: McDeserialize {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+		T: McDeserialize,
+	{
 		let is_present = u8::mc_deserialize(deserializer)? == 1;
 
-		let value = if is_present {
-			Some(T::mc_deserialize(deserializer)?)
-		} else {
-			None
-		};
+		let value = if is_present { Some(T::mc_deserialize(deserializer)?) } else { None };
 
 		Ok(PrefixedOptional {
 			is_present,
-			value
+			value,
 		})
 	}
 }
 
-impl <T: McSerialize + McDeserialize + McDefault> McDefault for PrefixedOptional<T> {
+impl<T: McSerialize + McDeserialize + McDefault> McDefault for PrefixedOptional<T> {
 	fn mc_default() -> Self {
 		PrefixedOptional {
 			is_present: true,
-			value: Some(T::mc_default())
+			value: Some(T::mc_default()),
 		}
 	}
 }

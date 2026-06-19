@@ -14,11 +14,14 @@ pub struct Node {
 	pub redirect_node: Option<VarInt>,
 	pub name: Option<String>,
 	pub parser: Option<Parser>,
-	pub suggestions: Option<String>
+	pub suggestions: Option<String>,
 }
 
 impl McDeserialize for Node {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized{
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let flags = NodeFlags::mc_deserialize(deserializer)?;
 		let children_count = VarInt::mc_deserialize(deserializer)?;
 
@@ -58,7 +61,7 @@ impl McDeserialize for Node {
 			redirect_node,
 			name,
 			parser,
-			suggestions
+			suggestions,
 		})
 	}
 }
@@ -70,7 +73,7 @@ pub struct NodeFlags {
 	pub is_executable: bool,
 	pub has_redirect: bool,
 	pub has_suggestions: bool,
-	pub is_restricted: bool
+	pub is_restricted: bool,
 }
 
 impl NodeFlags {
@@ -87,7 +90,7 @@ impl NodeFlags {
 			is_executable: (byte & 0x04) != 0,
 			has_redirect: (byte & 0x08) != 0,
 			has_suggestions: (byte & 0x10) != 0,
-			is_restricted: (byte & 0x20) != 0
+			is_restricted: (byte & 0x20) != 0,
 		})
 	}
 
@@ -95,7 +98,7 @@ impl NodeFlags {
 		let mut byte = match self.typ {
 			NodeType::Root => 0,
 			NodeType::Literal => 1,
-			NodeType::Argument => 2
+			NodeType::Argument => 2,
 		};
 		if self.is_executable {
 			byte |= 0x04;
@@ -120,7 +123,10 @@ impl McSerialize for NodeFlags {
 }
 
 impl McDeserialize for NodeFlags {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		Self::from_byte(u8::mc_deserialize(deserializer)?)
 	}
 }
@@ -196,57 +202,105 @@ pub enum Parser {
 
 fn deserialize_number_range_f32<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (u8, Option<f32>, Option<f32>)> {
 	let flags = u8::mc_deserialize(deserializer)?;
-	let min = if flags & 0x01 != 0 { Some(f32::mc_deserialize(deserializer)?) } else { None };
-	let max = if flags & 0x02 != 0 { Some(f32::mc_deserialize(deserializer)?) } else { None };
+	let min = if flags & 0x01 != 0 {
+		Some(f32::mc_deserialize(deserializer)?)
+	} else {
+		None
+	};
+	let max = if flags & 0x02 != 0 {
+		Some(f32::mc_deserialize(deserializer)?)
+	} else {
+		None
+	};
 	Ok((flags, min, max))
 }
 
 fn serialize_number_range_f32(flags: u8, min: &Option<f32>, max: &Option<f32>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
 	flags.mc_serialize(serializer)?;
-	if let Some(v) = min { v.mc_serialize(serializer)?; }
-	if let Some(v) = max { v.mc_serialize(serializer)?; }
+	if let Some(v) = min {
+		v.mc_serialize(serializer)?;
+	}
+	if let Some(v) = max {
+		v.mc_serialize(serializer)?;
+	}
 	Ok(())
 }
 
 fn deserialize_number_range_f64<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (u8, Option<f64>, Option<f64>)> {
 	let flags = u8::mc_deserialize(deserializer)?;
-	let min = if flags & 0x01 != 0 { Some(f64::mc_deserialize(deserializer)?) } else { None };
-	let max = if flags & 0x02 != 0 { Some(f64::mc_deserialize(deserializer)?) } else { None };
+	let min = if flags & 0x01 != 0 {
+		Some(f64::mc_deserialize(deserializer)?)
+	} else {
+		None
+	};
+	let max = if flags & 0x02 != 0 {
+		Some(f64::mc_deserialize(deserializer)?)
+	} else {
+		None
+	};
 	Ok((flags, min, max))
 }
 
 fn serialize_number_range_f64(flags: u8, min: &Option<f64>, max: &Option<f64>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
 	flags.mc_serialize(serializer)?;
-	if let Some(v) = min { v.mc_serialize(serializer)?; }
-	if let Some(v) = max { v.mc_serialize(serializer)?; }
+	if let Some(v) = min {
+		v.mc_serialize(serializer)?;
+	}
+	if let Some(v) = max {
+		v.mc_serialize(serializer)?;
+	}
 	Ok(())
 }
 
 fn deserialize_number_range_i32<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (u8, Option<i32>, Option<i32>)> {
 	let flags = u8::mc_deserialize(deserializer)?;
-	let min = if flags & 0x01 != 0 { Some(i32::mc_deserialize(deserializer)?) } else { None };
-	let max = if flags & 0x02 != 0 { Some(i32::mc_deserialize(deserializer)?) } else { None };
+	let min = if flags & 0x01 != 0 {
+		Some(i32::mc_deserialize(deserializer)?)
+	} else {
+		None
+	};
+	let max = if flags & 0x02 != 0 {
+		Some(i32::mc_deserialize(deserializer)?)
+	} else {
+		None
+	};
 	Ok((flags, min, max))
 }
 
 fn serialize_number_range_i32(flags: u8, min: &Option<i32>, max: &Option<i32>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
 	flags.mc_serialize(serializer)?;
-	if let Some(v) = min { v.mc_serialize(serializer)?; }
-	if let Some(v) = max { v.mc_serialize(serializer)?; }
+	if let Some(v) = min {
+		v.mc_serialize(serializer)?;
+	}
+	if let Some(v) = max {
+		v.mc_serialize(serializer)?;
+	}
 	Ok(())
 }
 
 fn deserialize_number_range_i64<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (u8, Option<i64>, Option<i64>)> {
 	let flags = u8::mc_deserialize(deserializer)?;
-	let min = if flags & 0x01 != 0 { Some(i64::mc_deserialize(deserializer)?) } else { None };
-	let max = if flags & 0x02 != 0 { Some(i64::mc_deserialize(deserializer)?) } else { None };
+	let min = if flags & 0x01 != 0 {
+		Some(i64::mc_deserialize(deserializer)?)
+	} else {
+		None
+	};
+	let max = if flags & 0x02 != 0 {
+		Some(i64::mc_deserialize(deserializer)?)
+	} else {
+		None
+	};
 	Ok((flags, min, max))
 }
 
 fn serialize_number_range_i64(flags: u8, min: &Option<i64>, max: &Option<i64>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
 	flags.mc_serialize(serializer)?;
-	if let Some(v) = min { v.mc_serialize(serializer)?; }
-	if let Some(v) = max { v.mc_serialize(serializer)?; }
+	if let Some(v) = min {
+		v.mc_serialize(serializer)?;
+	}
+	if let Some(v) = max {
+		v.mc_serialize(serializer)?;
+	}
 	Ok(())
 }
 
@@ -254,30 +308,46 @@ impl McSerialize for Parser {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match self {
 			Parser::BrigadierBool => VarInt(0).mc_serialize(serializer)?,
-			Parser::BrigadierFloat { flags, min, max } => {
+			Parser::BrigadierFloat {
+				flags,
+				min,
+				max,
+			} => {
 				VarInt(1).mc_serialize(serializer)?;
 				serialize_number_range_f32(*flags, min, max, serializer)?;
-			},
-			Parser::BrigadierDouble { flags, min, max } => {
+			}
+			Parser::BrigadierDouble {
+				flags,
+				min,
+				max,
+			} => {
 				VarInt(2).mc_serialize(serializer)?;
 				serialize_number_range_f64(*flags, min, max, serializer)?;
-			},
-			Parser::BrigadierInteger { flags, min, max } => {
+			}
+			Parser::BrigadierInteger {
+				flags,
+				min,
+				max,
+			} => {
 				VarInt(3).mc_serialize(serializer)?;
 				serialize_number_range_i32(*flags, min, max, serializer)?;
-			},
-			Parser::BrigadierLong { flags, min, max } => {
+			}
+			Parser::BrigadierLong {
+				flags,
+				min,
+				max,
+			} => {
 				VarInt(4).mc_serialize(serializer)?;
 				serialize_number_range_i64(*flags, min, max, serializer)?;
-			},
+			}
 			Parser::BrigadierString(behavior) => {
 				VarInt(5).mc_serialize(serializer)?;
 				behavior.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftEntity(flags) => {
 				VarInt(6).mc_serialize(serializer)?;
 				flags.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftGameProfile => VarInt(7).mc_serialize(serializer)?,
 			Parser::MinecraftBlockPos => VarInt(8).mc_serialize(serializer)?,
 			Parser::MinecraftColumnPos => VarInt(9).mc_serialize(serializer)?,
@@ -305,7 +375,7 @@ impl McSerialize for Parser {
 			Parser::MinecraftScoreHolder(flags) => {
 				VarInt(31).mc_serialize(serializer)?;
 				flags.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftSwizzle => VarInt(32).mc_serialize(serializer)?,
 			Parser::MinecraftTeam => VarInt(33).mc_serialize(serializer)?,
 			Parser::MinecraftItemSlot => VarInt(34).mc_serialize(serializer)?,
@@ -320,27 +390,27 @@ impl McSerialize for Parser {
 			Parser::MinecraftTime(min) => {
 				VarInt(43).mc_serialize(serializer)?;
 				min.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftResourceOrTag(registry) => {
 				VarInt(44).mc_serialize(serializer)?;
 				registry.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftResourceOrTagKey(registry) => {
 				VarInt(45).mc_serialize(serializer)?;
 				registry.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftResource(registry) => {
 				VarInt(46).mc_serialize(serializer)?;
 				registry.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftResourceKey(registry) => {
 				VarInt(47).mc_serialize(serializer)?;
 				registry.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftResourceSelector(registry) => {
 				VarInt(48).mc_serialize(serializer)?;
 				registry.mc_serialize(serializer)?;
-			},
+			}
 			Parser::MinecraftTemplateMirror => VarInt(49).mc_serialize(serializer)?,
 			Parser::MinecraftTemplateRotation => VarInt(50).mc_serialize(serializer)?,
 			Parser::MinecraftHeightmap => VarInt(51).mc_serialize(serializer)?,
@@ -355,26 +425,45 @@ impl McSerialize for Parser {
 }
 
 impl McDeserialize for Parser {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let id = VarInt::mc_deserialize(deserializer)?.0;
 		match id {
 			0 => Ok(Parser::BrigadierBool),
 			1 => {
 				let (flags, min, max) = deserialize_number_range_f32(deserializer)?;
-				Ok(Parser::BrigadierFloat { flags, min, max })
-			},
+				Ok(Parser::BrigadierFloat {
+					flags,
+					min,
+					max,
+				})
+			}
 			2 => {
 				let (flags, min, max) = deserialize_number_range_f64(deserializer)?;
-				Ok(Parser::BrigadierDouble { flags, min, max })
-			},
+				Ok(Parser::BrigadierDouble {
+					flags,
+					min,
+					max,
+				})
+			}
 			3 => {
 				let (flags, min, max) = deserialize_number_range_i32(deserializer)?;
-				Ok(Parser::BrigadierInteger { flags, min, max })
-			},
+				Ok(Parser::BrigadierInteger {
+					flags,
+					min,
+					max,
+				})
+			}
 			4 => {
 				let (flags, min, max) = deserialize_number_range_i64(deserializer)?;
-				Ok(Parser::BrigadierLong { flags, min, max })
-			},
+				Ok(Parser::BrigadierLong {
+					flags,
+					min,
+					max,
+				})
+			}
 			5 => Ok(Parser::BrigadierString(VarInt::mc_deserialize(deserializer)?)),
 			6 => Ok(Parser::MinecraftEntity(u8::mc_deserialize(deserializer)?)),
 			7 => Ok(Parser::MinecraftGameProfile),
@@ -427,7 +516,7 @@ impl McDeserialize for Parser {
 			54 => Ok(Parser::MinecraftLootModifier),
 			55 => Ok(Parser::MinecraftDialog),
 			56 => Ok(Parser::MinecraftUuid),
-			_ => Err(SerializingErr::DeserializationError(format!("Invalid parser ID: '{}'", id)))
+			_ => Err(SerializingErr::DeserializationError(format!("Invalid parser ID: '{}'", id))),
 		}
 	}
 }
@@ -442,26 +531,42 @@ impl Hash for Parser {
 	fn hash<H: Hasher>(&self, state: &mut H) {
 		core::mem::discriminant(self).hash(state);
 		match self {
-			Parser::BrigadierFloat { flags, min, max } => {
+			Parser::BrigadierFloat {
+				flags,
+				min,
+				max,
+			} => {
 				flags.hash(state);
 				min.map(|v| v.to_bits()).hash(state);
 				max.map(|v| v.to_bits()).hash(state);
-			},
-			Parser::BrigadierDouble { flags, min, max } => {
+			}
+			Parser::BrigadierDouble {
+				flags,
+				min,
+				max,
+			} => {
 				flags.hash(state);
 				min.map(|v| v.to_bits()).hash(state);
 				max.map(|v| v.to_bits()).hash(state);
-			},
-			Parser::BrigadierInteger { flags, min, max } => {
+			}
+			Parser::BrigadierInteger {
+				flags,
+				min,
+				max,
+			} => {
 				flags.hash(state);
 				min.hash(state);
 				max.hash(state);
-			},
-			Parser::BrigadierLong { flags, min, max } => {
+			}
+			Parser::BrigadierLong {
+				flags,
+				min,
+				max,
+			} => {
 				flags.hash(state);
 				min.hash(state);
 				max.hash(state);
-			},
+			}
 			Parser::BrigadierString(v) => v.hash(state),
 			Parser::MinecraftEntity(v) => v.hash(state),
 			Parser::MinecraftScoreHolder(v) => v.hash(state),
@@ -479,18 +584,54 @@ impl Hash for Parser {
 impl PartialEq for Parser {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
-			(Parser::BrigadierFloat { flags: f1, min: mn1, max: mx1 }, Parser::BrigadierFloat { flags: f2, min: mn2, max: mx2 }) => {
-				f1 == f2 && mn1.map(|v| v.to_bits()) == mn2.map(|v| v.to_bits()) && mx1.map(|v| v.to_bits()) == mx2.map(|v| v.to_bits())
-			},
-			(Parser::BrigadierDouble { flags: f1, min: mn1, max: mx1 }, Parser::BrigadierDouble { flags: f2, min: mn2, max: mx2 }) => {
-				f1 == f2 && mn1.map(|v| v.to_bits()) == mn2.map(|v| v.to_bits()) && mx1.map(|v| v.to_bits()) == mx2.map(|v| v.to_bits())
-			},
-			(Parser::BrigadierInteger { flags: f1, min: mn1, max: mx1 }, Parser::BrigadierInteger { flags: f2, min: mn2, max: mx2 }) => {
-				f1 == f2 && mn1 == mn2 && mx1 == mx2
-			},
-			(Parser::BrigadierLong { flags: f1, min: mn1, max: mx1 }, Parser::BrigadierLong { flags: f2, min: mn2, max: mx2 }) => {
-				f1 == f2 && mn1 == mn2 && mx1 == mx2
-			},
+			(
+				Parser::BrigadierFloat {
+					flags: f1,
+					min: mn1,
+					max: mx1,
+				},
+				Parser::BrigadierFloat {
+					flags: f2,
+					min: mn2,
+					max: mx2,
+				},
+			) => f1 == f2 && mn1.map(|v| v.to_bits()) == mn2.map(|v| v.to_bits()) && mx1.map(|v| v.to_bits()) == mx2.map(|v| v.to_bits()),
+			(
+				Parser::BrigadierDouble {
+					flags: f1,
+					min: mn1,
+					max: mx1,
+				},
+				Parser::BrigadierDouble {
+					flags: f2,
+					min: mn2,
+					max: mx2,
+				},
+			) => f1 == f2 && mn1.map(|v| v.to_bits()) == mn2.map(|v| v.to_bits()) && mx1.map(|v| v.to_bits()) == mx2.map(|v| v.to_bits()),
+			(
+				Parser::BrigadierInteger {
+					flags: f1,
+					min: mn1,
+					max: mx1,
+				},
+				Parser::BrigadierInteger {
+					flags: f2,
+					min: mn2,
+					max: mx2,
+				},
+			) => f1 == f2 && mn1 == mn2 && mx1 == mx2,
+			(
+				Parser::BrigadierLong {
+					flags: f1,
+					min: mn1,
+					max: mx1,
+				},
+				Parser::BrigadierLong {
+					flags: f2,
+					min: mn2,
+					max: mx2,
+				},
+			) => f1 == f2 && mn1 == mn2 && mx1 == mx2,
 			(Parser::BrigadierString(a), Parser::BrigadierString(b)) => a == b,
 			(Parser::MinecraftEntity(a), Parser::MinecraftEntity(b)) => a == b,
 			(Parser::MinecraftScoreHolder(a), Parser::MinecraftScoreHolder(b)) => a == b,
@@ -500,7 +641,7 @@ impl PartialEq for Parser {
 			(Parser::MinecraftResource(a), Parser::MinecraftResource(b)) => a == b,
 			(Parser::MinecraftResourceKey(a), Parser::MinecraftResourceKey(b)) => a == b,
 			(Parser::MinecraftResourceSelector(a), Parser::MinecraftResourceSelector(b)) => a == b,
-			_ => core::mem::discriminant(self) == core::mem::discriminant(other)
+			_ => core::mem::discriminant(self) == core::mem::discriminant(other),
 		}
 	}
 }

@@ -81,7 +81,7 @@ pub struct BiomeMood {
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct BiomeMusicData {
 	pub data: BiomeMusic,
-	pub weight: i32
+	pub weight: i32,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
@@ -95,19 +95,19 @@ pub struct BiomeMusic {
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct ChatTypePart {
 	pub translation_key: String,
-	pub parameters: Vec<String>
+	pub parameters: Vec<String>,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct ExitAction {
 	pub label: NbtTranslateColor,
-	pub width: i32
+	pub width: i32,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct EnchantmentCost {
 	pub per_level_above_first: i32,
-	pub base: i32
+	pub base: i32,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
@@ -160,14 +160,14 @@ pub struct EffectsAttribute {
 pub struct EffectRequirements {
 	pub condition: String,
 	pub entity: String,
-	pub predicate: EffectPredicate
+	pub predicate: EffectPredicate,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
 pub struct EffectPredicate {
 	#[nbt(rename = "type")]
 	pub typ: String,
-	pub tags: Vec<DamageTag>
+	pub tags: Vec<DamageTag>,
 }
 
 #[derive(McDefault, Debug, Clone, PartialEq, Deserialize, Serialize, AsNbt, FromNbt, McSerialize, McDeserialize)]
@@ -238,7 +238,7 @@ pub struct MonsterSpawnLightLevelRange {
 pub struct WolfVariantAssets {
 	pub angry: String,
 	pub tame: String,
-	pub wild: String
+	pub wild: String,
 }
 
 #[cfg(test)]

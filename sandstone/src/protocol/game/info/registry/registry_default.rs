@@ -3,7 +3,10 @@
 
 use crate::nbt_compound;
 use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfVariantAssets};
-use crate::protocol::game::info::registry::{BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant, WolfVariant, ZombieNautilusVariant};
+use crate::protocol::game::info::registry::{
+	BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
+	WolfVariant, ZombieNautilusVariant,
+};
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 
 impl Default for BannerPattern {

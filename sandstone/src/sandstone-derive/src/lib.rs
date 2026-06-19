@@ -18,111 +18,96 @@ use syn::{parse_macro_input, Data, DeriveInput, Expr, Fields, GenericArgument, I
 /// ```
 #[proc_macro_derive(McSerialize)]
 pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
-    let fields = match &input.data {
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(fields) => fields
-                .named
-                .iter()
-                .map(|field| {
-                    let field_name = field.ident.as_ref().unwrap();
-                    quote! {
-                        self.#field_name.mc_serialize(serializer)?;
-                    }
-                })
-                .collect(),
-            Fields::Unnamed(fields) => fields
-                .unnamed
-                .iter()
-                .enumerate()
-                .map(|(i, _field)| {
-                    let field_name = Ident::new(&format!("__{}", i), Span::call_site());
-                    quote! {
-                        self.#field_name.mc_serialize(serializer)?;
-                    }
-                })
-                .collect(),
-            Fields::Unit => vec![],
-        },
-        Data::Enum(enu) => {
-            let mut match_arms = vec![];
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = &input.ident;
+	let fields = match &input.data {
+		Data::Struct(data) => match &data.fields {
+			Fields::Named(fields) => fields
+				.named
+				.iter()
+				.map(|field| {
+					let field_name = field.ident.as_ref().unwrap();
+					quote! {
+						self.#field_name.mc_serialize(serializer)?;
+					}
+				})
+				.collect(),
+			Fields::Unnamed(fields) => fields
+				.unnamed
+				.iter()
+				.enumerate()
+				.map(|(i, _field)| {
+					let field_name = Ident::new(&format!("__{}", i), Span::call_site());
+					quote! {
+						self.#field_name.mc_serialize(serializer)?;
+					}
+				})
+				.collect(),
+			Fields::Unit => vec![],
+		},
+		Data::Enum(enu) => {
+			let mut match_arms = vec![];
 
-            for variant in enu.variants.iter() {
-                let variant_name = &variant.ident;
+			for variant in enu.variants.iter() {
+				let variant_name = &variant.ident;
 
-                let discriminant = &variant
-                    .discriminant
-                    .as_ref()
-                    .unwrap_or_else(|| panic!(
-                        "McSerialize enum requires an explicit discriminant for variant {}",
-                        variant_name
-                    ))
-                    .1;
+				let discriminant = &variant
+					.discriminant
+					.as_ref()
+					.unwrap_or_else(|| panic!("McSerialize enum requires an explicit discriminant for variant {}", variant_name))
+					.1;
 
-                let pattern = match &variant.fields {
-                    Fields::Named(fields) => {
-                        let names: Vec<_> = fields
-                            .named
-                            .iter()
-                            .map(|f| f.ident.as_ref().unwrap())
-                            .collect();
-                        quote! { #name::#variant_name { #(#names),* } }
-                    }
-                    Fields::Unnamed(fields) => {
-                        let vars: Vec<_> = (0..fields.unnamed.len())
-                            .map(|i| Ident::new(&format!("f{}", i), Span::call_site()))
-                            .collect();
-                        quote! { #name::#variant_name(#(#vars),*) }
-                    }
-                    Fields::Unit => {
-                        quote! { #name::#variant_name }
-                    }
-                };
+				let pattern = match &variant.fields {
+					Fields::Named(fields) => {
+						let names: Vec<_> = fields.named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
+						quote! { #name::#variant_name { #(#names),* } }
+					}
+					Fields::Unnamed(fields) => {
+						let vars: Vec<_> = (0..fields.unnamed.len()).map(|i| Ident::new(&format!("f{}", i), Span::call_site())).collect();
+						quote! { #name::#variant_name(#(#vars),*) }
+					}
+					Fields::Unit => {
+						quote! { #name::#variant_name }
+					}
+				};
 
-                let serialize_fields = match &variant.fields {
-                    Fields::Named(fields) => {
-                        let names: Vec<_> = fields
-                            .named
-                            .iter()
-                            .map(|f| f.ident.as_ref().unwrap())
-                            .collect();
-                        quote! { #(#names.mc_serialize(serializer)?;)* }
-                    }
-                    Fields::Unnamed(fields) => {
-                        let vars: Vec<_> = (0..fields.unnamed.len())
-                            .map(|i| Ident::new(&format!("f{}", i), Span::call_site()))
-                            .collect();
-                        quote! { #(#vars.mc_serialize(serializer)?;)* }
-                    }
-                    Fields::Unit => quote! {},
-                };
+				let serialize_fields = match &variant.fields {
+					Fields::Named(fields) => {
+						let names: Vec<_> = fields.named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
+						quote! { #(#names.mc_serialize(serializer)?;)* }
+					}
+					Fields::Unnamed(fields) => {
+						let vars: Vec<_> = (0..fields.unnamed.len()).map(|i| Ident::new(&format!("f{}", i), Span::call_site())).collect();
+						quote! { #(#vars.mc_serialize(serializer)?;)* }
+					}
+					Fields::Unit => quote! {},
+				};
 
-                match_arms.push(quote! {
-                    #pattern => {
-                        VarInt(#discriminant).mc_serialize(serializer)?;
-                        #serialize_fields
-                    }
-                });
-            }
+				match_arms.push(quote! {
+					#pattern => {
+						VarInt(#discriminant).mc_serialize(serializer)?;
+						#serialize_fields
+					}
+				});
+			}
 
-            vec![quote! {
-                match self {
-                    #(#match_arms),*
-                }
-            }]
-        }
-        Data::Union(_) => panic!("Unions are not supported"),
-    };
-    let expanded = quote! {
-        impl McSerialize for #name {
-            fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
-                #(#fields)*
-                Ok(())
-            }
-        }
-    };
-    TokenStream::from(expanded)
+			vec![quote! {
+				match self {
+					#(#match_arms),*
+				}
+			}]
+		}
+		Data::Union(_) => panic!("Unions are not supported"),
+	};
+	let expanded = quote! {
+		impl McSerialize for #name {
+			fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
+				#(#fields)*
+				Ok(())
+			}
+		}
+	};
+	TokenStream::from(expanded)
 }
 
 /// Derive the `McDeserialize` trait for a struct. This implies that all fields of the struct also implement
@@ -142,394 +127,401 @@ pub fn derive_mc_serialize(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_derive(McDeserialize, attributes(mc))]
 pub fn derive_mc_deserialize(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = &input.ident;
 
-    // Enums deserialize by reading a leading VarInt discriminant, then deserializing the body of
-    // the matching variant. This mirrors the wire format written by the McSerialize enum derive.
-    if let Data::Enum(data_enum) = &input.data {
-        let mut deserialize_arms = Vec::new();
+	// Enums deserialize by reading a leading VarInt discriminant, then deserializing the body of
+	// the matching variant. This mirrors the wire format written by the McSerialize enum derive.
+	if let Data::Enum(data_enum) = &input.data {
+		let mut deserialize_arms = Vec::new();
 
-        for variant in &data_enum.variants {
-            let variant_ident = &variant.ident;
+		for variant in &data_enum.variants {
+			let variant_ident = &variant.ident;
 
-            let discriminant = &variant
-                .discriminant
-                .as_ref()
-                .unwrap_or_else(|| panic!(
-                    "McDeserialize enum requires an explicit discriminant for variant {}",
-                    variant_ident
-                ))
-                .1;
+			let discriminant = &variant
+				.discriminant
+				.as_ref()
+				.unwrap_or_else(|| panic!("McDeserialize enum requires an explicit discriminant for variant {}", variant_ident))
+				.1;
 
-            let construct = match &variant.fields {
-                Fields::Named(fields) => {
-                    let names: Vec<_> = fields.named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
-                    let types: Vec<_> = fields.named.iter().map(|f| &f.ty).collect();
-                    quote! {
-                        #(let #names = <#types as McDeserialize>::mc_deserialize(deserializer)?;)*
-                        Ok(#name::#variant_ident { #(#names),* })
-                    }
-                }
-                Fields::Unnamed(fields) => {
-                    let vars: Vec<_> = (0..fields.unnamed.len())
-                        .map(|i| Ident::new(&format!("f{}", i), Span::call_site()))
-                        .collect();
-                    let types: Vec<_> = fields.unnamed.iter().map(|f| &f.ty).collect();
-                    quote! {
-                        #(let #vars = <#types as McDeserialize>::mc_deserialize(deserializer)?;)*
-                        Ok(#name::#variant_ident(#(#vars),*))
-                    }
-                }
-                Fields::Unit => quote! { Ok(#name::#variant_ident) },
-            };
+			let construct = match &variant.fields {
+				Fields::Named(fields) => {
+					let names: Vec<_> = fields.named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
+					let types: Vec<_> = fields.named.iter().map(|f| &f.ty).collect();
+					quote! {
+						#(let #names = <#types as McDeserialize>::mc_deserialize(deserializer)?;)*
+						Ok(#name::#variant_ident { #(#names),* })
+					}
+				}
+				Fields::Unnamed(fields) => {
+					let vars: Vec<_> = (0..fields.unnamed.len()).map(|i| Ident::new(&format!("f{}", i), Span::call_site())).collect();
+					let types: Vec<_> = fields.unnamed.iter().map(|f| &f.ty).collect();
+					quote! {
+						#(let #vars = <#types as McDeserialize>::mc_deserialize(deserializer)?;)*
+						Ok(#name::#variant_ident(#(#vars),*))
+					}
+				}
+				Fields::Unit => quote! { Ok(#name::#variant_ident) },
+			};
 
-            deserialize_arms.push(quote! {
-                #discriminant => { #construct }
-            });
-        }
+			deserialize_arms.push(quote! {
+				#discriminant => { #construct }
+			});
+		}
 
-        let enum_name_str = name.to_string();
+		let enum_name_str = name.to_string();
 
-        let expanded = quote! {
-            impl McDeserialize for #name {
-                fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
-                    let __id = VarInt::mc_deserialize(deserializer)?.0;
-                    match __id {
-                        #(#deserialize_arms)*
-                        _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, __id))),
-                    }
-                }
-            }
-        };
+		let expanded = quote! {
+			impl McDeserialize for #name {
+				fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
+					let __id = VarInt::mc_deserialize(deserializer)?.0;
+					match __id {
+						#(#deserialize_arms)*
+						_ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, __id))),
+					}
+				}
+			}
+		};
 
-        return TokenStream::from(expanded);
-    }
+		return TokenStream::from(expanded);
+	}
 
-    let mut init_stmts = Vec::new();
-    let mut field_names = Vec::new();
+	let mut init_stmts = Vec::new();
+	let mut field_names = Vec::new();
 
-    match &input.data {
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(fields) => {
-                for field in &fields.named {
-                    let field_name = field.ident.as_ref().unwrap();
-                    let mut current_ty = &field.ty;
-                    // Unwrap all Type::Group layers (e.g., types wrapped in parentheses)
-                    // This is needed to use "mc" attributes within packets!
-                    while let Type::Group(group) = current_ty {
-                        current_ty = &group.elem;
-                    }
+	match &input.data {
+		Data::Struct(data) => match &data.fields {
+			Fields::Named(fields) => {
+				for field in &fields.named {
+					let field_name = field.ident.as_ref().unwrap();
+					let mut current_ty = &field.ty;
+					// Unwrap all Type::Group layers (e.g., types wrapped in parentheses)
+					// This is needed to use "mc" attributes within packets!
+					while let Type::Group(group) = current_ty {
+						current_ty = &group.elem;
+					}
 
-                    let mut condition: Option<Expr> = None;
+					let mut condition: Option<Expr> = None;
 
-                    // Parse attributes to find #[mc(deserialize_if = ...)]
-                    for attr in &field.attrs {
-                        if !attr.path().is_ident("mc") {
-                            continue;
-                        }
+					// Parse attributes to find #[mc(deserialize_if = ...)]
+					for attr in &field.attrs {
+						if !attr.path().is_ident("mc") {
+							continue;
+						}
 
-                        // Parse nested meta: like deserialize_if = field1
-                        attr.parse_nested_meta(|meta| {
-                            if meta.path.is_ident("deserialize_if") {
-                                let value_expr = meta.value()?;
-                                condition = Some(value_expr.parse()?);
-                                Ok(())
-                            } else {
-                                Err(meta.error("unsupported mc attribute argument"))
-                            }
-                        })
-                        .unwrap_or_else(|e| panic!("Error parsing mc attribute: {}", e));
-                    }
+						// Parse nested meta: like deserialize_if = field1
+						attr.parse_nested_meta(|meta| {
+							if meta.path.is_ident("deserialize_if") {
+								let value_expr = meta.value()?;
+								condition = Some(value_expr.parse()?);
+								Ok(())
+							} else {
+								Err(meta.error("unsupported mc attribute argument"))
+							}
+						})
+						.unwrap_or_else(|e| panic!("Error parsing mc attribute: {}", e));
+					}
 
-                    if let Some(cond) = condition {
-                        // Validate that the field is an Option<T>
-                        let inner_type = match current_ty {
-                            Type::Path(type_path) => {
-                                let segments = &type_path.path.segments;
-                                if let Some(segment) = segments.last() { // Check the last segment instead of the first
-                                    if segment.ident == "Option" {
-                                        match &segment.arguments {
-                                            PathArguments::AngleBracketed(args) => {
-                                                if let Some(GenericArgument::Type(ty)) = args.args.first() {
-                                                    ty
-                                                } else {
-                                                    panic!("Option must have an inner type for field {field_name}");
-                                                }
-                                            }
-                                            _ => panic!("Option must have angle bracketed arguments for field {field_name}"),
-                                        }
-                                    } else {
-                                        panic!("deserialize_if can only be applied to Option fields, but field {field_name} is {}", segment.ident);
-                                    }
-                                } else {
-                                    panic!("Invalid type path for field {field_name}");
-                                }
-                            }
-                            _ => panic!("deserialize_if can only be applied to Option fields with a type path for field {field_name} and field type {}", current_ty.to_token_stream()),
-                        };
+					if let Some(cond) = condition {
+						// Validate that the field is an Option<T>
+						let inner_type = match current_ty {
+							Type::Path(type_path) => {
+								let segments = &type_path.path.segments;
+								if let Some(segment) = segments.last() {
+									// Check the last segment instead of the first
+									if segment.ident == "Option" {
+										match &segment.arguments {
+											PathArguments::AngleBracketed(args) => {
+												if let Some(GenericArgument::Type(ty)) = args.args.first() {
+													ty
+												} else {
+													panic!("Option must have an inner type for field {field_name}");
+												}
+											}
+											_ => panic!("Option must have angle bracketed arguments for field {field_name}"),
+										}
+									} else {
+										panic!("deserialize_if can only be applied to Option fields, but field {field_name} is {}", segment.ident);
+									}
+								} else {
+									panic!("Invalid type path for field {field_name}");
+								}
+							}
+							_ => panic!(
+								"deserialize_if can only be applied to Option fields with a type path for field {field_name} and field type {}",
+								current_ty.to_token_stream()
+							),
+						};
 
-                        // Conditional deserialization
-                        init_stmts.push(quote! {
-                            let #field_name = if #cond {
-                                Some(<#inner_type as McDeserialize>::mc_deserialize(deserializer)?)
-                            } else {
-                                None
-                            };
-                        });
-                    } else {
-                        // Regular deserialization
-                        init_stmts.push(quote! {
-                            let #field_name = <#current_ty as McDeserialize>::mc_deserialize(deserializer)?;
-                        });
-                    }
+						// Conditional deserialization
+						init_stmts.push(quote! {
+							let #field_name = if #cond {
+								Some(<#inner_type as McDeserialize>::mc_deserialize(deserializer)?)
+							} else {
+								None
+							};
+						});
+					} else {
+						// Regular deserialization
+						init_stmts.push(quote! {
+							let #field_name = <#current_ty as McDeserialize>::mc_deserialize(deserializer)?;
+						});
+					}
 
-                    field_names.push(quote! { #field_name });
-                }
-            }
-            Fields::Unnamed(fields) => {
-                for (i, field) in fields.unnamed.iter().enumerate() {
-                    let field_ident = Ident::new(&format!("__{}", i), field.span());
-                    let field_type = &field.ty;
+					field_names.push(quote! { #field_name });
+				}
+			}
+			Fields::Unnamed(fields) => {
+				for (i, field) in fields.unnamed.iter().enumerate() {
+					let field_ident = Ident::new(&format!("__{}", i), field.span());
+					let field_type = &field.ty;
 
-                    init_stmts.push(quote! {
-                        let #field_ident = <#field_type as McDeserialize>::mc_deserialize(deserializer)?;
-                    });
+					init_stmts.push(quote! {
+						let #field_ident = <#field_type as McDeserialize>::mc_deserialize(deserializer)?;
+					});
 
-                    field_names.push(quote! { #field_ident });
-                }
-            }
-            Fields::Unit => {}
-        },
-        _ => panic!("Only structs are supported"),
-    }
+					field_names.push(quote! { #field_ident });
+				}
+			}
+			Fields::Unit => {}
+		},
+		_ => panic!("Only structs are supported"),
+	}
 
-    let struct_expr = match &input.data {
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(_) => quote! {
-                Self {
-                    #(#field_names),*
-                }
-            },
-            Fields::Unnamed(_) => quote! {
-                Self(
-                    #(#field_names),*
-                )
-            },
-            Fields::Unit => quote! { Self },
-        },
-        _ => unreachable!(),
-    };
+	let struct_expr = match &input.data {
+		Data::Struct(data) => match &data.fields {
+			Fields::Named(_) => quote! {
+				Self {
+					#(#field_names),*
+				}
+			},
+			Fields::Unnamed(_) => quote! {
+				Self(
+					#(#field_names),*
+				)
+			},
+			Fields::Unit => quote! { Self },
+		},
+		_ => unreachable!(),
+	};
 
-    let expanded = quote! {
-        impl McDeserialize for #name {
-            fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
-                #(#init_stmts)*
+	let expanded = quote! {
+		impl McDeserialize for #name {
+			fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
+				#(#init_stmts)*
 
-                Ok(#struct_expr)
-            }
-        }
-    };
+				Ok(#struct_expr)
+			}
+		}
+	};
 
-    TokenStream::from(expanded)
+	TokenStream::from(expanded)
 }
 
 #[proc_macro_attribute]
 pub fn mc(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    item
+	item
 }
 
 #[proc_macro_attribute]
 pub fn nbt(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    item
+	item
 }
 
 /// Convert a struct to an NbtCompound using the `as_nbt` method.
 #[proc_macro_derive(AsNbt, attributes(nbt))]
 pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let struct_name = input.ident;
+	let input = parse_macro_input!(input as DeriveInput);
+	let struct_name = input.ident;
 
-    // Extract fields from the struct
-    let fields = if let Data::Struct(data) = input.data {
-        data.fields
-    } else {
-        panic!("AsNbt can only be derived for structs");
-    };
+	// Extract fields from the struct
+	let fields = if let Data::Struct(data) = input.data {
+		data.fields
+	} else {
+		panic!("AsNbt can only be derived for structs");
+	};
 
-    let field_additions = fields.iter().map(|f| {
-        let field_ident = f.ident.as_ref().unwrap();
-        let raw_key = field_ident.to_string();
-        let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
+	let field_additions = fields.iter().map(|f| {
+		let field_ident = f.ident.as_ref().unwrap();
+		let raw_key = field_ident.to_string();
+		let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
 
-        // Parse field attributes
-        for attr in &f.attrs {
-            if attr.path().is_ident("nbt") {
-                let mut rename_value: Option<String> = None;
+		// Parse field attributes
+		for attr in &f.attrs {
+			if attr.path().is_ident("nbt") {
+				let mut rename_value: Option<String> = None;
 
-                // Parse nested attributes using parse_nested_meta
-                let _ = attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("rename") { // basically `#[nbt(rename = "new_name")]`
-                        let value = meta.value()?;
-                        let lit: LitStr = value.parse()?;
-                        rename_value = Some(lit.value());
-                        Ok(())
-                    } else {
-                        Err(meta.error("unsupported nbt attribute"))
-                    }
-                });
+				// Parse nested attributes using parse_nested_meta
+				let _ = attr.parse_nested_meta(|meta| {
+					if meta.path.is_ident("rename") {
+						// basically `#[nbt(rename = "new_name")]`
+						let value = meta.value()?;
+						let lit: LitStr = value.parse()?;
+						rename_value = Some(lit.value());
+						Ok(())
+					} else {
+						Err(meta.error("unsupported nbt attribute"))
+					}
+				});
 
-                if let Some(v) = rename_value {
-                    key = v;
-                }
-            }
-        }
+				if let Some(v) = rename_value {
+					key = v;
+				}
+			}
+		}
 
-        quote! {
-            compound.add(#key, self.#field_ident.clone());
-        }
-    });
+		quote! {
+			compound.add(#key, self.#field_ident.clone());
+		}
+	});
 
-    let expanded = quote! {
-        impl Into<NbtCompound> for #struct_name {
-            fn into(self) -> NbtCompound {
-                self.as_nbt()
-            }
-        }
+	let expanded = quote! {
+		impl Into<NbtCompound> for #struct_name {
+			fn into(self) -> NbtCompound {
+				self.as_nbt()
+			}
+		}
 
-        impl Into<NbtTag> for #struct_name {
-            fn into(self) -> NbtTag {
-                NbtTag::Compound(self.as_nbt())
-            }
-        }
+		impl Into<NbtTag> for #struct_name {
+			fn into(self) -> NbtTag {
+				NbtTag::Compound(self.as_nbt())
+			}
+		}
 
-        impl #struct_name {
-            pub fn as_nbt(&self) -> NbtCompound {
-                let mut compound = NbtCompound::new_no_name();
-                #(#field_additions)*
-                compound
-            }
-        }
-    };
+		impl #struct_name {
+			pub fn as_nbt(&self) -> NbtCompound {
+				let mut compound = NbtCompound::new_no_name();
+				#(#field_additions)*
+				compound
+			}
+		}
+	};
 
-    TokenStream::from(expanded)
+	TokenStream::from(expanded)
 }
 
 /// Convert an NbtCompound into a struct using the `TryFrom` trait.
 #[proc_macro_derive(FromNbt, attributes(nbt))]
 pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let struct_name = input.ident;
+	let input = parse_macro_input!(input as DeriveInput);
+	let struct_name = input.ident;
 
-    let fields = if let Data::Struct(data) = input.data {
-        data.fields
-    } else {
-        panic!("FromNbt can only be derived for structs");
-    };
+	let fields = if let Data::Struct(data) = input.data {
+		data.fields
+	} else {
+		panic!("FromNbt can only be derived for structs");
+	};
 
-    let struct_name_str = struct_name.to_string();
+	let struct_name_str = struct_name.to_string();
 
-    let field_initializers = fields.iter().map(|f| {
-        let field_ident = f.ident.as_ref().unwrap();
-        let raw_key = field_ident.to_string();
-        let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
-        let field_ty = &f.ty;
+	let field_initializers = fields.iter().map(|f| {
+		let field_ident = f.ident.as_ref().unwrap();
+		let raw_key = field_ident.to_string();
+		let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
+		let field_ty = &f.ty;
 
-        // Parse rename attribute
-        for attr in &f.attrs {
-            if attr.path().is_ident("nbt") {
-                let mut rename_value: Option<String> = None;
-                let _ = attr.parse_nested_meta(|meta| {
-                    if meta.path.is_ident("rename") {
-                        let value = meta.value()?;
-                        let lit: LitStr = value.parse()?;
-                        rename_value = Some(lit.value());
-                        Ok(())
-                    } else {
-                        Err(meta.error("unsupported nbt attribute"))
-                    }
-                });
-                if let Some(v) = rename_value {
-                    key = v;
-                }
-            }
-        }
+		// Parse rename attribute
+		for attr in &f.attrs {
+			if attr.path().is_ident("nbt") {
+				let mut rename_value: Option<String> = None;
+				let _ = attr.parse_nested_meta(|meta| {
+					if meta.path.is_ident("rename") {
+						let value = meta.value()?;
+						let lit: LitStr = value.parse()?;
+						rename_value = Some(lit.value());
+						Ok(())
+					} else {
+						Err(meta.error("unsupported nbt attribute"))
+					}
+				});
+				if let Some(v) = rename_value {
+					key = v;
+				}
+			}
+		}
 
-        let key_str = key.clone();
-        let sname = struct_name_str.clone();
+		let key_str = key.clone();
+		let sname = struct_name_str.clone();
 
-        let is_option = field_ty.to_token_stream().to_string().starts_with("Option");
+		let is_option = field_ty.to_token_stream().to_string().starts_with("Option");
 
-        if is_option {
-            quote! {
-                #field_ident: {
-                    match nbt.get(#key_str) {
-                        Some(tag) => {
-                            <#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
-                                .map_err(|_| NbtError::MissingField(
-                                    format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
-                                ))?
-                        }
-                        None => None,
-                    }
-                },
-            }
-        } else {
-            quote! {
-                #field_ident: {
-                    match nbt.get(#key_str) {
-                        Some(tag) => {
-                            <#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
-                                .map_err(|_| NbtError::MissingField(
-                                    format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
-                                ))?
-                        }
-                        None => {
-                            return Err(NbtError::MissingField(
-                                format!("'{}' in '{}'", #key_str, #sname)
-                            ));
-                        }
-                    }
-                },
-            }
-        }
-    });
+		if is_option {
+			quote! {
+				#field_ident: {
+					match nbt.get(#key_str) {
+						Some(tag) => {
+							<#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
+								.map_err(|_| NbtError::MissingField(
+									format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
+								))?
+						}
+						None => None,
+					}
+				},
+			}
+		} else {
+			quote! {
+				#field_ident: {
+					match nbt.get(#key_str) {
+						Some(tag) => {
+							<#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
+								.map_err(|_| NbtError::MissingField(
+									format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
+								))?
+						}
+						None => {
+							return Err(NbtError::MissingField(
+								format!("'{}' in '{}'", #key_str, #sname)
+							));
+						}
+					}
+				},
+			}
+		}
+	});
 
-    let expanded = quote! {
-        impl ::std::convert::TryFrom<NbtCompound> for #struct_name {
-            type Error = NbtError;
+	let expanded = quote! {
+		impl ::std::convert::TryFrom<NbtCompound> for #struct_name {
+			type Error = NbtError;
 
-            fn try_from(nbt: NbtCompound) -> Result<Self, Self::Error> {
-                Ok(Self {
-                    #(#field_initializers)*
-                })
-            }
-        }
+			fn try_from(nbt: NbtCompound) -> Result<Self, Self::Error> {
+				Ok(Self {
+					#(#field_initializers)*
+				})
+			}
+		}
 
-        impl ::std::convert::TryFrom<NbtTag> for #struct_name {
-            type Error = NbtError;
+		impl ::std::convert::TryFrom<NbtTag> for #struct_name {
+			type Error = NbtError;
 
-            fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
-                match value {
-                    NbtTag::Compound(nbt) => Self::try_from(nbt),
-                    _ => Err(NbtError::InvalidType),
-                }
-            }
-        }
+			fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
+				match value {
+					NbtTag::Compound(nbt) => Self::try_from(nbt),
+					_ => Err(NbtError::InvalidType),
+				}
+			}
+		}
 
-        impl #struct_name {
-            pub fn from_nbt(nbt: NbtCompound) -> Result<Self, NbtError> {
-                Self::try_from(nbt)
-            }
-        }
-    };
+		impl #struct_name {
+			pub fn from_nbt(nbt: NbtCompound) -> Result<Self, NbtError> {
+				Self::try_from(nbt)
+			}
+		}
+	};
 
-    TokenStream::from(expanded)
+	TokenStream::from(expanded)
 }
 
-/// Derive `McSerialize` and `McDeserialize` for unit enums where each variant maps to a VarInt.
+/// Derive `McSerialize` and `McDeserialize` for enums where each variant is identified on the
+/// wire by a leading VarInt discriminant.
 ///
-/// Each variant must be a unit variant with an explicit discriminant value.
+/// Each variant must have an explicit discriminant value. Unit variants serialize to just the
+/// VarInt id. Tuple (data-carrying) variants serialize the VarInt id followed by each field in
+/// declaration order; deserialization reads the fields back in the same order. Struct (named
+/// field) variants are not supported.
+///
+/// `from_varint` is only generated when every variant is a unit variant, since data-carrying
+/// variants cannot be reconstructed from the discriminant alone.
 ///
 /// ```rust,ignore
 /// #[derive(VarIntEnum)]
@@ -540,82 +532,112 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_derive(VarIntEnum)]
 pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = &input.ident;
 
-    let data_enum = match &input.data {
-        Data::Enum(data) => data,
-        _ => panic!("VarIntEnum can only be derived for enums"),
-    };
+	let data_enum = match &input.data {
+		Data::Enum(data) => data,
+		_ => panic!("VarIntEnum can only be derived for enums"),
+	};
 
-    let mut serialize_arms = Vec::new();
-    let mut deserialize_arms = Vec::new();
-    let mut variant_names = Vec::new();
+	let mut serialize_arms = Vec::new();
+	let mut deserialize_arms = Vec::new();
+	let mut from_varint_arms = Vec::new();
+	let mut all_unit = true;
 
-    for variant in &data_enum.variants {
-        assert!(
-            matches!(variant.fields, Fields::Unit),
-            "VarIntEnum only supports unit variants, but {:?} has fields",
-            variant.ident
-        );
+	for variant in &data_enum.variants {
+		let discriminant = variant
+			.discriminant
+			.as_ref()
+			.expect(&format!("VarIntEnum requires explicit discriminant for variant {}", variant.ident));
 
-        let discriminant = variant
-            .discriminant
-            .as_ref()
-            .expect(&format!(
-                "VarIntEnum requires explicit discriminant for variant {}",
-                variant.ident
-            ));
+		let expr = &discriminant.1;
+		let variant_ident = &variant.ident;
 
-        let expr = &discriminant.1;
-        let variant_ident = &variant.ident;
+		match &variant.fields {
+			Fields::Unit => {
+				serialize_arms.push(quote! {
+					#name::#variant_ident => {
+						VarInt(#expr).mc_serialize(serializer)?;
+						Ok(())
+					}
+				});
 
-        serialize_arms.push(quote! {
-            #name::#variant_ident => #expr,
-        });
+				deserialize_arms.push(quote! {
+					#expr => Ok(#name::#variant_ident),
+				});
 
-        deserialize_arms.push(quote! {
-            #expr => Ok(#name::#variant_ident),
-        });
+				from_varint_arms.push(quote! {
+					#expr => Ok(#name::#variant_ident),
+				});
+			}
+			Fields::Unnamed(fields) => {
+				all_unit = false;
 
-        variant_names.push(variant_ident.to_string());
-    }
+				let bindings: Vec<Ident> = (0..fields.unnamed.len()).map(|i| Ident::new(&format!("f{}", i), Span::call_site())).collect();
+				let field_types: Vec<&Type> = fields.unnamed.iter().map(|f| &f.ty).collect();
 
-    let enum_name_str = name.to_string();
+				serialize_arms.push(quote! {
+					#name::#variant_ident( #(#bindings),* ) => {
+						VarInt(#expr).mc_serialize(serializer)?;
+						#( #bindings.mc_serialize(serializer)?; )*
+						Ok(())
+					}
+				});
 
-    let from_varint_arms = deserialize_arms.clone();
+				deserialize_arms.push(quote! {
+					#expr => {
+						#( let #bindings = <#field_types>::mc_deserialize(deserializer)?; )*
+						Ok(#name::#variant_ident( #(#bindings),* ))
+					}
+				});
+			}
+			Fields::Named(_) => {
+				panic!("VarIntEnum does not support struct (named field) variants, but {} has them", variant_ident);
+			}
+		}
+	}
 
-    let expanded = quote! {
-        impl McSerialize for #name {
-            fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-                let id = match self {
-                    #(#serialize_arms)*
-                };
-                VarInt(id).mc_serialize(serializer)
-            }
-        }
+	let enum_name_str = name.to_string();
 
-        impl McDeserialize for #name {
-            fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-                let id = VarInt::mc_deserialize(deserializer)?.0;
-                match id {
-                    #(#deserialize_arms)*
-                    _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, id))),
-                }
-            }
-        }
+	let from_varint_impl = if all_unit {
+		quote! {
+			impl #name {
+				pub fn from_varint(value: i32) -> SerializingResult<'static, Self> {
+					match value {
+						#(#from_varint_arms)*
+						_ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, value))),
+					}
+				}
+			}
+		}
+	} else {
+		quote! {}
+	};
 
-        impl #name {
-            pub fn from_varint(value: i32) -> SerializingResult<'static, Self> {
-                match value {
-                    #(#from_varint_arms)*
-                    _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, value))),
-                }
-            }
-        }
-    };
+	let expanded = quote! {
+		impl McSerialize for #name {
+			fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+				match self {
+					#(#serialize_arms)*
+				}
+			}
+		}
 
-    TokenStream::from(expanded)
+		impl McDeserialize for #name {
+			fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+				let id = VarInt::mc_deserialize(deserializer)?.0;
+				match id {
+					#(#deserialize_arms)*
+					_ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, id))),
+				}
+			}
+		}
+
+		#from_varint_impl
+	};
+
+	TokenStream::from(expanded)
 }
 
 /// Derive `McSerialize` and `McDeserialize` for unit enums where each variant maps to a
@@ -634,164 +656,156 @@ pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_derive(TypeEnum, attributes(type_enum))]
 pub fn derive_type_enum(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = &input.ident;
 
-    let underlying_type: syn::Type = input.attrs.iter()
-        .find(|attr| attr.path().is_ident("type_enum"))
-        .expect("TypeEnum requires a #[type_enum(T)] attribute")
-        .parse_args()
-        .expect("Expected a type inside #[type_enum(...)], e.g. #[type_enum(u8)]");
+	let underlying_type: syn::Type = input
+		.attrs
+		.iter()
+		.find(|attr| attr.path().is_ident("type_enum"))
+		.expect("TypeEnum requires a #[type_enum(T)] attribute")
+		.parse_args()
+		.expect("Expected a type inside #[type_enum(...)], e.g. #[type_enum(u8)]");
 
-    let data_enum = match &input.data {
-        Data::Enum(data) => data,
-        _ => panic!("TypeEnum can only be derived for enums"),
-    };
+	let data_enum = match &input.data {
+		Data::Enum(data) => data,
+		_ => panic!("TypeEnum can only be derived for enums"),
+	};
 
-    let mut serialize_arms = Vec::new();
-    let mut deserialize_arms = Vec::new();
+	let mut serialize_arms = Vec::new();
+	let mut deserialize_arms = Vec::new();
 
-    for variant in &data_enum.variants {
-        assert!(
-            matches!(variant.fields, Fields::Unit),
-            "TypeEnum only supports unit variants, but {:?} has fields",
-            variant.ident
-        );
+	for variant in &data_enum.variants {
+		assert!(matches!(variant.fields, Fields::Unit), "TypeEnum only supports unit variants, but {:?} has fields", variant.ident);
 
-        let discriminant = variant
-            .discriminant
-            .as_ref()
-            .expect(&format!(
-                "TypeEnum requires explicit discriminant for variant {}",
-                variant.ident
-            ));
+		let discriminant = variant.discriminant.as_ref().expect(&format!("TypeEnum requires explicit discriminant for variant {}", variant.ident));
 
-        let expr = &discriminant.1;
-        let variant_ident = &variant.ident;
+		let expr = &discriminant.1;
+		let variant_ident = &variant.ident;
 
-        serialize_arms.push(quote! {
-            #name::#variant_ident => #expr,
-        });
+		serialize_arms.push(quote! {
+			#name::#variant_ident => #expr,
+		});
 
-        deserialize_arms.push(quote! {
-            #expr => Ok(#name::#variant_ident),
-        });
-    }
+		deserialize_arms.push(quote! {
+			#expr => Ok(#name::#variant_ident),
+		});
+	}
 
-    let enum_name_str = name.to_string();
+	let enum_name_str = name.to_string();
 
-    let from_value_arms = deserialize_arms.clone();
+	let from_value_arms = deserialize_arms.clone();
 
-    let expanded = quote! {
-        impl McSerialize for #name {
-            fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-                let id: #underlying_type = match self {
-                    #(#serialize_arms)*
-                };
-                id.mc_serialize(serializer)
-            }
-        }
+	let expanded = quote! {
+		impl McSerialize for #name {
+			fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+				let id: #underlying_type = match self {
+					#(#serialize_arms)*
+				};
+				id.mc_serialize(serializer)
+			}
+		}
 
-        impl McDeserialize for #name {
-            fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-                let id = <#underlying_type>::mc_deserialize(deserializer)?;
-                match id {
-                    #(#deserialize_arms)*
-                    _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, id))),
-                }
-            }
-        }
+		impl McDeserialize for #name {
+			fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+				let id = <#underlying_type>::mc_deserialize(deserializer)?;
+				match id {
+					#(#deserialize_arms)*
+					_ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, id))),
+				}
+			}
+		}
 
-        impl #name {
-            pub fn from_value(value: #underlying_type) -> SerializingResult<'static, Self> {
-                match value {
-                    #(#from_value_arms)*
-                    _ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, value))),
-                }
-            }
-        }
-    };
+		impl #name {
+			pub fn from_value(value: #underlying_type) -> SerializingResult<'static, Self> {
+				match value {
+					#(#from_value_arms)*
+					_ => Err(SerializingErr::OutOfBounds(format!("Invalid {} id: {}", #enum_name_str, value))),
+				}
+			}
+		}
+	};
 
-    TokenStream::from(expanded)
+	TokenStream::from(expanded)
 }
 
 /// Derive the `McDefault` trait for a struct. This trait provides a default value for the struct,
 /// which can be used for automated packet testing.
 #[proc_macro_derive(McDefault)]
 pub fn derive_mc_default(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = &input.ident;
 
-    let mc_default_impl = match &input.data {
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(fields) => {
-                let default_fields = fields.named.iter().map(|field| {
-                    let field_name = field.ident.as_ref().unwrap();
-                    quote! { #field_name: McDefault::mc_default() }
-                });
-                quote! {
-                    Self {
-                        #(#default_fields),*
-                    }
-                }
-            }
-            Fields::Unnamed(fields) => {
-                let default_fields = fields.unnamed.iter().map(|_field| {
-                    quote! { McDefault::mc_default() }
-                });
-                quote! {
-                    Self(
-                        #(#default_fields),*
-                    )
-                }
-            }
-            Fields::Unit => quote! { Self },
-        },
-        Data::Enum(data_enum) => {
-            let first_variant = data_enum.variants.iter().next().expect("Enum must have at least one variant");
-            let variant_ident = &first_variant.ident;
+	let mc_default_impl = match &input.data {
+		Data::Struct(data) => match &data.fields {
+			Fields::Named(fields) => {
+				let default_fields = fields.named.iter().map(|field| {
+					let field_name = field.ident.as_ref().unwrap();
+					quote! { #field_name: McDefault::mc_default() }
+				});
+				quote! {
+					Self {
+						#(#default_fields),*
+					}
+				}
+			}
+			Fields::Unnamed(fields) => {
+				let default_fields = fields.unnamed.iter().map(|_field| {
+					quote! { McDefault::mc_default() }
+				});
+				quote! {
+					Self(
+						#(#default_fields),*
+					)
+				}
+			}
+			Fields::Unit => quote! { Self },
+		},
+		Data::Enum(data_enum) => {
+			let first_variant = data_enum.variants.iter().next().expect("Enum must have at least one variant");
+			let variant_ident = &first_variant.ident;
 
-            match &first_variant.fields {
-                Fields::Named(fields) => {
-                    let default_fields = fields.named.iter().map(|field| {
-                        let field_name = &field.ident;
-                        quote! { #field_name: McDefault::mc_default() }
-                    });
-                    quote! {
-                        Self::#variant_ident {
-                            #(#default_fields),*
-                        }
-                    }
-                }
-                Fields::Unnamed(fields) => {
-                    let default_fields = fields.unnamed.iter().map(|_field| {
-                        quote! { McDefault::mc_default() }
-                    });
-                    quote! {
-                        Self::#variant_ident(
-                            #(#default_fields),*
-                        )
-                    }
-                }
-                Fields::Unit => {
-                    quote! {
-                        Self::#variant_ident
-                    }
-                }
-            }
-        }
-        Data::Union(_) => {
-            panic!("#[derive(McDefault)] is not supported for unions");
-        }
-    };
+			match &first_variant.fields {
+				Fields::Named(fields) => {
+					let default_fields = fields.named.iter().map(|field| {
+						let field_name = &field.ident;
+						quote! { #field_name: McDefault::mc_default() }
+					});
+					quote! {
+						Self::#variant_ident {
+							#(#default_fields),*
+						}
+					}
+				}
+				Fields::Unnamed(fields) => {
+					let default_fields = fields.unnamed.iter().map(|_field| {
+						quote! { McDefault::mc_default() }
+					});
+					quote! {
+						Self::#variant_ident(
+							#(#default_fields),*
+						)
+					}
+				}
+				Fields::Unit => {
+					quote! {
+						Self::#variant_ident
+					}
+				}
+			}
+		}
+		Data::Union(_) => {
+			panic!("#[derive(McDefault)] is not supported for unions");
+		}
+	};
 
-    let expanded = quote! {
-        impl McDefault for #name {
-            fn mc_default() -> Self {
-                #mc_default_impl
-            }
-        }
-    };
+	let expanded = quote! {
+		impl McDefault for #name {
+			fn mc_default() -> Self {
+				#mc_default_impl
+			}
+		}
+	};
 
-    TokenStream::from(expanded)
+	TokenStream::from(expanded)
 }

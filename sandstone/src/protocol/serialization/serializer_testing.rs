@@ -9,10 +9,10 @@ enum Group {
 }
 
 impl Group {
-	pub fn _id(&self) -> u8{
+	pub fn _id(&self) -> u8 {
 		match self {
-			Group::VarI(_) => {0}
-			Group::StrM(_) => {1}
+			Group::VarI(_) => 0,
+			Group::StrM(_) => 1,
 		}
 	}
 }
@@ -20,8 +20,8 @@ impl Group {
 impl McSerialize for Group {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match self {
-			Group::VarI(b) => {b.mc_serialize(serializer)?}
-			Group::StrM(b) => {b.mc_serialize(serializer)?}
+			Group::VarI(b) => b.mc_serialize(serializer)?,
+			Group::StrM(b) => b.mc_serialize(serializer)?,
 		}
 
 		Ok(())
@@ -29,7 +29,10 @@ impl McSerialize for Group {
 }
 
 impl McDeserialize for Group {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let a = StringMix::mc_deserialize(deserializer);
 
 		if let Ok(a) = a {
@@ -48,7 +51,7 @@ impl McDeserialize for Group {
 
 		deserializer.reset();
 
-		return Err(SerializingErr::UniqueFailure("Reached end".to_string()));
+		Err(SerializingErr::UniqueFailure("Reached end".to_string()))
 	}
 }
 
@@ -71,7 +74,10 @@ impl McSerialize for VarIntMix {
 }
 
 impl McDeserialize for VarIntMix {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let varmix = Self {
 			one: VarInt::mc_deserialize(deserializer)?,
 			two: String::mc_deserialize(deserializer)?,
@@ -92,23 +98,26 @@ struct StringMix {
 	second: String,
 	third: String,
 	fourth: u8,
-	fifth: String
+	fifth: String,
 }
 
 impl McSerialize for StringMix {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		self.first.mc_serialize(serializer).unwrap();
-		self.second.mc_serialize(serializer).unwrap();
-		self.third.mc_serialize(serializer).unwrap();
-		self.fourth.mc_serialize(serializer).unwrap();
-		self.fifth.mc_serialize(serializer).unwrap();
+		self.first.mc_serialize(serializer)?;
+		self.second.mc_serialize(serializer)?;
+		self.third.mc_serialize(serializer)?;
+		self.fourth.mc_serialize(serializer)?;
+		self.fifth.mc_serialize(serializer)?;
 
 		Ok(())
 	}
 }
 
 impl McDeserialize for StringMix {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let testing = Self {
 			first: u8::mc_deserialize(deserializer)?,
 			second: String::mc_deserialize(deserializer)?,
@@ -140,7 +149,7 @@ mod tests {
 			second: "hello".to_string(),
 			third: "abcd".to_string(),
 			fourth: 99,
-			fifth: "zxy".to_string()
+			fifth: "zxy".to_string(),
 		};
 
 		let mut serializer = McSerializer::new();
@@ -199,8 +208,12 @@ mod tests {
 		let group = Group::mc_deserialize(&mut deserializer).unwrap();
 
 		match group {
-			Group::VarI(b) => {println!("VarI: {}", b.two)}
-			Group::StrM(b) => {println!("StrM: {}", b.fifth)}
+			Group::VarI(b) => {
+				println!("VarI: {}", b.two)
+			}
+			Group::StrM(b) => {
+				println!("StrM: {}", b.fifth)
+			}
 		}
 	}
 

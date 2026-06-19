@@ -101,7 +101,11 @@ impl VarInt {
 			buf[len] = (inner | CONTINUE_INT) as u8;
 			len += 1;
 
-			inner = if inner >= 0 { inner >> 7 } else { ((inner as u32) >> 7) as i32 };
+			inner = if inner >= 0 {
+				inner >> 7
+			} else {
+				((inner as u32) >> 7) as i32
+			};
 		}
 
 		(buf, len)
@@ -267,7 +271,11 @@ impl VarLong {
 			buf[len] = (inner | CONTINUE_LONG) as u8;
 			len += 1;
 
-			inner = if inner >= 0 { inner >> 7 } else { ((inner as u64) >> 7) as i64 };
+			inner = if inner >= 0 {
+				inner >> 7
+			} else {
+				((inner as u64) >> 7) as i64
+			};
 		}
 
 		(buf, len)

@@ -13,14 +13,14 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum};
 /// A Minecraft position, internally represented as a 64-bit integer.
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub struct Position {
-	data: u64
+	data: u64,
 }
 
 impl Position {
 	pub fn new(x: i64, y: i64, z: i64) -> Self {
 		let data: u64 = (((x & 0x3FFFFFF) << 38) | ((z & 0x3FFFFFF) << 12) | (y & 0xFFF)) as u64;
 		Self {
-			data
+			data,
 		}
 	}
 
@@ -51,7 +51,7 @@ pub enum GameDifficulty {
 	Peaceful = 0,
 	Easy = 1,
 	Normal = 2,
-	Hard = 3
+	Hard = 3,
 }
 
 impl McDefault for GameDifficulty {
@@ -164,15 +164,15 @@ pub enum WorldEventType {
 /// 22 bits for x, z and 20 bits for y
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub struct ChunkSectionPosition {
-	data: i64
+	data: i64,
 }
 
 impl ChunkSectionPosition {
 	pub fn new(section_x: i32, section_y: i32, section_z: i32) -> Self {
-		let data = ((section_x as i64 & 0x3FFFFF) << 42)
-			| (section_y as i64 & 0xFFFFF)
-			| ((section_z as i64 & 0x3FFFFF) << 20);
-		Self { data }
+		let data = ((section_x as i64 & 0x3FFFFF) << 42) | (section_y as i64 & 0xFFFFF) | ((section_z as i64 & 0x3FFFFF) << 20);
+		Self {
+			data,
+		}
 	}
 
 	/// Chunk X coordinate
@@ -194,16 +194,15 @@ impl ChunkSectionPosition {
 /// Packed VarLong of block state id, and local x, y, z coords
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub struct SectionBlockEntry {
-	data: VarLong
+	data: VarLong,
 }
 
 impl SectionBlockEntry {
 	pub fn new(block_state_id: i32, local_x: u8, local_y: u8, local_z: u8) -> Self {
-		let value = ((block_state_id as i64) << 12)
-			| ((local_x as i64 & 0xF) << 8)
-			| ((local_z as i64 & 0xF) << 4)
-			| (local_y as i64 & 0xF);
-		Self { data: VarLong(value) }
+		let value = ((block_state_id as i64) << 12) | ((local_x as i64 & 0xF) << 8) | ((local_z as i64 & 0xF) << 4) | (local_y as i64 & 0xF);
+		Self {
+			data: VarLong(value),
+		}
 	}
 
 	pub fn block_state_id(&self) -> i32 {
@@ -238,7 +237,7 @@ pub enum SmokeDirection {
 pub struct SourcePosition {
 	x: f64,
 	y: f64,
-	z: f64
+	z: f64,
 }
 
 #[cfg(test)]

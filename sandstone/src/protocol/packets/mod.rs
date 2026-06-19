@@ -20,7 +20,10 @@ use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec, LoginPluginSpec, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StatisticAward, StonecutterRecipe, Tag, TooltipMatch};
+use crate::protocol::packets::packet_component::{
+	AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec,
+	LoginPluginSpec, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StatisticAward, StonecutterRecipe, Tag, TooltipMatch,
+};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};

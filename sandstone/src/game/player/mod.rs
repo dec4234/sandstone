@@ -31,7 +31,10 @@ impl McSerialize for PlayerGamemode {
 }
 
 impl McDeserialize for PlayerGamemode {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let i = i8::mc_deserialize(deserializer)?;
 
 		match i {

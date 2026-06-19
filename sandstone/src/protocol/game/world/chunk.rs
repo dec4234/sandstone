@@ -35,18 +35,18 @@ pub struct LightData {
 	pub block_light: PrefixedArray<LightArray>,
 }
 
-/// The length of the inner array is always 2048; There is 1 array for each bit set to true in the block 
+/// The length of the inner array is always 2048; There is 1 array for each bit set to true in the block
 /// light mask, starting with the lowest value. Half a byte per light value. Acceptable light values are
 /// 0-15
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Default, Debug, Clone, PartialEq)]
 pub struct LightArray {
-	pub data: PrefixedArray<u8>
+	pub data: PrefixedArray<u8>,
 }
 
 impl LightArray {
 	pub fn new() -> Self {
 		Self {
-			data: PrefixedArray::new(vec![0; 2048])
+			data: PrefixedArray::new(vec![0; 2048]),
 		}
 	}
 
@@ -71,10 +71,10 @@ impl LightArray {
 			// Set low nibble
 			(byte & 0xF0) | (value & 0x0F)
 		};
-		
+
 		Ok(())
 	}
-	
+
 	/// Get the light value for the given index. Half a byte per light value.
 	pub fn get(&self, index: usize) -> SerializingResult<u8> {
 		let byte_index = index / 2;
@@ -85,11 +85,7 @@ impl LightArray {
 		}
 
 		let byte = self.data.vec[byte_index];
-		Ok(if is_high {
-			byte >> 4
-		} else {
-			byte & 0x0F
-		})
+		Ok(if is_high { byte >> 4 } else { byte & 0x0F })
 	}
 }
 
@@ -97,9 +93,9 @@ impl LightArray {
 /// a byte array.
 #[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 pub struct ChunkByteData {
-	/// This array is NOT length-prefixed. The number of elements in the array is calculated based on the world's height. 
-	/// Sections are sent bottom-to-top. The world height changes based on the dimension. 
-	/// The height of each dimension is assigned by the server in its corresponding registry data entry. 
+	/// This array is NOT length-prefixed. The number of elements in the array is calculated based on the world's height.
+	/// Sections are sent bottom-to-top. The world height changes based on the dimension.
+	/// The height of each dimension is assigned by the server in its corresponding registry data entry.
 	/// For example, the vanilla overworld is 384 blocks tall, meaning 24 chunk sections will be included in this array
 	pub data: Vec<ChunkSection>,
 }
@@ -108,26 +104,29 @@ pub struct ChunkByteData {
 impl McSerialize for ChunkByteData {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		let mut small_serializer = McSerializer::new();
-		
+
 		self.data.mc_serialize(&mut small_serializer)?;
-		
+
 		let prefixed_array = PrefixedArray::new(small_serializer.output);
 		prefixed_array.mc_serialize(serializer)?;
-		
+
 		Ok(())
 	}
 }
 
 impl McDeserialize for ChunkByteData {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let prefixed_array = PrefixedArray::<u8>::mc_deserialize(deserializer)?;
-		
+
 		let mut small_deserializer = McDeserializer::new(&prefixed_array.vec);
-		
+
 		let data = Vec::mc_deserialize(&mut small_deserializer)?;
-		
+
 		Ok(Self {
-			data
+			data,
 		})
 	}
 }
@@ -143,7 +142,10 @@ pub struct ChunkSection {
 }
 
 impl McDeserialize for ChunkSection {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let block_count = i16::mc_deserialize(deserializer)?;
 		let block_states = PalletedContainer::mc_deserialize(deserializer, 4096, BLOCKS)?;
 		let biomes = PalletedContainer::mc_deserialize(deserializer, 64, BIOMES)?;
@@ -151,7 +153,7 @@ impl McDeserialize for ChunkSection {
 		Ok(Self {
 			block_count,
 			block_states,
-			biomes
+			biomes,
 		})
 	}
 }
@@ -160,13 +162,16 @@ impl McDeserialize for ChunkSection {
 #[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
 pub struct BiomeSection {
 	/// Consists of 64 entries, representing 4×4×4 biome regions in the chunk section
-	pub biomes: PalletedContainer
+	pub biomes: PalletedContainer,
 }
 
 impl McDeserialize for BiomeSection {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		Ok(Self {
-			biomes: PalletedContainer::mc_deserialize(deserializer, 64, BIOMES)?
+			biomes: PalletedContainer::mc_deserialize(deserializer, 64, BIOMES)?,
 		})
 	}
 }
@@ -195,7 +200,10 @@ impl McSerialize for BiomeByteData {
 }
 
 impl McDeserialize for BiomeByteData {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let prefixed_array = PrefixedArray::<u8>::mc_deserialize(deserializer)?;
 
 		let mut small_deserializer = McDeserializer::new(&prefixed_array.vec);
@@ -203,7 +211,7 @@ impl McDeserialize for BiomeByteData {
 		let data = Vec::mc_deserialize(&mut small_deserializer)?;
 
 		Ok(Self {
-			data
+			data,
 		})
 	}
 }
@@ -212,7 +220,7 @@ impl McDeserialize for BiomeByteData {
 pub struct PalletedContainer {
 	pub bits_per_entry: u8,
 	pub palette: PalleteFormat,
-	pub data: Vec<PackedEntries>
+	pub data: Vec<PackedEntries>,
 }
 
 impl PalletedContainer {
@@ -260,12 +268,17 @@ impl PalletedContainer {
 
 		Ok(Self {
 			bits_per_entry: bpe,
-			palette: PalleteFormat::Indirect(IndirectFormat { palette: PrefixedArray::new(palette) }),
+			palette: PalleteFormat::Indirect(IndirectFormat {
+				palette: PrefixedArray::new(palette),
+			}),
 			data,
 		})
 	}
 
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, num_entries: u16, typ: PaletteFormatType) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, num_entries: u16, typ: PaletteFormatType) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let bpe = u8::mc_deserialize(deserializer)?;
 		let palette = PalleteFormat::mc_deserialize(deserializer, bpe, typ)?;
 
@@ -283,7 +296,7 @@ impl PalletedContainer {
 		Ok(Self {
 			bits_per_entry: bpe,
 			palette,
-			data
+			data,
 		})
 	}
 }
@@ -292,40 +305,39 @@ impl PalletedContainer {
 #[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 pub enum PaletteFormatType {
 	BLOCKS,
-	BIOMES
+	BIOMES,
 }
 
 #[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 pub enum PalleteFormat {
 	SingleValued(VarInt),
 	Indirect(IndirectFormat),
-	Direct
+	Direct,
 }
 
 impl McSerialize for PalleteFormat {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match self {
-  			PalleteFormat::SingleValued(value) => {
-  				value.mc_serialize(serializer)?
-  			}
-  			PalleteFormat::Indirect(format) => {
-  				format.mc_serialize(serializer)?
-  			}
-  			PalleteFormat::Direct => {
-  				// nothing
-  			}
-  		};
-		
-  		Ok(())
+			PalleteFormat::SingleValued(value) => value.mc_serialize(serializer)?,
+			PalleteFormat::Indirect(format) => format.mc_serialize(serializer)?,
+			PalleteFormat::Direct => {
+				// nothing
+			}
+		};
+
+		Ok(())
 	}
 }
 
 impl PalleteFormat {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, bits_per_entry: u8, typ: PaletteFormatType) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, bits_per_entry: u8, typ: PaletteFormatType) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		if bits_per_entry == 0 {
 			return Ok(PalleteFormat::SingleValued(VarInt::mc_deserialize(deserializer)?));
 		}
-		
+
 		match typ {
 			BLOCKS => {
 				if (4..=8).contains(&bits_per_entry) {
@@ -351,7 +363,7 @@ impl PalleteFormat {
 
 #[derive(McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
 pub struct IndirectFormat {
-	pub palette: PrefixedArray<VarInt>
+	pub palette: PrefixedArray<VarInt>,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
@@ -362,7 +374,10 @@ pub struct Heightmap {
 
 impl Heightmap {
 	pub fn new(typ: VarInt, data: PrefixedArray<i64>) -> Self {
-		Self { typ, data }
+		Self {
+			typ,
+			data,
+		}
 	}
 }
 
@@ -372,7 +387,7 @@ pub struct BlockEntity {
 	pub packed_xz: PackedXZ,
 	pub y: i16,
 	pub typ: VarInt,
-	pub data: NbtCompound
+	pub data: NbtCompound,
 }
 
 /// Relative coordinates within a chunk. Each x and z value has valid values 0-15
@@ -386,16 +401,16 @@ impl PackedXZ {
 		if x > 15 || z > 15 {
 			return Err(SerializingErr::OutOfBounds(format!("PackedXZ values out of bounds. Valid values are 0-15. Received x={}, z={}", x, z)));
 		}
-		
+
 		Ok(Self {
-			data: (x << 4) | z
+			data: (x << 4) | z,
 		})
 	}
-	
+
 	pub fn x(&self) -> u8 {
 		self.data >> 4
 	}
-	
+
 	pub fn z(&self) -> u8 {
 		self.data & 0x0F
 	}
@@ -403,13 +418,13 @@ impl PackedXZ {
 
 /// An entry is defined by a set of adjacent bits packed within the same long. The bits per entry value
 /// differs based on a variety of factors (check wiki). This function calculates the number of entries that
-/// can entirely fit within the same long. Entries cannot be split across longs, so any remaining bits are 
+/// can entirely fit within the same long. Entries cannot be split across longs, so any remaining bits are
 /// wasted as padding.
 fn entries_per_i64(bpe: u8) -> u8 {
 	if bpe == 0 {
 		return 0;
 	}
-	
+
 	64 / bpe
 }
 
@@ -428,7 +443,7 @@ mod test {
 		assert_eq!(entries_per_i64(7), 9);
 		assert_eq!(entries_per_i64(8), 8);
 	}
-	
+
 	#[test]
 	fn test_paletted_container_builders_round_trip() {
 		use crate::protocol::game::world::chunk::{ChunkSection, PaletteFormatType, PalletedContainer};
@@ -465,19 +480,19 @@ mod test {
 	#[test]
 	fn test_light_array() {
 		let mut light_array = super::LightArray::new();
-		
+
 		light_array.set(0, 0x0F).unwrap();
 		assert_eq!(light_array.get(0).unwrap(), 0x0F);
-		
+
 		light_array.set(1, 0x0F).unwrap();
 		assert_eq!(light_array.get(1).unwrap(), 0x0F);
-		
+
 		light_array.set(2, 0x00).unwrap();
 		assert_eq!(light_array.get(2).unwrap(), 0x00);
-		
+
 		light_array.set(3, 0x00).unwrap();
 		assert_eq!(light_array.get(3).unwrap(), 0x00);
-		
+
 		assert_eq!(light_array.get(4).is_err(), false);
 	}
 }

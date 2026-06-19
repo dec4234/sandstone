@@ -33,16 +33,19 @@ impl PackedEntries {
 		let mask = (1 << self.bpe) - 1;
 		let shift = index * self.bpe;
 		self.data &= !(mask << shift);
-		self.data |= ((value & mask as u64) << shift ) as i64;
+		self.data |= ((value & mask as u64) << shift) as i64;
 	}
 
 	/// A nonstandard deserializer that utilizes bits per entry
-	pub(crate) fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, bpe: u8) -> SerializingResult<'a, Self> where Self: Sized {
+	pub(crate) fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, bpe: u8) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let data = i64::mc_deserialize(deserializer)?;
 
 		Ok(Self {
 			data,
-			bpe
+			bpe,
 		})
 	}
 }
@@ -59,7 +62,7 @@ impl McSerialize for PackedEntries {
 pub struct IDSet {
 	pub typ: VarInt,
 	pub tag_name: Option<String>,
-	pub ids: Option<Vec<VarInt>>
+	pub ids: Option<Vec<VarInt>>,
 }
 
 impl McDefault for IDSet {
@@ -82,11 +85,17 @@ impl McSerialize for IDSet {
 			} else {
 				return Err(SerializingErr::MissingField("IDSet with type 0 must have a tag name".to_string()));
 			}
-		} else if let Some(ids) = &self.ids { // ids only serialized when type != 0
+		} else if let Some(ids) = &self.ids {
+			// ids only serialized when type != 0
 			if ids.len() != (self.typ.0 - 1) as usize {
-				return Err(SerializingErr::InconsistentField(format!("IDSet with type {} must have {} IDs, but {} were provided", self.typ.0, self.typ.0 - 1, ids.len())));
+				return Err(SerializingErr::InconsistentField(format!(
+					"IDSet with type {} must have {} IDs, but {} were provided",
+					self.typ.0,
+					self.typ.0 - 1,
+					ids.len()
+				)));
 			}
-			
+
 			ids.mc_serialize(serializer)?;
 		} else {
 			return Err(SerializingErr::MissingField("IDSet with type 0 must have an ID list".to_string()));
@@ -96,14 +105,17 @@ impl McSerialize for IDSet {
 }
 
 impl McDeserialize for IDSet {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let typ = VarInt::mc_deserialize(deserializer)?;
 		if typ.0 == 0 {
 			let tag_name = String::mc_deserialize(deserializer)?;
 			Ok(Self {
 				typ,
 				tag_name: Some(tag_name),
-				ids: None
+				ids: None,
 			})
 		} else {
 			let size = typ.0 - 1;
@@ -117,7 +129,7 @@ impl McDeserialize for IDSet {
 			Ok(Self {
 				typ,
 				tag_name: None,
-				ids: Some(ids)
+				ids: Some(ids),
 			})
 		}
 	}
@@ -148,7 +160,10 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq> McSerialize for IDorX<T
 }
 
 impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDeserialize for IDorX<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let typ = VarInt::mc_deserialize(deserializer)?.0;
 		if typ == 0 {
 			Ok(IDorX::Inline(T::mc_deserialize(deserializer)?))
@@ -167,7 +182,7 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDefault for IDorX<T> 
 /// A rotation angle in steps of 1/256 of a full turn
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Angle {
-	pub angle: u8
+	pub angle: u8,
 }
 
 /// Compressed / low-precision 3-component vector (1.21.9+). Used for entity velocity and other
@@ -181,7 +196,11 @@ pub struct LpVec3 {
 
 impl McDefault for LpVec3 {
 	fn mc_default() -> Self {
-		Self { x: 0.0, y: 0.0, z: 0.0 }
+		Self {
+			x: 0.0,
+			y: 0.0,
+			z: 0.0,
+		}
 	}
 }
 
@@ -201,13 +220,15 @@ impl McSerialize for LpVec3 {
 
 		let scale_low = (scale & 0x03) as u8;
 		let scale_high = scale >> 2;
-		let continuation: u8 = if scale_high > 0 { 1 } else { 0 };
+		let continuation: u8 = if scale_high > 0 {
+			1
+		} else {
+			0
+		};
 
 		let byte0: u8 = scale_low | (continuation << 2) | (((x_raw & 0x1F) as u8) << 3);
 		let byte1: u8 = ((x_raw >> 5) & 0xFF) as u8;
-		let packed: u32 = (((x_raw >> 13) as u32 & 0x03) << 30)
-			| ((y_raw as u32) << 15)
-			| (z_raw as u32);
+		let packed: u32 = (((x_raw >> 13) as u32 & 0x03) << 30) | ((y_raw as u32) << 15) | (z_raw as u32);
 
 		serializer.serialize_u8(byte0);
 		serializer.serialize_u8(byte1);
@@ -222,11 +243,18 @@ impl McSerialize for LpVec3 {
 }
 
 impl McDeserialize for LpVec3 {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let byte0 = u8::mc_deserialize(deserializer)?;
 
 		if byte0 == 0x00 {
-			return Ok(Self { x: 0.0, y: 0.0, z: 0.0 });
+			return Ok(Self {
+				x: 0.0,
+				y: 0.0,
+				z: 0.0,
+			});
 		}
 
 		let scale_low = (byte0 & 0x03) as u32;
@@ -330,8 +358,8 @@ mod test {
 
 	#[test]
 	fn test_stonecutter_recipe_round_trip() {
-		use crate::protocol::packets::packet_component::StonecutterRecipe;
 		use crate::protocol::game::info::inventory::slots::SlotDisplay;
+		use crate::protocol::packets::packet_component::StonecutterRecipe;
 
 		let recipe = StonecutterRecipe {
 			id_set: IDSet {
@@ -352,8 +380,8 @@ mod test {
 
 	#[test]
 	fn test_stonecutter_recipe_inline_ids_round_trip() {
-		use crate::protocol::packets::packet_component::StonecutterRecipe;
 		use crate::protocol::game::info::inventory::slots::SlotDisplay;
+		use crate::protocol::packets::packet_component::StonecutterRecipe;
 
 		let recipe = StonecutterRecipe {
 			id_set: IDSet {
@@ -390,7 +418,7 @@ mod test {
 	fn extract_from_hex() {
 		let packed = PackedEntries {
 			data: 0x0020863148418841,
-			bpe: 5
+			bpe: 5,
 		};
 
 		assert_eq!(packed.get_entry(0), 1);
@@ -407,7 +435,7 @@ mod test {
 
 		let packed = PackedEntries {
 			data: 0x01018A7260F68C87,
-			bpe: 5
+			bpe: 5,
 		};
 
 		assert_eq!(packed.get_entry(0), 7);
@@ -431,7 +459,7 @@ mod test {
 			is_executable: true,
 			has_redirect: false,
 			has_suggestions: true,
-			is_restricted: false
+			is_restricted: false,
 		};
 
 		let byte = flags.to_byte();
@@ -449,7 +477,11 @@ mod test {
 	fn test_lpvec3_zero_round_trip() {
 		use crate::protocol_types::datatypes::internal_types::LpVec3;
 
-		let vec = LpVec3 { x: 0.0, y: 0.0, z: 0.0 };
+		let vec = LpVec3 {
+			x: 0.0,
+			y: 0.0,
+			z: 0.0,
+		};
 		let mut serializer = McSerializer::new();
 		vec.mc_serialize(&mut serializer).unwrap();
 		let bytes: Vec<u8> = serializer.into();
@@ -467,7 +499,11 @@ mod test {
 	fn test_lpvec3_nonzero_round_trip() {
 		use crate::protocol_types::datatypes::internal_types::LpVec3;
 
-		let vec = LpVec3 { x: 0.5, y: -0.3, z: 0.8 };
+		let vec = LpVec3 {
+			x: 0.5,
+			y: -0.3,
+			z: 0.8,
+		};
 		let mut serializer = McSerializer::new();
 		vec.mc_serialize(&mut serializer).unwrap();
 		let bytes: Vec<u8> = serializer.into();
@@ -484,7 +520,11 @@ mod test {
 	fn test_lpvec3_large_scale_round_trip() {
 		use crate::protocol_types::datatypes::internal_types::LpVec3;
 
-		let vec = LpVec3 { x: 5.0, y: -3.0, z: 8.0 };
+		let vec = LpVec3 {
+			x: 5.0,
+			y: -3.0,
+			z: 8.0,
+		};
 		let mut serializer = McSerializer::new();
 		vec.mc_serialize(&mut serializer).unwrap();
 		let bytes: Vec<u8> = serializer.into();
@@ -513,15 +553,24 @@ impl<T: McSerialize> McSerialize for Mapping<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Mapping<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let key = String::mc_deserialize(deserializer)?;
 		let value = T::mc_deserialize(deserializer)?;
-		Ok(Self { key, value })
+		Ok(Self {
+			key,
+			value,
+		})
 	}
 }
 
 impl<T: McDefault> McDefault for Mapping<T> {
 	fn mc_default() -> Self {
-		Self { key: McDefault::mc_default(), value: T::mc_default() }
+		Self {
+			key: McDefault::mc_default(),
+			value: T::mc_default(),
+		}
 	}
 }

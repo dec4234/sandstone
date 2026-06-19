@@ -37,7 +37,7 @@ pub struct AdvancementDisplay {
 pub enum AdvancementFrameType {
 	Task,
 	Challenge,
-	Goal
+	Goal,
 }
 
 impl McSerialize for AdvancementFrameType {
@@ -45,20 +45,23 @@ impl McSerialize for AdvancementFrameType {
 		let value = match self {
 			AdvancementFrameType::Task => 0,
 			AdvancementFrameType::Challenge => 1,
-			AdvancementFrameType::Goal => 2
+			AdvancementFrameType::Goal => 2,
 		};
 		VarInt(value).mc_serialize(serializer)
 	}
 }
 
 impl McDeserialize for AdvancementFrameType {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let value = VarInt::mc_deserialize(deserializer)?.0;
 		let frame_type = match value {
 			0 => AdvancementFrameType::Task,
 			1 => AdvancementFrameType::Challenge,
 			2 => AdvancementFrameType::Goal,
-			_ => return Err(SerializingErr::OutOfBounds(format!("Invalid advancement frame type value {}: must be 0, 1, or 2", value)))
+			_ => return Err(SerializingErr::OutOfBounds(format!("Invalid advancement frame type value {}: must be 0, 1, or 2", value))),
 		};
 		Ok(frame_type)
 	}
@@ -88,7 +91,10 @@ impl McSerialize for AdvancementFlags {
 }
 
 impl McDeserialize for AdvancementFlags {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let flags = i32::mc_deserialize(deserializer)?;
 		Ok(Self {
 			has_background_texture: (flags & 0x01) != 0,

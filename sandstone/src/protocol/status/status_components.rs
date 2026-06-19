@@ -3,7 +3,6 @@
 use crate::protocol::testing::McDefault;
 use std::io::Cursor;
 
-
 use crate::protocol::packets::StatusResponsePacket;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol_types::datatypes::chat::TextComponent;
@@ -49,7 +48,8 @@ impl StatusResponseSpec {
 				online: 0,
 				sample: Vec::new(),
 			},
-			description: TextComponent::new(description.into().replace("&", "§")),
+			// description: TextComponent::new(description.into().replace("&", "§")), //todo: revist color code translation
+			description: TextComponent::new(description.into()),
 			favicon: None,
 			enforcesSecureChat: false,
 			previewsChat: false,
@@ -60,8 +60,7 @@ impl StatusResponseSpec {
 	/// This must be a 64x64 PNG image.
 	pub fn set_favicon_image(&mut self, image: DynamicImage) {
 		let mut image_data: Vec<u8> = Vec::new();
-		image.write_to(&mut Cursor::new(&mut image_data), ImageFormat::Png)
-			.unwrap();
+		image.write_to(&mut Cursor::new(&mut image_data), ImageFormat::Png).unwrap();
 		let res_base64 = general_purpose::STANDARD.encode(image_data);
 		let s = format!("data:image/png;base64,{}", res_base64);
 
@@ -89,7 +88,7 @@ impl StatusResponseSpec {
 		self.players = PlayerInfo {
 			max,
 			online,
-			sample
+			sample,
 		};
 	}
 
@@ -113,7 +112,10 @@ impl McSerialize for StatusResponseSpec {
 }
 
 impl McDeserialize for StatusResponseSpec {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let raw = serde_json::from_str(&String::mc_deserialize(deserializer)?).unwrap(); // TODO: test
 
 		Ok(raw)
@@ -129,7 +131,7 @@ impl From<StatusResponsePacket> for StatusResponseSpec {
 impl From<StatusResponseSpec> for StatusResponsePacket {
 	fn from(p: StatusResponseSpec) -> Self {
 		StatusResponsePacket {
-			response: p
+			response: p,
 		}
 	}
 }
@@ -192,4 +194,3 @@ impl PlayerSample {
 		}
 	}
 }
-

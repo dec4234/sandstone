@@ -9,9 +9,9 @@ use std::cmp::min;
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 
-pub mod serializer_types;
 pub mod serializer_error;
 mod serializer_testing;
+pub mod serializer_types;
 
 /// The result of a serialization/deserialization operation.
 /// See [SerializingErr] for more information on the error types
@@ -19,35 +19,35 @@ pub type SerializingResult<'a, T> = Result<T, SerializingErr>;
 
 /// Handles the serialization of any types that `impl McSerialize`. Holds an
 /// internal buffer representing the serialized data.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct McSerializer {
-	pub output: Vec<u8>
+	pub output: Vec<u8>,
 }
 
 impl McSerializer {
 	pub fn new() -> Self {
 		Self {
-			output: vec![]
+			output: vec![],
 		}
 	}
-	
+
 	/// Initialize the size of the internal serializer buffer. If you plan on serializing a lot of small
 	/// items, then this should be used to avoid unnecessary reallocations.
 	pub fn init_size(size: usize) -> Self {
 		Self {
-			output: Vec::with_capacity(size)
+			output: Vec::with_capacity(size),
 		}
 	}
-	
+
 	/// Set the size of the internal buffer. This will resize the buffer to the size specified.
 	/// The provided size must be greater than the current length of the buffer.
 	pub fn set_size(&mut self, size: usize) -> SerializingResult<()> {
 		if size < self.output.len() {
 			return Err(SerializingErr::UniqueFailure("Cannot set size to less than current length".to_string()));
 		}
-		
+
 		self.output.reserve(size);
-		
+
 		Ok(())
 	}
 
@@ -89,7 +89,7 @@ impl McSerializer {
 	pub fn merge(&mut self, serializer: McSerializer) {
 		self.serialize_bytes(&serializer.output);
 	}
-	
+
 	pub fn as_bytes(&self) -> &[u8] {
 		&self.output
 	}
@@ -115,15 +115,15 @@ impl From<McSerializer> for Vec<u8> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct McDeserializer<'a> {
 	pub data: &'a [u8],
-	pub index: usize
+	pub index: usize,
 }
 
-impl <'a> McDeserializer<'a> {
+impl<'a> McDeserializer<'a> {
 	/// Create a new McDeserializer from a slice of bytes.
 	pub fn new(data: &'a [u8]) -> Self {
 		Self {
 			data,
-			index: 0
+			index: 0,
 		}
 	}
 
@@ -165,14 +165,10 @@ impl <'a> McDeserializer<'a> {
 			None
 		}
 	}
-	
+
 	/// Peek at the next byte in the buffer without modifying the index or consuming the byte.
 	pub fn peek_byte(&self) -> Option<u8> {
-		if self.index < self.data.len() {
-			Some(self.data[self.index])
-		} else {
-			None
-		}
+		if self.index < self.data.len() { Some(self.data[self.index]) } else { None }
 	}
 
 	/// Increment the index of this McDeserializer by the amount specified
@@ -235,16 +231,20 @@ pub trait McDeserialize {
 	/// Deserialize the byte buffer into the type that implements this trait.
 	/// Note that if the byte buffer does not match the type you are trying to deserialize, or it does not
 	/// contain enough data then this will return an error.
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized;
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized;
 }
 
 /// Deserialize data given the current packet state and the packet id. This is needed since
 /// the packet id is not enough to determine the packet type in some cases.
 /// (ie. Both STATUS and HANDSHAKING states have a packet with ID 0)
 pub trait StateBasedDeserializer {
-	/// Deserialize the byte buffer into a 'Packet'. This takes 2 extra arguments, the packet state and the 
+	/// Deserialize the byte buffer into a 'Packet'. This takes 2 extra arguments, the packet state and the
 	/// direction of the packet to narrow down the exact packet that should be deserialized.
-	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> SerializingResult<'a, Self> where Self: Sized;
+	fn deserialize_state<'a>(deserializer: &'a mut McDeserializer, state: PacketState, packet_direction: PacketDirection) -> SerializingResult<'a, Self>
+	where
+		Self: Sized;
 }
 
 /// Implement this on a type to enable serializing it into a byte buffer. All types that will be sent

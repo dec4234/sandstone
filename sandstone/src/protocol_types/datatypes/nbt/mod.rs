@@ -3,9 +3,9 @@
 #![allow(clippy::from_over_into)]
 
 pub mod nbt;
+pub mod nbt_error;
 mod nbt_testing;
 mod snbt_testing;
-pub mod nbt_error;
 
 #[macro_use]
 mod macros {
@@ -23,7 +23,7 @@ mod macros {
         };
     }
 
-    /// Used to generate the NbtValue trait for primitive types
+	/// Used to generate the NbtValue trait for primitive types
 	#[macro_export]
 	macro_rules! primvalue_nbtvalue {
         ($(($t: ty, $name: ident)),*) => {
@@ -62,14 +62,14 @@ mod macros {
 	#[macro_export]
 	macro_rules! list_nbtvalue {
         ($(($t: ty, $name: ident, $fancyname: ident, $num: literal)),*) => {
-            $(  
+            $(
                 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
                 pub struct $fancyname {
                     #[serde(skip_serializing)]
                     pub count: u32, // used for iterator
                     pub list: Vec<$t>,
                 }
-                
+
                 impl $fancyname {
                     pub fn new(list: Vec<$t>) -> Self {
                         Self {
@@ -78,10 +78,10 @@ mod macros {
                         }
                     }
                 }
-            
+
                 impl Iterator for $fancyname {
                     type Item = $t;
-                
+
                     fn next(&mut self) -> Option<Self::Item> {
                         if self.count < self.list.len() as u32 {
                             let tag = self.list[self.count as usize];
@@ -92,7 +92,7 @@ mod macros {
                         }
                     }
                 }
-            
+
                 impl McSerialize for $fancyname {
                     fn mc_serialize(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
                         (self.list.len() as u32).mc_serialize(serializer)?;
@@ -102,26 +102,26 @@ mod macros {
                         Ok(())
                     }
                 }
-                
+
                 impl McDeserialize for $fancyname {
                     fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, $fancyname> {
                         let length = i32::mc_deserialize(deserializer)?;
                         let mut bytes = vec![];
-                        
+
                         for _ in 0..length {
                             let u = <$t>::mc_deserialize(deserializer);
-                            
+
                             if let Ok(u) = u {
                                 bytes.push(u);
                             } else {
                                 return Err(SerializingErr::UniqueFailure("Could not find expected element to deserialize".to_string()));
                             }
                         }
-                        
+
                         return Ok($fancyname::new(bytes));
                     }
                 }
-            
+
                 impl Into<NbtTag> for $fancyname {
                     fn into(self) -> NbtTag {
                         NbtTag::$name(self)
@@ -138,7 +138,7 @@ mod macros {
                         }
                     }
                 }
-            
+
                 impl From<NbtTag> for Option<$fancyname> {
                     fn from(tag: NbtTag) -> Self {
                         match tag {

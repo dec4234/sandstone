@@ -6,10 +6,7 @@ use simple_logger::SimpleLogger;
 
 #[tokio::main]
 async fn main() {
-	SimpleLogger::new()
-		.with_level(LevelFilter::Debug)
-		.init()
-		.unwrap();
+	SimpleLogger::new().with_level(LevelFilter::Debug).init().unwrap();
 	debug!("Starting client");
 
 	let mut client = CraftConnection::connect("hypixel.net").await.unwrap();

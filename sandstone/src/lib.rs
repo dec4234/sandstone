@@ -10,8 +10,8 @@
 //! See the project on GitHub [dec4234/sandstone](https://www.github.com/dec4234/sandstone)
 //! or crates.io [sandstone](https://crates.io/crates/sandstone) for more info.
 
+pub mod game;
+pub mod network;
+pub mod protocol;
 pub mod protocol_types;
 pub mod util;
-pub mod protocol;
-pub mod network;
-pub mod game;

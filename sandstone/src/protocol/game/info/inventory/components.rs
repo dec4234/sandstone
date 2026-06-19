@@ -214,12 +214,15 @@ impl McSerialize for ProvidesTrimMaterialComponent {
 }
 
 impl McDeserialize for ProvidesTrimMaterialComponent {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let mode = u8::mc_deserialize(deserializer)?;
 		match mode {
 			0 => Ok(ProvidesTrimMaterialComponent::ByName(String::mc_deserialize(deserializer)?)),
 			1 => Ok(ProvidesTrimMaterialComponent::Inline(IdOrTrimMaterial::mc_deserialize(deserializer)?)),
-			_ => Err(SerializingErr::DeserializationError(format!("Invalid ProvidesTrimMaterial mode: {}", mode)))
+			_ => Err(SerializingErr::DeserializationError(format!("Invalid ProvidesTrimMaterial mode: {}", mode))),
 		}
 	}
 }
@@ -253,12 +256,15 @@ impl McSerialize for JukeboxPlayableComponent {
 }
 
 impl McDeserialize for JukeboxPlayableComponent {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let mode = u8::mc_deserialize(deserializer)?;
 		match mode {
 			0 => Ok(JukeboxPlayableComponent::ByName(String::mc_deserialize(deserializer)?)),
 			1 => Ok(JukeboxPlayableComponent::Inline(IdOrJukeboxSong::mc_deserialize(deserializer)?)),
-			_ => Err(SerializingErr::DeserializationError(format!("Invalid JukeboxPlayable mode: {}", mode)))
+			_ => Err(SerializingErr::DeserializationError(format!("Invalid JukeboxPlayable mode: {}", mode))),
 		}
 	}
 }
@@ -290,7 +296,10 @@ impl McSerialize for LodestoneTrackerComponent {
 }
 
 impl McDeserialize for LodestoneTrackerComponent {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let has_global_pos = bool::mc_deserialize(deserializer)?;
 		let (dimension, position) = if has_global_pos {
 			(Some(String::mc_deserialize(deserializer)?), Some(Position::mc_deserialize(deserializer)?))
@@ -298,7 +307,12 @@ impl McDeserialize for LodestoneTrackerComponent {
 			(None, None)
 		};
 		let tracked = bool::mc_deserialize(deserializer)?;
-		Ok(Self { has_global_pos, dimension, position, tracked })
+		Ok(Self {
+			has_global_pos,
+			dimension,
+			position,
+			tracked,
+		})
 	}
 }
 
@@ -372,12 +386,15 @@ impl McSerialize for ChickenVariantComponent {
 }
 
 impl McDeserialize for ChickenVariantComponent {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let mode = u8::mc_deserialize(deserializer)?;
 		match mode {
 			0 => Ok(ChickenVariantComponent::ByName(String::mc_deserialize(deserializer)?)),
 			1 => Ok(ChickenVariantComponent::Registry(VarInt::mc_deserialize(deserializer)?)),
-			_ => Err(SerializingErr::DeserializationError(format!("Invalid ChickenVariant mode: {}", mode)))
+			_ => Err(SerializingErr::DeserializationError(format!("Invalid ChickenVariant mode: {}", mode))),
 		}
 	}
 }
@@ -410,7 +427,10 @@ impl McSerialize for PaintingVariantComponent {
 }
 
 impl McDeserialize for PaintingVariantComponent {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let typ = VarInt::mc_deserialize(deserializer)?.0;
 		if typ == 0 {
 			Ok(PaintingVariantComponent::Inline(PaintingVariant::mc_deserialize(deserializer)?))
@@ -428,210 +448,498 @@ impl McDefault for PaintingVariantComponent {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StructuredComponent {
-	CustomData(NbtCompound),                        // 0
-	MaxStackSize(VarInt),                           // 1
-	MaxDamage(VarInt),                              // 2
-	Damage(VarInt),                                 // 3
-	Unbreakable,                                    // 4
-	CustomName(TextComponent),                      // 5
-	ItemName(TextComponent),                        // 6
-	ItemModel(String),                              // 7
-	Lore(PrefixedArray<TextComponent>),             // 8
-	Rarity(VarInt),                                 // 9
-	Enchantments(EnchantmentList),                  // 10
-	CanPlaceOn(PrefixedArray<BlockPredicate>),      // 11
-	CanBreak(PrefixedArray<BlockPredicate>),        // 12
-	AttributeModifiers(AttributeModifierList),      // 13
-	CustomModelData(CustomModelDataComponent),      // 14
-	TooltipDisplay(TooltipDisplayComponent),        // 15
-	RepairCost(VarInt),                             // 16
-	CreativeSlotLock,                               // 17
-	EnchantmentGlintOverride(bool),                 // 18
-	IntangibleProjectile(NbtCompound),              // 19
-	Food(FoodComponent),                            // 20
-	Consumable(ConsumableComponent),                // 21
-	UseRemainder(Box<SlotData>),                    // 22
-	UseCooldown(UseCooldownComponent),              // 23
-	DamageResistant(String),                        // 24
-	Tool(ToolComponent),                            // 25
-	Weapon(WeaponComponent),                        // 26
-	Enchantable(VarInt),                            // 27
-	Equippable(EquippableComponent),                // 28
-	Repairable(IDSet),                              // 29
-	Glider,                                         // 30
-	TooltipStyle(String),                           // 31
-	DeathProtection(PrefixedArray<ConsumeEffect>),  // 32
-	BlocksAttacks(BlocksAttacksComponent),          // 33
-	StoredEnchantments(EnchantmentList),            // 34
-	DyedColor(i32),                                 // 35
-	MapColor(i32),                                  // 36
-	MapId(VarInt),                                  // 37
-	MapDecorations(NbtCompound),                    // 38
-	MapPostProcessing(VarInt),                      // 39
-	ChargedProjectiles(PrefixedArray<SlotData>),    // 40
-	BundleContents(PrefixedArray<SlotData>),        // 41
-	PotionContents(PotionContentsComponent),        // 42
-	PotionDurationScale(f32),                       // 43
-	SuspiciousStewEffects(SuspiciousStewList),      // 44
-	WritableBookContent(WritableBookComponent),     // 45
-	WrittenBookContent(WrittenBookComponent),       // 46
-	Trim(TrimComponent),                            // 47
-	DebugStickState(NbtCompound),                   // 48
-	EntityData(EntityDataComponent),                // 49
-	BucketEntityData(NbtCompound),                  // 50
-	BlockEntityData(BlockEntityDataComponent),      // 51
-	InstrumentComponent(IdOrInstrument),            // 52
+	CustomData(NbtCompound),                             // 0
+	MaxStackSize(VarInt),                                // 1
+	MaxDamage(VarInt),                                   // 2
+	Damage(VarInt),                                      // 3
+	Unbreakable,                                         // 4
+	CustomName(TextComponent),                           // 5
+	ItemName(TextComponent),                             // 6
+	ItemModel(String),                                   // 7
+	Lore(PrefixedArray<TextComponent>),                  // 8
+	Rarity(VarInt),                                      // 9
+	Enchantments(EnchantmentList),                       // 10
+	CanPlaceOn(PrefixedArray<BlockPredicate>),           // 11
+	CanBreak(PrefixedArray<BlockPredicate>),             // 12
+	AttributeModifiers(AttributeModifierList),           // 13
+	CustomModelData(CustomModelDataComponent),           // 14
+	TooltipDisplay(TooltipDisplayComponent),             // 15
+	RepairCost(VarInt),                                  // 16
+	CreativeSlotLock,                                    // 17
+	EnchantmentGlintOverride(bool),                      // 18
+	IntangibleProjectile(NbtCompound),                   // 19
+	Food(FoodComponent),                                 // 20
+	Consumable(ConsumableComponent),                     // 21
+	UseRemainder(Box<SlotData>),                         // 22
+	UseCooldown(UseCooldownComponent),                   // 23
+	DamageResistant(String),                             // 24
+	Tool(ToolComponent),                                 // 25
+	Weapon(WeaponComponent),                             // 26
+	Enchantable(VarInt),                                 // 27
+	Equippable(EquippableComponent),                     // 28
+	Repairable(IDSet),                                   // 29
+	Glider,                                              // 30
+	TooltipStyle(String),                                // 31
+	DeathProtection(PrefixedArray<ConsumeEffect>),       // 32
+	BlocksAttacks(BlocksAttacksComponent),               // 33
+	StoredEnchantments(EnchantmentList),                 // 34
+	DyedColor(i32),                                      // 35
+	MapColor(i32),                                       // 36
+	MapId(VarInt),                                       // 37
+	MapDecorations(NbtCompound),                         // 38
+	MapPostProcessing(VarInt),                           // 39
+	ChargedProjectiles(PrefixedArray<SlotData>),         // 40
+	BundleContents(PrefixedArray<SlotData>),             // 41
+	PotionContents(PotionContentsComponent),             // 42
+	PotionDurationScale(f32),                            // 43
+	SuspiciousStewEffects(SuspiciousStewList),           // 44
+	WritableBookContent(WritableBookComponent),          // 45
+	WrittenBookContent(WrittenBookComponent),            // 46
+	Trim(TrimComponent),                                 // 47
+	DebugStickState(NbtCompound),                        // 48
+	EntityData(EntityDataComponent),                     // 49
+	BucketEntityData(NbtCompound),                       // 50
+	BlockEntityData(BlockEntityDataComponent),           // 51
+	InstrumentComponent(IdOrInstrument),                 // 52
 	ProvidesTrimMaterial(ProvidesTrimMaterialComponent), // 53
-	OminousBottleAmplifier(VarInt),                 // 54
-	JukeboxPlayable(JukeboxPlayableComponent),      // 55
-	ProvidesBannerPatterns(String),                 // 56
-	Recipes(NbtCompound),                           // 57
-	LodestoneTracker(LodestoneTrackerComponent),    // 58
-	FireworkExplosionComponent(FireworkExplosion),   // 59
-	Fireworks(FireworksComponent),                  // 60
-	Profile(ResolvableProfile),                     // 61
-	NoteBlockSound(String),                         // 62
-	BannerPatterns(BannerPatternsComponent),        // 63
-	BaseColor(DyeColor),                            // 64
-	PotDecorations(PrefixedArray<VarInt>),          // 65
-	Container(PrefixedArray<SlotData>),             // 66
-	BlockState(BlockStateComponent),                // 67
-	Bees(PrefixedArray<BeeData>),                   // 68
-	Lock(NbtTag),                                   // 69
-	ContainerLoot(NbtCompound),                     // 70
-	BreakSound(IDorX<SoundEvent>),                  // 71
-	VillagerVariant(VarInt),                        // 72
-	WolfVariant(VarInt),                            // 73
-	WolfSoundVariant(VarInt),                       // 74
-	WolfCollar(DyeColor),                           // 75
-	FoxVariant(VarInt),                             // 76
-	SalmonSize(VarInt),                             // 77
-	ParrotVariant(VarInt),                          // 78
-	TropicalFishPattern(VarInt),                    // 79
-	TropicalFishBaseColor(DyeColor),                // 80
-	TropicalFishPatternColor(DyeColor),             // 81
-	MooshroomVariant(VarInt),                       // 82
-	RabbitVariant(VarInt),                          // 83
-	PigVariant(VarInt),                             // 84
-	CowVariant(VarInt),                             // 85
-	ChickenVariant(ChickenVariantComponent),        // 86
-	FrogVariant(VarInt),                            // 87
-	HorseVariant(VarInt),                           // 88
-	PaintingVariant(PaintingVariantComponent),      // 89
-	LlamaVariant(VarInt),                           // 90
-	AxolotlVariant(VarInt),                         // 91
-	CatVariant(VarInt),                             // 92
-	CatCollar(DyeColor),                            // 93
-	SheepColor(DyeColor),                           // 94
-	ShulkerColor(DyeColor),                         // 95
+	OminousBottleAmplifier(VarInt),                      // 54
+	JukeboxPlayable(JukeboxPlayableComponent),           // 55
+	ProvidesBannerPatterns(String),                      // 56
+	Recipes(NbtCompound),                                // 57
+	LodestoneTracker(LodestoneTrackerComponent),         // 58
+	FireworkExplosionComponent(FireworkExplosion),       // 59
+	Fireworks(FireworksComponent),                       // 60
+	Profile(ResolvableProfile),                          // 61
+	NoteBlockSound(String),                              // 62
+	BannerPatterns(BannerPatternsComponent),             // 63
+	BaseColor(DyeColor),                                 // 64
+	PotDecorations(PrefixedArray<VarInt>),               // 65
+	Container(PrefixedArray<SlotData>),                  // 66
+	BlockState(BlockStateComponent),                     // 67
+	Bees(PrefixedArray<BeeData>),                        // 68
+	Lock(NbtTag),                                        // 69
+	ContainerLoot(NbtCompound),                          // 70
+	BreakSound(IDorX<SoundEvent>),                       // 71
+	VillagerVariant(VarInt),                             // 72
+	WolfVariant(VarInt),                                 // 73
+	WolfSoundVariant(VarInt),                            // 74
+	WolfCollar(DyeColor),                                // 75
+	FoxVariant(VarInt),                                  // 76
+	SalmonSize(VarInt),                                  // 77
+	ParrotVariant(VarInt),                               // 78
+	TropicalFishPattern(VarInt),                         // 79
+	TropicalFishBaseColor(DyeColor),                     // 80
+	TropicalFishPatternColor(DyeColor),                  // 81
+	MooshroomVariant(VarInt),                            // 82
+	RabbitVariant(VarInt),                               // 83
+	PigVariant(VarInt),                                  // 84
+	CowVariant(VarInt),                                  // 85
+	ChickenVariant(ChickenVariantComponent),             // 86
+	FrogVariant(VarInt),                                 // 87
+	HorseVariant(VarInt),                                // 88
+	PaintingVariant(PaintingVariantComponent),           // 89
+	LlamaVariant(VarInt),                                // 90
+	AxolotlVariant(VarInt),                              // 91
+	CatVariant(VarInt),                                  // 92
+	CatCollar(DyeColor),                                 // 93
+	SheepColor(DyeColor),                                // 94
+	ShulkerColor(DyeColor),                              // 95
 }
 
 impl McSerialize for StructuredComponent {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match self {
-			StructuredComponent::CustomData(v) => { VarInt(0).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::MaxStackSize(v) => { VarInt(1).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::MaxDamage(v) => { VarInt(2).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Damage(v) => { VarInt(3).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Unbreakable => { VarInt(4).mc_serialize(serializer)?; }
-			StructuredComponent::CustomName(v) => { VarInt(5).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ItemName(v) => { VarInt(6).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ItemModel(v) => { VarInt(7).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Lore(v) => { VarInt(8).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Rarity(v) => { VarInt(9).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Enchantments(v) => { VarInt(10).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::CanPlaceOn(v) => { VarInt(11).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::CanBreak(v) => { VarInt(12).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::AttributeModifiers(v) => { VarInt(13).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::CustomModelData(v) => { VarInt(14).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::TooltipDisplay(v) => { VarInt(15).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::RepairCost(v) => { VarInt(16).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::CreativeSlotLock => { VarInt(17).mc_serialize(serializer)?; }
-			StructuredComponent::EnchantmentGlintOverride(v) => { VarInt(18).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::IntangibleProjectile(v) => { VarInt(19).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Food(v) => { VarInt(20).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Consumable(v) => { VarInt(21).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::UseRemainder(v) => { VarInt(22).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::UseCooldown(v) => { VarInt(23).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::DamageResistant(v) => { VarInt(24).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Tool(v) => { VarInt(25).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Weapon(v) => { VarInt(26).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Enchantable(v) => { VarInt(27).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Equippable(v) => { VarInt(28).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Repairable(v) => { VarInt(29).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Glider => { VarInt(30).mc_serialize(serializer)?; }
-			StructuredComponent::TooltipStyle(v) => { VarInt(31).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::DeathProtection(v) => { VarInt(32).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::BlocksAttacks(v) => { VarInt(33).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::StoredEnchantments(v) => { VarInt(34).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::DyedColor(v) => { VarInt(35).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::MapColor(v) => { VarInt(36).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::MapId(v) => { VarInt(37).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::MapDecorations(v) => { VarInt(38).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::MapPostProcessing(v) => { VarInt(39).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ChargedProjectiles(v) => { VarInt(40).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::BundleContents(v) => { VarInt(41).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::PotionContents(v) => { VarInt(42).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::PotionDurationScale(v) => { VarInt(43).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::SuspiciousStewEffects(v) => { VarInt(44).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::WritableBookContent(v) => { VarInt(45).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::WrittenBookContent(v) => { VarInt(46).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Trim(v) => { VarInt(47).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::DebugStickState(v) => { VarInt(48).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::EntityData(v) => { VarInt(49).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::BucketEntityData(v) => { VarInt(50).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::BlockEntityData(v) => { VarInt(51).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::InstrumentComponent(v) => { VarInt(52).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ProvidesTrimMaterial(v) => { VarInt(53).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::OminousBottleAmplifier(v) => { VarInt(54).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::JukeboxPlayable(v) => { VarInt(55).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ProvidesBannerPatterns(v) => { VarInt(56).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Recipes(v) => { VarInt(57).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::LodestoneTracker(v) => { VarInt(58).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::FireworkExplosionComponent(v) => { VarInt(59).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Fireworks(v) => { VarInt(60).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Profile(v) => { VarInt(61).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::NoteBlockSound(v) => { VarInt(62).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::BannerPatterns(v) => { VarInt(63).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::BaseColor(v) => { VarInt(64).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::PotDecorations(v) => { VarInt(65).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Container(v) => { VarInt(66).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::BlockState(v) => { VarInt(67).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Bees(v) => { VarInt(68).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::Lock(v) => { VarInt(69).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ContainerLoot(v) => { VarInt(70).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::BreakSound(v) => { VarInt(71).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::VillagerVariant(v) => { VarInt(72).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::WolfVariant(v) => { VarInt(73).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::WolfSoundVariant(v) => { VarInt(74).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::WolfCollar(v) => { VarInt(75).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::FoxVariant(v) => { VarInt(76).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::SalmonSize(v) => { VarInt(77).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ParrotVariant(v) => { VarInt(78).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::TropicalFishPattern(v) => { VarInt(79).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::TropicalFishBaseColor(v) => { VarInt(80).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::TropicalFishPatternColor(v) => { VarInt(81).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::MooshroomVariant(v) => { VarInt(82).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::RabbitVariant(v) => { VarInt(83).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::PigVariant(v) => { VarInt(84).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::CowVariant(v) => { VarInt(85).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ChickenVariant(v) => { VarInt(86).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::FrogVariant(v) => { VarInt(87).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::HorseVariant(v) => { VarInt(88).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::PaintingVariant(v) => { VarInt(89).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::LlamaVariant(v) => { VarInt(90).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::AxolotlVariant(v) => { VarInt(91).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::CatVariant(v) => { VarInt(92).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::CatCollar(v) => { VarInt(93).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::SheepColor(v) => { VarInt(94).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
-			StructuredComponent::ShulkerColor(v) => { VarInt(95).mc_serialize(serializer)?; v.mc_serialize(serializer)?; }
+			StructuredComponent::CustomData(v) => {
+				VarInt(0).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::MaxStackSize(v) => {
+				VarInt(1).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::MaxDamage(v) => {
+				VarInt(2).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Damage(v) => {
+				VarInt(3).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Unbreakable => {
+				VarInt(4).mc_serialize(serializer)?;
+			}
+			StructuredComponent::CustomName(v) => {
+				VarInt(5).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ItemName(v) => {
+				VarInt(6).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ItemModel(v) => {
+				VarInt(7).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Lore(v) => {
+				VarInt(8).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Rarity(v) => {
+				VarInt(9).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Enchantments(v) => {
+				VarInt(10).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::CanPlaceOn(v) => {
+				VarInt(11).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::CanBreak(v) => {
+				VarInt(12).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::AttributeModifiers(v) => {
+				VarInt(13).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::CustomModelData(v) => {
+				VarInt(14).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::TooltipDisplay(v) => {
+				VarInt(15).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::RepairCost(v) => {
+				VarInt(16).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::CreativeSlotLock => {
+				VarInt(17).mc_serialize(serializer)?;
+			}
+			StructuredComponent::EnchantmentGlintOverride(v) => {
+				VarInt(18).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::IntangibleProjectile(v) => {
+				VarInt(19).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Food(v) => {
+				VarInt(20).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Consumable(v) => {
+				VarInt(21).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::UseRemainder(v) => {
+				VarInt(22).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::UseCooldown(v) => {
+				VarInt(23).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::DamageResistant(v) => {
+				VarInt(24).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Tool(v) => {
+				VarInt(25).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Weapon(v) => {
+				VarInt(26).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Enchantable(v) => {
+				VarInt(27).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Equippable(v) => {
+				VarInt(28).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Repairable(v) => {
+				VarInt(29).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Glider => {
+				VarInt(30).mc_serialize(serializer)?;
+			}
+			StructuredComponent::TooltipStyle(v) => {
+				VarInt(31).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::DeathProtection(v) => {
+				VarInt(32).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::BlocksAttacks(v) => {
+				VarInt(33).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::StoredEnchantments(v) => {
+				VarInt(34).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::DyedColor(v) => {
+				VarInt(35).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::MapColor(v) => {
+				VarInt(36).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::MapId(v) => {
+				VarInt(37).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::MapDecorations(v) => {
+				VarInt(38).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::MapPostProcessing(v) => {
+				VarInt(39).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ChargedProjectiles(v) => {
+				VarInt(40).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::BundleContents(v) => {
+				VarInt(41).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::PotionContents(v) => {
+				VarInt(42).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::PotionDurationScale(v) => {
+				VarInt(43).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::SuspiciousStewEffects(v) => {
+				VarInt(44).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::WritableBookContent(v) => {
+				VarInt(45).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::WrittenBookContent(v) => {
+				VarInt(46).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Trim(v) => {
+				VarInt(47).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::DebugStickState(v) => {
+				VarInt(48).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::EntityData(v) => {
+				VarInt(49).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::BucketEntityData(v) => {
+				VarInt(50).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::BlockEntityData(v) => {
+				VarInt(51).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::InstrumentComponent(v) => {
+				VarInt(52).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ProvidesTrimMaterial(v) => {
+				VarInt(53).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::OminousBottleAmplifier(v) => {
+				VarInt(54).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::JukeboxPlayable(v) => {
+				VarInt(55).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ProvidesBannerPatterns(v) => {
+				VarInt(56).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Recipes(v) => {
+				VarInt(57).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::LodestoneTracker(v) => {
+				VarInt(58).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::FireworkExplosionComponent(v) => {
+				VarInt(59).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Fireworks(v) => {
+				VarInt(60).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Profile(v) => {
+				VarInt(61).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::NoteBlockSound(v) => {
+				VarInt(62).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::BannerPatterns(v) => {
+				VarInt(63).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::BaseColor(v) => {
+				VarInt(64).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::PotDecorations(v) => {
+				VarInt(65).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Container(v) => {
+				VarInt(66).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::BlockState(v) => {
+				VarInt(67).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Bees(v) => {
+				VarInt(68).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::Lock(v) => {
+				VarInt(69).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ContainerLoot(v) => {
+				VarInt(70).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::BreakSound(v) => {
+				VarInt(71).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::VillagerVariant(v) => {
+				VarInt(72).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::WolfVariant(v) => {
+				VarInt(73).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::WolfSoundVariant(v) => {
+				VarInt(74).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::WolfCollar(v) => {
+				VarInt(75).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::FoxVariant(v) => {
+				VarInt(76).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::SalmonSize(v) => {
+				VarInt(77).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ParrotVariant(v) => {
+				VarInt(78).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::TropicalFishPattern(v) => {
+				VarInt(79).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::TropicalFishBaseColor(v) => {
+				VarInt(80).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::TropicalFishPatternColor(v) => {
+				VarInt(81).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::MooshroomVariant(v) => {
+				VarInt(82).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::RabbitVariant(v) => {
+				VarInt(83).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::PigVariant(v) => {
+				VarInt(84).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::CowVariant(v) => {
+				VarInt(85).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ChickenVariant(v) => {
+				VarInt(86).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::FrogVariant(v) => {
+				VarInt(87).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::HorseVariant(v) => {
+				VarInt(88).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::PaintingVariant(v) => {
+				VarInt(89).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::LlamaVariant(v) => {
+				VarInt(90).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::AxolotlVariant(v) => {
+				VarInt(91).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::CatVariant(v) => {
+				VarInt(92).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::CatCollar(v) => {
+				VarInt(93).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::SheepColor(v) => {
+				VarInt(94).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
+			StructuredComponent::ShulkerColor(v) => {
+				VarInt(95).mc_serialize(serializer)?;
+				v.mc_serialize(serializer)?;
+			}
 		}
 		Ok(())
 	}
 }
 
 impl McDeserialize for StructuredComponent {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let id = VarInt::mc_deserialize(deserializer)?.0;
 		match id {
 			0 => Ok(StructuredComponent::CustomData(NbtCompound::mc_deserialize(deserializer)?)),
@@ -730,7 +1038,7 @@ impl McDeserialize for StructuredComponent {
 			93 => Ok(StructuredComponent::CatCollar(DyeColor::mc_deserialize(deserializer)?)),
 			94 => Ok(StructuredComponent::SheepColor(DyeColor::mc_deserialize(deserializer)?)),
 			95 => Ok(StructuredComponent::ShulkerColor(DyeColor::mc_deserialize(deserializer)?)),
-			_ => Err(SerializingErr::DeserializationError(format!("Invalid StructuredComponent id: {}", id)))
+			_ => Err(SerializingErr::DeserializationError(format!("Invalid StructuredComponent id: {}", id))),
 		}
 	}
 }

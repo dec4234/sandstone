@@ -1,10 +1,7 @@
 //! A minimal superflat world generator. Produces a single chunk (every chunk in a superflat world
 //! is identical) ready to be sent in a `Chunk Data and Update Light` packet.
 
-use crate::protocol::game::world::chunk::{
-	ChunkByteData, ChunkData, ChunkSection, LightArray, LightData, PaletteFormatType,
-	PalletedContainer,
-};
+use crate::protocol::game::world::chunk::{ChunkByteData, ChunkData, ChunkSection, LightArray, LightData, PaletteFormatType, PalletedContainer};
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
@@ -34,7 +31,9 @@ pub fn superflat_chunk() -> (ChunkData, LightData) {
 
 	let data = ChunkData {
 		heightmaps: PrefixedArray::new(vec![]),
-		data: ChunkByteData { data: sections },
+		data: ChunkByteData {
+			data: sections,
+		},
 		block_entities: PrefixedArray::new(vec![]),
 	};
 
@@ -69,8 +68,7 @@ fn bottom_section() -> ChunkSection {
 
 	ChunkSection {
 		block_count: block_count as i16,
-		block_states: PalletedContainer::indirect(palette, &indices, PaletteFormatType::BLOCKS)
-			.unwrap(),
+		block_states: PalletedContainer::indirect(palette, &indices, PaletteFormatType::BLOCKS).unwrap(),
 		biomes: PalletedContainer::single_valued(VarInt(PLAINS_BIOME)),
 	}
 }

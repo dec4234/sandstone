@@ -22,7 +22,11 @@ pub struct BlockPos {
 
 impl BlockPos {
 	pub fn new(x: i32, y: i32, z: i32) -> Self {
-		Self { x, y, z }
+		Self {
+			x,
+			y,
+			z,
+		}
 	}
 }
 
@@ -44,7 +48,10 @@ pub struct ChunkPos {
 
 impl ChunkPos {
 	pub fn new(x: i32, z: i32) -> Self {
-		Self { x, z }
+		Self {
+			x,
+			z,
+		}
 	}
 }
 

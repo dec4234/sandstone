@@ -10,18 +10,22 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 use uuid::Uuid;
 
 /// Only used for Player Info Updates.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct EnumSet {
 	field: BitField<u8>,
 }
 
 impl EnumSet {
 	pub fn new() -> Self {
-		Self { field: BitField::new(0) }
+		Self {
+			field: BitField::new(0),
+		}
 	}
 
 	pub fn from_raw(value: u8) -> Self {
-		Self { field: BitField::new(value) }
+		Self {
+			field: BitField::new(value),
+		}
 	}
 
 	pub fn raw(&self) -> u8 {
@@ -42,8 +46,13 @@ impl McSerialize for EnumSet {
 }
 
 impl McDeserialize for EnumSet {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
-		Ok(Self { field: BitField::mc_deserialize(deserializer)? })
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
+		Ok(Self {
+			field: BitField::mc_deserialize(deserializer)?,
+		})
 	}
 }
 
@@ -82,65 +91,73 @@ pub struct PlayerAction {
 
 impl PlayerAction {
 	pub fn serialize_with_mask(&self, mask: u8, serializer: &mut McSerializer) -> SerializingResult<()> {
-		if mask & 0x01 != 0 && let Some(data) = &self.add_player {
+		if mask & 0x01 != 0
+			&& let Some(data) = &self.add_player
+		{
 			data.mc_serialize(serializer)?;
 		}
-		if mask & 0x02 != 0 && let Some(data) = &self.initialize_chat {
+		if mask & 0x02 != 0
+			&& let Some(data) = &self.initialize_chat
+		{
 			data.mc_serialize(serializer)?;
 		}
-		if mask & 0x04 != 0 && let Some(data) = &self.update_game_mode {
+		if mask & 0x04 != 0
+			&& let Some(data) = &self.update_game_mode
+		{
 			data.mc_serialize(serializer)?;
 		}
-		if mask & 0x08 != 0 && let Some(data) = &self.update_listed {
+		if mask & 0x08 != 0
+			&& let Some(data) = &self.update_listed
+		{
 			data.mc_serialize(serializer)?;
 		}
-		if mask & 0x10 != 0 && let Some(data) = &self.update_latency {
+		if mask & 0x10 != 0
+			&& let Some(data) = &self.update_latency
+		{
 			data.mc_serialize(serializer)?;
 		}
-		if mask & 0x20 != 0 && let Some(data) = &self.update_display_name {
+		if mask & 0x20 != 0
+			&& let Some(data) = &self.update_display_name
+		{
 			data.mc_serialize(serializer)?;
 		}
-		if mask & 0x40 != 0 && let Some(data) = &self.update_list_priority {
+		if mask & 0x40 != 0
+			&& let Some(data) = &self.update_list_priority
+		{
 			data.mc_serialize(serializer)?;
 		}
-		if mask & 0x80 != 0 && let Some(data) = &self.update_hat {
+		if mask & 0x80 != 0
+			&& let Some(data) = &self.update_hat
+		{
 			data.mc_serialize(serializer)?;
 		}
 		Ok(())
 	}
 
 	pub fn deserialize_with_mask<'a>(mask: u8, deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
-		let add_player = if mask & 0x01 != 0 {
-			Some(AddPlayerData::mc_deserialize(deserializer)?)
-		} else { None };
+		let add_player = if mask & 0x01 != 0 { Some(AddPlayerData::mc_deserialize(deserializer)?) } else { None };
 
 		let initialize_chat = if mask & 0x02 != 0 {
 			Some(PrefixedOptional::<ChatSessionData>::mc_deserialize(deserializer)?)
-		} else { None };
+		} else {
+			None
+		};
 
-		let update_game_mode = if mask & 0x04 != 0 {
-			Some(VarInt::mc_deserialize(deserializer)?)
-		} else { None };
+		let update_game_mode = if mask & 0x04 != 0 { Some(VarInt::mc_deserialize(deserializer)?) } else { None };
 
-		let update_listed = if mask & 0x08 != 0 {
-			Some(bool::mc_deserialize(deserializer)?)
-		} else { None };
+		let update_listed = if mask & 0x08 != 0 { Some(bool::mc_deserialize(deserializer)?) } else { None };
 
-		let update_latency = if mask & 0x10 != 0 {
-			Some(VarInt::mc_deserialize(deserializer)?)
-		} else { None };
+		let update_latency = if mask & 0x10 != 0 { Some(VarInt::mc_deserialize(deserializer)?) } else { None };
 
 		let update_display_name = if mask & 0x20 != 0 {
 			Some(PrefixedOptional::<TextComponent>::mc_deserialize(deserializer)?)
-		} else { None };
+		} else {
+			None
+		};
 
-		let update_list_priority = if mask & 0x40 != 0 {
-			Some(VarInt::mc_deserialize(deserializer)?)
-		} else { None };
+		let update_list_priority = if mask & 0x40 != 0 { Some(VarInt::mc_deserialize(deserializer)?) } else { None };
 
-		let update_hat = if mask & 0x80 != 0 {
-			Some(bool::mc_deserialize(deserializer)?)
-		} else { None };
+		let update_hat = if mask & 0x80 != 0 { Some(bool::mc_deserialize(deserializer)?) } else { None };
 
 		Ok(Self {
 			add_player,
@@ -197,7 +214,10 @@ impl McSerialize for PlayerInfoUpdateData {
 }
 
 impl McDeserialize for PlayerInfoUpdateData {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let actions = EnumSet::mc_deserialize(deserializer)?;
 		let mask = actions.raw();
 		let count = VarInt::mc_deserialize(deserializer)?.0;
@@ -205,14 +225,23 @@ impl McDeserialize for PlayerInfoUpdateData {
 		for _ in 0..count {
 			let uuid = Uuid::mc_deserialize(deserializer)?;
 			let player_actions = PlayerAction::deserialize_with_mask(mask, deserializer)?;
-			entries.push(PlayerInfoEntry { uuid, actions: player_actions });
+			entries.push(PlayerInfoEntry {
+				uuid,
+				actions: player_actions,
+			});
 		}
-		Ok(Self { actions, entries })
+		Ok(Self {
+			actions,
+			entries,
+		})
 	}
 }
 
 impl McDefault for PlayerInfoUpdateData {
 	fn mc_default() -> Self {
-		Self { actions: EnumSet::new(), entries: vec![] }
+		Self {
+			actions: EnumSet::new(),
+			entries: vec![],
+		}
 	}
 }

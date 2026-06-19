@@ -41,7 +41,7 @@ impl ServerStatusHandler for DefaultServerStatusHandler {
 			}
 			Packet::PingRequest(b) => {
 				let packed = Packet::PingResponse(PingResponsePacket {
-					payload: b.payload as u64
+					payload: b.payload as u64,
 				});
 
 				connection.send_packet(packed).await?;
@@ -52,7 +52,7 @@ impl ServerStatusHandler for DefaultServerStatusHandler {
 				return Err(NetworkError::ExpectedDifferentPacket("Invalid packet received, expected status request or ping request".to_string()));
 			}
 		}
-		
+
 		trace!("Sent response to {}", connection);
 
 		P::handle_ping(connection).await?;
@@ -81,7 +81,7 @@ impl ServerPingHandler for DefaultServerPingHandler {
 		trace!("Received ping request from {}", connection);
 
 		let packed = Packet::PingResponse(PingResponsePacket {
-			payload: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64
+			payload: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
 		});
 
 		connection.send_packet(packed).await?;
@@ -144,12 +144,10 @@ impl ClientStatusHandler for DefaultClientStatusHandler {
 		});
 
 		connection.send_packet(handshake).await?;
-		
+
 		connection.change_state(PacketState::STATUS);
 
-		let status_request = Packet::StatusRequest(StatusRequestPacket {
-
-		});
+		let status_request = Packet::StatusRequest(StatusRequestPacket {});
 
 		connection.send_packet(status_request).await?;
 
@@ -160,9 +158,7 @@ impl ClientStatusHandler for DefaultClientStatusHandler {
 				debug!("Received status response from {}", connection);
 				Ok(response.response)
 			}
-			_ => {
-				Err(NetworkError::ExpectedDifferentPacket("Invalid packet received, expected status response".to_string()))
-			}
+			_ => Err(NetworkError::ExpectedDifferentPacket("Invalid packet received, expected status response".to_string())),
 		}
 	}
 }

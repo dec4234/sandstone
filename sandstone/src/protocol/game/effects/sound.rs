@@ -9,7 +9,7 @@ pub struct SoundEvent {
 	pub name: String,
 	pub has_fixed_range: bool,
 	#[mc(deserialize_if = has_fixed_range)]
-	pub fixed_range: Option<f32>
+	pub fixed_range: Option<f32>,
 }
 
 #[derive(McDefault, Debug, PartialOrd, PartialEq, Clone)]
@@ -23,7 +23,7 @@ pub enum SoundCategory {
 	Neutral,
 	Player,
 	Ambient,
-	Voice
+	Voice,
 }
 
 impl McSerialize for SoundCategory {
@@ -38,14 +38,17 @@ impl McSerialize for SoundCategory {
 			SoundCategory::Neutral => 6,
 			SoundCategory::Player => 7,
 			SoundCategory::Ambient => 8,
-			SoundCategory::Voice => 9
+			SoundCategory::Voice => 9,
 		};
 		value.mc_serialize(serializer)
 	}
 }
 
 impl McDeserialize for SoundCategory {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let id = u8::mc_deserialize(deserializer)?;
 		match id {
 			0 => Ok(SoundCategory::Master),
@@ -58,7 +61,7 @@ impl McDeserialize for SoundCategory {
 			7 => Ok(SoundCategory::Player),
 			8 => Ok(SoundCategory::Ambient),
 			9 => Ok(SoundCategory::Voice),
-			_ => Err(SerializingErr::InvalidEnumValue(id as i8))
+			_ => Err(SerializingErr::InvalidEnumValue(id as i8)),
 		}
 	}
 }

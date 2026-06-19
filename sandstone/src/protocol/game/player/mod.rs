@@ -35,7 +35,10 @@ impl McSerialize for RespawnKeptData {
 }
 
 impl McDeserialize for RespawnKeptData {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let flags = u8::mc_deserialize(deserializer)?;
 
 		Ok(Self {

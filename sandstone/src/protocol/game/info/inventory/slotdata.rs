@@ -44,7 +44,10 @@ impl McSerialize for SlotData {
 }
 
 impl McDeserialize for SlotData {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let item_count = VarInt::mc_deserialize(deserializer)?;
 		if item_count.0 == 0 {
 			return Ok(Self {

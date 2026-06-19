@@ -26,20 +26,25 @@ impl McSerialize for BitSet {
 }
 
 impl McDeserialize for BitSet {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
 		let len = VarInt::mc_deserialize(deserializer)?;
 		let mut bits = Vec::with_capacity(len.0 as usize);
 		for _ in 0..len.0 {
 			bits.push(u64::mc_deserialize(deserializer)?);
 		}
-		Ok(Self { bits })
+		Ok(Self {
+			bits,
+		})
 	}
 }
 
 impl BitSet {
 	/// Create a new bitset, defining the number of bits within the bitset
 	pub fn new(size: usize) -> Self {
-		let byte_size = (size + 63) / 64;
+		let byte_size = size.div_ceil(64);
 		Self {
 			bits: vec![0; byte_size],
 		}
@@ -75,7 +80,7 @@ impl BitSet {
 			self.bits[0] = value;
 		}
 	}
-	
+
 	/// Set all bits in the BitSet to true (1)
 	pub fn set_all(&mut self) {
 		for byte in &mut self.bits {
@@ -93,14 +98,16 @@ impl BitSet {
 	/// Create a slice of some subset of the BitSet
 	pub fn slice(&self, range: Range<usize>) -> BitSet {
 		let start = range.start / 64;
-		let end = (range.end + 63) / 64;
+		let end = range.end.div_ceil(64);
 		let mut bits = vec![0; end - start];
 		for i in start..end {
 			if i < self.bits.len() {
 				bits[i - start] = self.bits[i];
 			}
 		}
-		Self { bits }
+		Self {
+			bits,
+		}
 	}
 
 	/// Clear all bits in the BitSet (set all bits to false)
@@ -153,26 +160,28 @@ impl BitSet {
 impl McDefault for BitSet {
 	fn mc_default() -> Self {
 		let mut bit = Self::new(6);
-		
+
 		bit.add_val(u64::mc_default());
-		
+
 		bit
 	}
 }
 
 impl From<&[u8]> for BitSet {
 	fn from(bytes: &[u8]) -> Self {
-		let mut bits = vec![0; (bytes.len() + 7) / 8];
+		let mut bits = vec![0; bytes.len().div_ceil(8)];
 		for (i, byte) in bytes.iter().enumerate() {
 			bits[i / 8] |= (*byte as u64) << (i % 8);
 		}
-		Self { bits }
+		Self {
+			bits,
+		}
 	}
 }
 
 impl From<BitSet> for Vec<u8> {
 	fn from(bitset: BitSet) -> Self {
-		let mut bytes = vec![0; (bitset.size() + 7) / 8];
+		let mut bytes = vec![0; bitset.size().div_ceil(8)];
 		for (i, byte) in bitset.bits.iter().enumerate() {
 			bytes[i] = (*byte & 0xFF) as u8;
 		}
