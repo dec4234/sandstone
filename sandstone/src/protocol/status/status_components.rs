@@ -143,8 +143,8 @@ impl From<StatusResponseSpec> for StatusResponsePacket {
 pub struct VersionInfo {
 	// On 1.20+ servers `name` may be omitted; the Notchian client treats it as "Old" if so.
 	#[serde(default = "version_name_default")]
-	name: String,
-	protocol: i16,
+	pub name: String,
+	pub protocol: i16,
 }
 
 fn version_name_default() -> String {
@@ -171,8 +171,8 @@ impl PlayerInfo {
 /// Represents a single entry in the player list sample response, seen when the user hovers over the player count.
 #[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerSample {
-	name: String,
-	id: String,
+	pub name: String,
+	pub id: String,
 }
 
 impl PlayerSample {
