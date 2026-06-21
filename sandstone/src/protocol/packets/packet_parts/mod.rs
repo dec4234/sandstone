@@ -4,6 +4,7 @@ pub mod debug;
 pub mod stats;
 pub mod entity;
 pub mod block;
+pub mod item;
 
 use crate::bitflag;
 use crate::protocol::game::info::inventory::slotdata::SlotData;

@@ -25,7 +25,8 @@ use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::packet_parts::block::BlockParticleAlternative;
 use crate::protocol::packets::packet_parts::debug::{DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
-use crate::protocol::packets::packet_parts::entity::EntityStatusEnum;
+use crate::protocol::packets::packet_parts::entity::{EntityStatusEnum, MinecartMoveStep};
+use crate::protocol::packets::packet_parts::item::{MapColorPatch, MapIcons, Trade};
 use crate::protocol::packets::packet_parts::{ChatTypeNetwork, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -469,8 +470,19 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				data: i32,
 				disable_relative_volume: bool
 			},
-			Particle, 0x2E => {
-				// TODO: particle id + branching particle data
+			ParticlePacket, 0x2E => {
+				long_distance: bool,
+				always_visibile: bool,
+				x: f64,
+				y: f64,
+				z: f64,
+				offset_x: f32,
+				offset_y: f32,
+				offset_z: f32,
+				max_speed: f32,
+				particle_count: i32,
+				particle_id: VarInt,
+				data: Particle
 			},
 			UpdateLight, 0x2F => {
 				x_chunk: VarInt,
@@ -508,11 +520,20 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				sea_level: VarInt,
 				enforces_secure_chat: bool
 			},
-			MapData, 0x31 => {
-				// TODO: icons array + color patch data
+			MapData, 0x31 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Map_Data"] => {
+				map_id: VarInt,
+				scale: i8,
+				locked: bool,
+				icons: MapIcons,
+				color_patch: MapColorPatch
 			},
 			MerchantOffers, 0x32 => {
-				// TODO: trade offers array
+				window_id: VarInt,
+				trades: PrefixedArray<Trade>,
+				villager_level: VarInt,
+				experience: VarInt,
+				is_regular_villager: bool,
+				can_restock: bool
 			},
 			UpdateEntityPosition, 0x33 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Position"] => {
 				entity_id: VarInt,
@@ -537,7 +558,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				on_ground: bool
 			},
 			MoveMinecartAlongTrack, 0x35 => {
-				// TODO: array of movement steps
+				entity_id: VarInt,
+				steps: PrefixedArray<MinecartMoveStep>
 			},
 			UpdateEntityRotation, 0x36 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Rotation"] => {
 				entity_id: VarInt,

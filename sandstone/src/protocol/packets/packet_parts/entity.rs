@@ -5,6 +5,8 @@ use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::internal_types::Angle;
+use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 /// The status code sent in the Entity Event packet, represented as a byte.
 ///
@@ -233,4 +235,17 @@ impl McDeserialize for EntityStatusEnum {
 			_ => Err(SerializingErr::InvalidEnumValue(i)),
 		}
 	}
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct MinecartMoveStep {
+	pub x: f64,
+	pub y: f64,
+	pub z: f64,
+	pub velocity_x: f64,
+	pub velocity_y: f64,
+	pub velocity_z: f64,
+	pub yaw: Angle,
+	pub pitch: Angle,
+	pub weight: f32
 }
