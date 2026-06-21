@@ -1,13 +1,14 @@
-use crate::protocol::game::info::inventory::slotdata::SlotData;
+﻿use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{
 	McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult,
 };
+use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::VarIntEnum;
 
-#[derive(VarIntEnum, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, Debug, Copy, Clone, PartialEq)]
 #[repr(i32)]
 pub enum VibrationSource {
 	Block(Position) = 0,
@@ -132,4 +133,10 @@ pub enum Particle {
 	TrialOmen = 112,
 	BlockCrumble(VarInt) = 113,
 	Firefly = 114,
+}
+
+impl McDefault for Particle {
+	fn mc_default() -> Self {
+		Self::Cloud
+	}
 }

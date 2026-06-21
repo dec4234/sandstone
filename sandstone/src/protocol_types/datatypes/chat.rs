@@ -75,11 +75,11 @@ impl TextComponent {
 
 	/// Create a translatable component (`ComponentType::Translatable`).
 	pub fn translatable<T: Into<String>>(translate: T) -> Self {
-		Self::from_content(ComponentType::Translatable {
+		Self::from_content(ComponentType::Translatable(Box::new(TranslatableContent {
 			translate: translate.into(),
 			fallback: None,
 			with: None,
-		})
+		})))
 	}
 
 	/// Create a keybind component (`ComponentType::Keybind`).
@@ -393,13 +393,9 @@ pub enum ComponentType {
 	/// Plain literal text.
 	Text { text: String },
 	/// Text resolved from a translation key, with optional fallback and substitution arguments.
-	Translatable {
-		translate: String,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		fallback: Option<String>,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		with: Option<Vec<TextComponent>>,
-	},
+	/// Boxed because this is a rare, large variant — keeping it inline would size the whole enum
+	/// (and every embedding packet) to it.
+	Translatable(Box<TranslatableContent>),
 	/// A scoreboard value, resolved server-side.
 	Score { score: ScoreContent },
 	/// The name(s) of the entities matched by a selector, resolved server-side.
@@ -411,19 +407,39 @@ pub enum ComponentType {
 	/// The key currently bound to the given action.
 	Keybind { keybind: String },
 	/// An NBT value read from a block, entity, or command storage, resolved server-side.
-	Nbt {
-		nbt: String,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		interpret: Option<bool>,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		separator: Option<Box<TextComponent>>,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		block: Option<String>,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		entity: Option<String>,
-		#[serde(skip_serializing_if = "Option::is_none")]
-		storage: Option<String>,
-	},
+	/// Boxed because this is a rare, large variant — keeping it inline would size the whole enum
+	/// (and every embedding packet) to it.
+	Nbt(Box<NbtContent>),
+}
+
+/// The fields of a [`ComponentType::Translatable`] component. Held behind a [`Box`] in the enum to
+/// keep the common (text/keybind) variants small. Serialized untagged, so its fields sit flat in
+/// the parent component exactly as the inline variant did.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TranslatableContent {
+	pub translate: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub fallback: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub with: Option<Vec<TextComponent>>,
+}
+
+/// The fields of a [`ComponentType::Nbt`] component. Held behind a [`Box`] in the enum to keep the
+/// common (text/keybind) variants small. Serialized untagged, so its fields sit flat in the parent
+/// component exactly as the inline variant did.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NbtContent {
+	pub nbt: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub interpret: Option<bool>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub separator: Option<Box<TextComponent>>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub block: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub entity: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub storage: Option<String>,
 }
 
 impl ComponentType {
@@ -445,11 +461,11 @@ impl ComponentType {
 		// field is present, in the wiki's documented priority order.
 		match typ {
 			Some("translatable") => {
-				return ComponentType::Translatable {
+				return ComponentType::Translatable(Box::new(TranslatableContent {
 					translate: compound.get_string("translate").unwrap_or_default(),
 					fallback: compound.get_string("fallback"),
 					with: get_components("with"),
-				};
+				}));
 			}
 			Some("score") => {
 				return ComponentType::Score {
@@ -468,14 +484,14 @@ impl ComponentType {
 				};
 			}
 			Some("nbt") => {
-				return ComponentType::Nbt {
+				return ComponentType::Nbt(Box::new(NbtContent {
 					nbt: compound.get_string("nbt").unwrap_or_default(),
 					interpret: compound.get_bool("interpret"),
 					separator: get_separator("separator"),
 					block: compound.get_string("block"),
 					entity: compound.get_string("entity"),
 					storage: compound.get_string("storage"),
-				};
+				}));
 			}
 			Some("text") => {
 				return ComponentType::Text {
@@ -490,11 +506,11 @@ impl ComponentType {
 				text,
 			}
 		} else if let Some(translate) = compound.get_string("translate") {
-			ComponentType::Translatable {
+			ComponentType::Translatable(Box::new(TranslatableContent {
 				translate,
 				fallback: compound.get_string("fallback"),
 				with: get_components("with"),
-			}
+			}))
 		} else if compound.get("score").is_some() {
 			ComponentType::Score {
 				score: ScoreContent::from_compound(compound),
@@ -509,14 +525,14 @@ impl ComponentType {
 				keybind,
 			}
 		} else if let Some(nbt) = compound.get_string("nbt") {
-			ComponentType::Nbt {
+			ComponentType::Nbt(Box::new(NbtContent {
 				nbt,
 				interpret: compound.get_bool("interpret"),
 				separator: get_separator("separator"),
 				block: compound.get_string("block"),
 				entity: compound.get_string("entity"),
 				storage: compound.get_string("storage"),
-			}
+			}))
 		} else {
 			ComponentType::Text {
 				text: String::new(),
@@ -533,11 +549,12 @@ impl ComponentType {
 			} => {
 				compound.add("text", NbtTag::String(text));
 			}
-			ComponentType::Translatable {
-				translate,
-				fallback,
-				with,
-			} => {
+			ComponentType::Translatable(content) => {
+				let TranslatableContent {
+					translate,
+					fallback,
+					with,
+				} = *content;
 				compound.add("type", NbtTag::String("translatable".to_string()));
 				compound.add("translate", NbtTag::String(translate));
 				if let Some(fallback) = fallback {
@@ -572,14 +589,15 @@ impl ComponentType {
 				compound.add("type", NbtTag::String("keybind".to_string()));
 				compound.add("keybind", NbtTag::String(keybind));
 			}
-			ComponentType::Nbt {
-				nbt,
-				interpret,
-				separator,
-				block,
-				entity,
-				storage,
-			} => {
+			ComponentType::Nbt(content) => {
+				let NbtContent {
+					nbt,
+					interpret,
+					separator,
+					block,
+					entity,
+					storage,
+				} = *content;
 				compound.add("type", NbtTag::String("nbt".to_string()));
 				compound.add("nbt", NbtTag::String(nbt));
 				if let Some(interpret) = interpret {
@@ -718,7 +736,13 @@ impl HoverEvent {
 	}
 
 	pub fn show_item<T: Into<String>>(id: String, count: i32, tag: Option<String>) -> Self {
-		let s = { if let Some(compound) = tag { compound } else { "".to_string() } };
+		let s = {
+			if let Some(compound) = tag {
+				compound
+			} else {
+				"".to_string()
+			}
+		};
 
 		let item = ItemHover {
 			id,
@@ -790,11 +814,11 @@ mod tests {
 	#[test]
 	fn all_content_types_survive_nbt_round_trip() {
 		let mut translatable = TextComponent::translatable("chat.type.text");
-		translatable.content = ComponentType::Translatable {
+		translatable.content = ComponentType::Translatable(Box::new(TranslatableContent {
 			translate: "chat.type.text".to_string(),
 			fallback: Some("%s: %s".to_string()),
 			with: Some(vec![TextComponent::new("player"), TextComponent::new("hi")]),
-		};
+		}));
 
 		let components = vec![
 			TextComponent::new("plain"),
@@ -802,14 +826,14 @@ mod tests {
 			TextComponent::score("@p", "deaths"),
 			TextComponent::selector("@e[type=cow]"),
 			TextComponent::keybind("key.jump"),
-			TextComponent::from_content(ComponentType::Nbt {
+			TextComponent::from_content(ComponentType::Nbt(Box::new(NbtContent {
 				nbt: "Inventory[0].id".to_string(),
 				interpret: Some(true),
 				separator: None,
 				block: None,
 				entity: Some("@p".to_string()),
 				storage: None,
-			}),
+			}))),
 		];
 
 		for component in components {
@@ -868,11 +892,11 @@ mod tests {
 
 		assert_eq!(
 			parsed.content,
-			ComponentType::Translatable {
+			ComponentType::Translatable(Box::new(TranslatableContent {
 				translate: "multiplayer.disconnect.incompatible".to_string(),
 				fallback: None,
 				with: Some(vec![TextComponent::new("26.1.2")]),
-			}
+			}))
 		);
 	}
 

@@ -1,4 +1,4 @@
-use crate::protocol::packets::packet_component::ProtocolPropertyElement;
+use crate::protocol::packets::packet_parts::ProtocolPropertyElement;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};

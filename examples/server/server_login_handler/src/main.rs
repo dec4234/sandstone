@@ -11,8 +11,8 @@ use sandstone::network::network_error::NetworkError;
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::info::registry::registry_generator;
 use sandstone::protocol::game::world::generator::superflat;
-use sandstone::protocol::packets::packet_component::{GameEventType, Tag};
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
+use sandstone::protocol::packets::packet_parts::{GameEventType, Tag};
 use sandstone::protocol::packets::{
 	ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, ClientboundKnownPacksPacket, FinishConfigurationPacket, GameEventPacket, LoginInfoPacket,
 	LoginSuccessPacket, Packet, SetCenterChunkPacket, SetCompressionPacket, StatusResponsePacket, SyncPlayerPositionPacket, UpdateTagsPacket,

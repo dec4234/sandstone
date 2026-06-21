@@ -549,7 +549,7 @@ pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
 		let discriminant = variant
 			.discriminant
 			.as_ref()
-			.expect(&format!("VarIntEnum requires explicit discriminant for variant {}", variant.ident));
+			.unwrap_or_else(|| panic!("VarIntEnum requires explicit discriminant for variant {}", variant.ident));
 
 		let expr = &discriminant.1;
 		let variant_ident = &variant.ident;
@@ -678,7 +678,7 @@ pub fn derive_type_enum(input: TokenStream) -> TokenStream {
 	for variant in &data_enum.variants {
 		assert!(matches!(variant.fields, Fields::Unit), "TypeEnum only supports unit variants, but {:?} has fields", variant.ident);
 
-		let discriminant = variant.discriminant.as_ref().expect(&format!("TypeEnum requires explicit discriminant for variant {}", variant.ident));
+		let discriminant = variant.discriminant.as_ref().unwrap_or_else(|| panic!("TypeEnum requires explicit discriminant for variant {}", variant.ident));
 
 		let expr = &discriminant.1;
 		let variant_ident = &variant.ident;

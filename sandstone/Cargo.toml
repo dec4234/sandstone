@@ -27,10 +27,14 @@ regex = "1.12.4"
 thiserror = "2.0.18"
 aes = "0.9.1"
 hickory-resolver = "0.26.1"
-
 paste = "1.0"
+
 sandstone-derive = {path = "src/sandstone-derive"} #todo: implications of local reference
 mc-data = {path = "src/protocol/game/info/content/mc-data"}
+
+[build-dependencies]
+serde_json = "1.0.150"
+ureq = "2"
 
 [features]
 vendored = ["mc-data/vendored"] # Pull block and item data from static JSON

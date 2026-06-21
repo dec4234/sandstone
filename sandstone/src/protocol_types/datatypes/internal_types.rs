@@ -359,7 +359,7 @@ mod test {
 	#[test]
 	fn test_stonecutter_recipe_round_trip() {
 		use crate::protocol::game::info::inventory::slots::SlotDisplay;
-		use crate::protocol::packets::packet_component::StonecutterRecipe;
+		use crate::protocol::packets::packet_parts::StonecutterRecipe;
 
 		let recipe = StonecutterRecipe {
 			id_set: IDSet {
@@ -381,7 +381,7 @@ mod test {
 	#[test]
 	fn test_stonecutter_recipe_inline_ids_round_trip() {
 		use crate::protocol::game::info::inventory::slots::SlotDisplay;
-		use crate::protocol::packets::packet_component::StonecutterRecipe;
+		use crate::protocol::packets::packet_parts::StonecutterRecipe;
 
 		let recipe = StonecutterRecipe {
 			id_set: IDSet {

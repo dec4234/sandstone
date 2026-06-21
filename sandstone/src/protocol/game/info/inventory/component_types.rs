@@ -350,7 +350,7 @@ pub struct TrimPattern {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IdOrTrimMaterial {
 	Registry(VarInt),
-	Inline(TrimMaterial),
+	Inline(Box<TrimMaterial>),
 }
 
 impl McSerialize for IdOrTrimMaterial {
@@ -372,7 +372,7 @@ impl McDeserialize for IdOrTrimMaterial {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let typ = VarInt::mc_deserialize(deserializer)?.0;
 		if typ == 0 {
-			Ok(IdOrTrimMaterial::Inline(TrimMaterial::mc_deserialize(deserializer)?))
+			Ok(IdOrTrimMaterial::Inline(Box::new(TrimMaterial::mc_deserialize(deserializer)?)))
 		} else {
 			Ok(IdOrTrimMaterial::Registry(VarInt(typ - 1)))
 		}
@@ -388,7 +388,7 @@ impl McDefault for IdOrTrimMaterial {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IdOrTrimPattern {
 	Registry(VarInt),
-	Inline(TrimPattern),
+	Inline(Box<TrimPattern>),
 }
 
 impl McSerialize for IdOrTrimPattern {
@@ -410,7 +410,7 @@ impl McDeserialize for IdOrTrimPattern {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let typ = VarInt::mc_deserialize(deserializer)?.0;
 		if typ == 0 {
-			Ok(IdOrTrimPattern::Inline(TrimPattern::mc_deserialize(deserializer)?))
+			Ok(IdOrTrimPattern::Inline(Box::new(TrimPattern::mc_deserialize(deserializer)?)))
 		} else {
 			Ok(IdOrTrimPattern::Registry(VarInt(typ - 1)))
 		}
@@ -434,7 +434,7 @@ pub struct Instrument {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IdOrInstrument {
 	Registry(VarInt),
-	Inline(Instrument),
+	Inline(Box<Instrument>),
 }
 
 impl McSerialize for IdOrInstrument {
@@ -456,7 +456,7 @@ impl McDeserialize for IdOrInstrument {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let typ = VarInt::mc_deserialize(deserializer)?.0;
 		if typ == 0 {
-			Ok(IdOrInstrument::Inline(Instrument::mc_deserialize(deserializer)?))
+			Ok(IdOrInstrument::Inline(Box::new(Instrument::mc_deserialize(deserializer)?)))
 		} else {
 			Ok(IdOrInstrument::Registry(VarInt(typ - 1)))
 		}
@@ -480,7 +480,7 @@ pub struct JukeboxSong {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IdOrJukeboxSong {
 	Registry(VarInt),
-	Inline(JukeboxSong),
+	Inline(Box<JukeboxSong>),
 }
 
 impl McSerialize for IdOrJukeboxSong {
@@ -502,7 +502,7 @@ impl McDeserialize for IdOrJukeboxSong {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
 		let typ = VarInt::mc_deserialize(deserializer)?.0;
 		if typ == 0 {
-			Ok(IdOrJukeboxSong::Inline(JukeboxSong::mc_deserialize(deserializer)?))
+			Ok(IdOrJukeboxSong::Inline(Box::new(JukeboxSong::mc_deserialize(deserializer)?)))
 		} else {
 			Ok(IdOrJukeboxSong::Registry(VarInt(typ - 1)))
 		}
@@ -604,4 +604,11 @@ impl McDefault for IdOrPaintingVariant {
 	fn mc_default() -> Self {
 		IdOrPaintingVariant::Registry(VarInt(0))
 	}
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct TripleDoubleVelocity {
+	pub x: f64,
+	pub y: f64,
+	pub z: f64
 }

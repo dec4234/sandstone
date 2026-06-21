@@ -1,5 +1,9 @@
-//! Defines a lot of random components of network packets. This is separate from packet.rs to reduce
-//! clutter.
+//! Parts of packet bodies that are shared or complex.
+
+pub mod debug;
+pub mod stats;
+pub mod entity;
+pub mod block;
 
 use crate::bitflag;
 use crate::protocol::game::info::inventory::slotdata::SlotData;
@@ -12,10 +16,26 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::EquipmentSlot;
 use crate::protocol_types::datatypes::internal_types::IDSet;
+use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use sandstone_derive::TypeEnum;
-use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
+use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum, VarIntEnum};
 use uuid::Uuid;
+
+bitflag!(PlayerAbilityFlags: u8 {
+	invulnerable, flying, allow_flying, creative_mode
+});
+
+bitflag!(PlayerPositionFlags: u8 {
+	on_ground, pushing_against_wall
+});
+
+bitflag!(PlayerInputFlags: u8 {
+	forward, backward, left, right, jumping, sneaking, sprinting
+});
+
+bitflag!(BossBarFlags: u8 {
+	should_darken_sky, is_dragon_bar, create_fog
+});
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoginPluginSpec {
@@ -64,10 +84,6 @@ pub struct ProtocolPropertyElement {
 	pub value: String,
 	pub signature: PrefixedOptional<String>,
 }
-
-bitflag!(PlayerAbilityFlags: u8 {
-	invulnerable, flying, allow_flying, creative_mode
-});
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PropertySet {
@@ -225,14 +241,6 @@ impl McDefault for EquipmentEntry {
 	}
 }
 
-bitflag!(PlayerPositionFlags: u8 {
-	on_ground, pushing_against_wall
-});
-
-bitflag!(PlayerInputFlags: u8 {
-	forward, backward, left, right, jumping, sneaking, sprinting
-});
-
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 pub enum PlayerCommandAction {
 	LeaveBed = 0,
@@ -292,110 +300,6 @@ pub enum ServerLinkStandardLabel {
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
-pub struct StatisticAward {
-	pub category: StatCategory,
-	pub stat_id: StatID,
-	pub value: VarInt,
-}
-
-/// Statistic categories defined in the `minecraft:stat_type` registry. Each category determines
-/// which registry the associated statistic ID refers to (block, item, entity_type, or custom_stat).
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
-pub enum StatCategory {
-	Mined = 0,
-	Crafted = 1,
-	Used = 2,
-	Broken = 3,
-	PickedUp = 4,
-	Dropped = 5,
-	Killed = 6,
-	KilledBy = 7,
-	Custom = 8,
-}
-
-/// Custom statistic IDs defined in the `minecraft:custom_stat` registry. Used when the
-/// [StatCategory] is [StatCategory::Custom].
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
-pub enum StatID {
-	LeaveGame = 0,
-	PlayTime = 1,
-	TotalWorldTime = 2,
-	TimeSinceDeath = 3,
-	TimeSinceRest = 4,
-	SneakTime = 5,
-	WalkOneCm = 6,
-	CrouchOneCm = 7,
-	SprintOneCm = 8,
-	WalkOnWaterOneCm = 9,
-	FallOneCm = 10,
-	ClimbOneCm = 11,
-	FlyOneCm = 12,
-	WalkUnderWaterOneCm = 13,
-	MinecartOneCm = 14,
-	BoatOneCm = 15,
-	PigOneCm = 16,
-	HappyGhastOneCm = 17,
-	HorseOneCm = 18,
-	AviateOneCm = 19,
-	SwimOneCm = 20,
-	StriderOneCm = 21,
-	Jump = 22,
-	Drop = 23,
-	DamageDealt = 24,
-	DamageDealtAbsorbed = 25,
-	DamageDealtResisted = 26,
-	DamageTaken = 27,
-	DamageBlockedByShield = 28,
-	DamageAbsorbed = 29,
-	DamageResisted = 30,
-	Deaths = 31,
-	MobKills = 32,
-	AnimalsBred = 33,
-	PlayerKills = 34,
-	FishCaught = 35,
-	TalkedToVillager = 36,
-	TradedWithVillager = 37,
-	EatCakeSlice = 38,
-	FillCauldron = 39,
-	UseCauldron = 40,
-	CleanArmor = 41,
-	CleanBanner = 42,
-	CleanShulkerBox = 43,
-	InteractWithBrewingstand = 44,
-	InteractWithBeacon = 45,
-	InspectDropper = 46,
-	InspectHopper = 47,
-	InspectDispenser = 48,
-	PlayNoteblock = 49,
-	TuneNoteblock = 50,
-	PotFlower = 51,
-	TriggerTrappedChest = 52,
-	OpenEnderchest = 53,
-	EnchantItem = 54,
-	PlayRecord = 55,
-	InteractWithFurnace = 56,
-	InteractWithCraftingTable = 57,
-	OpenChest = 58,
-	SleepInBed = 59,
-	OpenShulkerBox = 60,
-	OpenBarrel = 61,
-	InteractWithBlastFurnace = 62,
-	InteractWithSmoker = 63,
-	InteractWithLectern = 64,
-	InteractWithCampfire = 65,
-	InteractWithCartographyTable = 66,
-	InteractWithLoom = 67,
-	InteractWithStonecutter = 68,
-	BellRing = 69,
-	RaidTrigger = 70,
-	RaidWin = 71,
-	InteractWithAnvil = 72,
-	InteractWithGrindstone = 73,
-	TargetHit = 74,
-	InteractWithSmithingTable = 75,
-}
-
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum BossBarUpdateAction {
 	Add {
@@ -441,10 +345,6 @@ pub enum BossBarDivisions {
 	TwentyNotches = 4,
 }
 
-bitflag!(BossBarFlags: u8 {
-	should_darken_sky, is_dragon_bar, create_fog
-});
-
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ChunkBiomeData {
 	pub z: i32,
@@ -457,4 +357,25 @@ pub struct ChunkBiomeData {
 pub struct TooltipMatch {
 	pub matc: String,
 	pub tooltip: PrefixedOptional<TextComponent>,
+}
+
+/// Network representation of chat type.
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ChatTypeNetwork {
+	pub chat: ChatTypeEntry,
+	pub narration: ChatTypeEntry,
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ChatTypeEntry {
+	pub translation_key: String,
+	parameters: PrefixedArray<ChatTypeParemeter>,
+	style: NbtCompound
+}
+
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum ChatTypeParemeter {
+	Sender = 0,
+	Target = 1,
+	Content = 2,
 }

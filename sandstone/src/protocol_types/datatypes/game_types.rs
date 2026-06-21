@@ -11,7 +11,7 @@ use crate::protocol_types::datatypes::var_types::VarLong;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum};
 
 /// A Minecraft position, internally represented as a 64-bit integer.
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Copy, Clone)]
 pub struct Position {
 	data: u64,
 }

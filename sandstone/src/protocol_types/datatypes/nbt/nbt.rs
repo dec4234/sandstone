@@ -433,7 +433,7 @@ impl NbtCompound {
 		for (name, tag) in self.map.iter() {
 			if *tag != NbtTag::None && *tag != NbtTag::End {
 				serializer.serialize_u8(tag.get_type_id());
-				(name.as_bytes().len() as u16).mc_serialize(serializer)?;
+				(name.len() as u16).mc_serialize(serializer)?;
 				serializer.serialize_bytes(name.as_bytes());
 				tag.mc_serialize(serializer)?;
 			}
@@ -647,7 +647,7 @@ impl McDeserialize for NbtList {
 				return Err(SerializingErr::UniqueFailure("Type must be the same as the type for the list".to_string()));
 			}
 
-			if let Err(_) = list.add_tag(tag) {
+			if list.add_tag(tag).is_err() {
 				return Err(SerializingErr::UniqueFailure("Could not push tag to list".to_string()));
 			}
 		}

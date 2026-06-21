@@ -5,7 +5,6 @@
     - [x] Implement Java's [bitset](https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html) for bit fields
     - [ ] Maybe implement an Identifier struct? - See minecraft api types
 - [x] Utilities
-    - [ ] Thread pool for new connections
     - [ ] Auto generate serialization/deserialization tests for all packets?
         - [ ] Macro
         - [ ] Default field trait? Derive?
@@ -19,3 +18,5 @@
 - [ ] Anvil format
 - [ ] World generation?
 - [ ] Feature flags
+- [ ] Lots of packets are repeated across multiple states with different ids = deduplicate
+- [ ] Add Copy to a lot more things

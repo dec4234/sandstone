@@ -117,6 +117,12 @@ impl<T: McDefault> McDefault for Vec<T> {
 	}
 }
 
+impl<const N: usize> McDefault for [u8; N] {
+	fn mc_default() -> Self {
+		[u8::mc_default(); N]
+	}
+}
+
 impl<T: McDefault> McDefault for Option<T> {
 	fn mc_default() -> Self {
 		Some(T::mc_default())

@@ -72,10 +72,13 @@ impl ServerPingHandler for DefaultServerPingHandler {
 
 		debug!("Handling ping for {}", connection);
 
-		let ping_request = connection.receive_packet().await;
+		let ping_request = connection.receive_packet().await?;
 
-		if let Err(e) = ping_request {
-			return Err(e); // pipe all other errors
+		match ping_request {
+			Packet::PingRequest(_) => {
+
+			}
+			_ => return Err(NetworkError::ExpectedDifferentPacket("Expected ping request packet".to_string())),
 		}
 
 		trace!("Received ping request from {}", connection);

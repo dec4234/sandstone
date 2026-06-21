@@ -195,6 +195,27 @@ impl<T: McDeserialize> McDeserialize for Box<T> {
 	}
 }
 
+impl<const N: usize> McSerialize for [u8; N] {
+	/// Serialize a fixed-size byte array as-is, with no length prefix.
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		serializer.serialize_bytes(self);
+		Ok(())
+	}
+}
+
+impl<const N: usize> McDeserialize for [u8; N] {
+	/// Deserialize exactly `N` bytes into a fixed-size byte array. Errors if fewer than `N` bytes remain.
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
+		match deserializer.slice_option(N) {
+			Some(slice) => Ok(slice.try_into()?),
+			None => Err(SerializingErr::InputEnded),
+		}
+	}
+}
+
 /// # PrefixedArray (Protocol Type)
 /// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array.
 #[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]

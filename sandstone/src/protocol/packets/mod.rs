@@ -13,18 +13,20 @@
 
 use crate::game::player::PlayerGamemode;
 use crate::packets;
+use crate::protocol::game::effects::particle::Particle;
 use crate::protocol::game::effects::sound::{SoundCategory, SoundEvent};
 use crate::protocol::game::entity::EntityMetadata;
+use crate::protocol::game::info::inventory::component_types::TripleDoubleVelocity;
 use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
-use crate::protocol::packets::packet_component::{
-	AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec,
-	LoginPluginSpec, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StatisticAward, StonecutterRecipe, Tag, TooltipMatch,
-};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
+use crate::protocol::packets::packet_parts::block::BlockParticleAlternative;
+use crate::protocol::packets::packet_parts::debug::{DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
+use crate::protocol::packets::packet_parts::entity::EntityStatusEnum;
+use crate::protocol::packets::packet_parts::{ChatTypeNetwork, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::SerializingResult;
@@ -39,11 +41,16 @@ use crate::protocol_types::datatypes::internal_types::{Angle, IDorX, LpVec3, Map
 use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitfield::BitField;
-use packet_component::ProtocolPropertyElement;
+use packet_parts::stats::StatisticAward;
+use packet_parts::ProtocolPropertyElement;
+use packet_parts::{
+	AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec,
+	LoginPluginSpec, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StonecutterRecipe, Tag, TooltipMatch,
+};
 use uuid::Uuid;
 
-pub mod packet_component;
 pub mod packet_definer;
+pub mod packet_parts;
 
 // https://minecraft.wiki/w/Java_Edition_protocol
 packets!(v1_21 => { // version name is for reference only, has no effect
@@ -352,32 +359,43 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				source_position: PrefixedOptional<SourcePosition>
 			},
 			DebugBlockValue, 0x1A => {
-				// TODO
+				location: Position,
+				update: DebugSubscriptionUpdate
 			},
 			DebugChunkValue, 0x1B => {
-				// TODO
+				z: i32,
+				x: i32,
+				update: DebugSubscriptionUpdate
 			},
 			DebugEntityValue, 0x1C => {
-				// TODO
+				entity_id: VarInt,
+				update: DebugSubscriptionUpdate
 			},
 			DebugEvent, 0x1D => {
-				// TODO
+				event: DebugSubscriptionEvent
 			},
 			DebugSample, 0x1E => {
-				// TODO
+				#[doc = "Array of type-dependent samples."]
+				sample: PrefixedArray<i64>,
+				sample_type: DebugSampleType
 			},
 			DeleteMessage, 0x1F => {
-				// TODO: message id + optional signature
+				message_id: VarInt,
+				#[mc(deserialize_if = message_id.0 == 0)]
+				signature: Option<[u8; 256]>
 			},
 			DisconnectPlay, 0x20 => {
 				reason: TextComponent
 			},
-			DisguisedChatMessage, 0x21 => {
-				// TODO: chat type with branching fields
+			DisguisedChatMessage, 0x21 #[doc = "Send client a chat message without any signing information"] => {
+				message: TextComponent,
+				chat_type: IDorX<Box<ChatTypeNetwork>>,
+				sender_name: TextComponent,
+				target_name: PrefixedOptional<TextComponent>
 			},
 			EntityEvent, 0x22 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses"] => {
 				entity_id: i32,
-				entity_status: i8 // todo: create comprehensive enum
+				entity_status: EntityStatusEnum
 			},
 			TeleportEntity, 0x23 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Teleport_Entity"] => {
 				entity_id: VarInt,
@@ -392,7 +410,16 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				on_ground: bool
 			},
 			Explosion, 0x24 => {
-				// TODO: affected blocks array + optional particle/sound data
+				x: f64,
+				y: f64,
+				z: f64,
+				radius: f32,
+				block_count: i32,
+				player_delta_velocity: PrefixedOptional<TripleDoubleVelocity>,
+				explosion_particle_id: VarInt,
+				explosion_particle_data: Particle,
+				explosion_sound: IDorX<SoundEvent>,
+				block_particle_alternatives: BlockParticleAlternative
 			},
 			UnloadChunk, 0x25 => {
 				#[doc = "Note: Chunk Z is sent before Chunk X"]
@@ -404,7 +431,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				value: f32
 			},
 			GameTestHighlightPosition, 0x27 => {
-				// TODO
+				absolute_location: Position,
+				relative_location: Position
 			},
 			OpenHorseScreen, 0x28 => {
 				window_id: VarInt,

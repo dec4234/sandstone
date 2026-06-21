@@ -27,7 +27,6 @@ pub enum NetworkError {
 	PacketTooLarge,
 	#[error("Expected different packet: {0}")]
 	ExpectedDifferentPacket(String),
-
 	#[error(transparent)]
 	SerializingErr(#[from] SerializingErr),
 	#[error(transparent)]
