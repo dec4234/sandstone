@@ -179,6 +179,55 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDefault for IDorX<T> 
 	}
 }
 
+/// A union type of either X or Y, determined by a leading boolean. Order of generics matters.
+///
+/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Type:Either
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Either<X, Y>
+where
+	X: McSerialize + McDeserialize + Clone + PartialEq,
+	Y: McSerialize + McDeserialize + Clone + PartialEq,
+{
+	X(X),
+	Y(Y),
+}
+
+impl<X: McSerialize + McDeserialize + Clone + PartialEq, Y: McSerialize + McDeserialize + Clone + PartialEq> McSerialize for Either<X, Y> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		match self {
+			Either::X(x) => {
+				true.mc_serialize(serializer)?;
+				x.mc_serialize(serializer)
+			}
+			Either::Y(y) => {
+				false.mc_serialize(serializer)?;
+				y.mc_serialize(serializer)
+			}
+		}
+	}
+}
+
+impl<X: McSerialize + McDeserialize + Clone + PartialEq, Y: McSerialize + McDeserialize + Clone + PartialEq> McDeserialize for Either<X, Y> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
+		let is_x = bool::mc_deserialize(deserializer)?;
+
+		Ok(if is_x {
+			Either::X(X::mc_deserialize(deserializer)?)
+		} else {
+			Either::Y(Y::mc_deserialize(deserializer)?)
+		})
+	}
+}
+
+impl<X: McSerialize + McDeserialize + Clone + PartialEq + McDefault, Y: McSerialize + McDeserialize + Clone + PartialEq + McDefault> McDefault for Either<X, Y> {
+	fn mc_default() -> Self {
+		Self::X(X::mc_default())
+	}
+}
+
 /// A rotation angle in steps of 1/256 of a full turn
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Angle {
@@ -296,6 +345,14 @@ impl LpVec3 {
 		let normalized = 2.0 * raw as f64 / 32766.0 - 1.0;
 		normalized * scale as f64
 	}
+}
+
+/// Standard RGB color type
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct RgbColor {
+	pub red: u8,
+	pub green: u8,
+	pub blue: u8,
 }
 
 #[cfg(test)]

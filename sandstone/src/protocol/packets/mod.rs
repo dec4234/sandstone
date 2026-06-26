@@ -24,9 +24,12 @@ use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::packet_parts::block::BlockParticleAlternative;
-use crate::protocol::packets::packet_parts::debug::{DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
+use crate::protocol::packets::packet_parts::debug::{CustomReportDetail, DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
 use crate::protocol::packets::packet_parts::entity::{EntityStatusEnum, MinecartMoveStep};
 use crate::protocol::packets::packet_parts::item::{MapColorPatch, MapIcons, Trade};
+use crate::protocol::packets::packet_parts::player::{TeleportFlags, WaypointData, WaypointOperation};
+use crate::protocol::packets::packet_parts::scoreboard::{ObjectiveNumberFormat, ObjectiveType, UpdateScoreFormat, UpdateTeamOptions};
+use crate::protocol::packets::packet_parts::sound::StopSoundDetails;
 use crate::protocol::packets::packet_parts::{ChatTypeNetwork, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -38,10 +41,9 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::{JsonTextComponent, TextComponent};
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, GameDifficulty, Position, SectionBlockEntry, SourcePosition, WorldEventType};
-use crate::protocol_types::datatypes::internal_types::{Angle, IDorX, LpVec3, Mapping};
+use crate::protocol_types::datatypes::internal_types::{Angle, Either, IDorX, LpVec3, Mapping, RgbColor};
 use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
-use crate::util::java::bitfield::BitField;
 use packet_parts::stats::StatisticAward;
 use packet_parts::ProtocolPropertyElement;
 use packet_parts::{
@@ -642,7 +644,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				yaw: f32,
 				pitch: f32,
 				#[doc = "See https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags for more info"]
-				flags: BitField<i32>
+				flags: TeleportFlags
 			},
 			PlayerRotation, 0x47 => {
 				#[doc = "Rotation on the X axis, in degrees."]
@@ -791,7 +793,16 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				slot: VarInt
 			},
 			UpdateObjectives, 0x68 => {
-				// TODO: mode-dependent display name + number format
+				objective_name: String,
+				mode: i8,
+				#[mc(deserialize_if = mode == 0 || mode == 2)]
+				objective_value: Option<TextComponent>,
+				#[mc(deserialize_if = mode == 0 || mode == 2)]
+				typ: Option<ObjectiveType>,
+				#[mc(deserialize_if = mode == 0 || mode == 2)]
+				has_number_format: Option<bool>,
+				#[mc(deserialize_if = (mode == 0 || mode == 2) && has_number_format.unwrap())]
+				number_format: Option<ObjectiveNumberFormat>
 			},
 			SetPassengers, 0x69 => {
 				entity_id: VarInt,
@@ -802,10 +813,15 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				item: SlotData
 			},
 			UpdateTeams, 0x6B => {
-				// TODO: mode-dependent team info
+				team_name: String,
+				team_details: UpdateTeamOptions
 			},
 			UpdateScore, 0x6C => {
-				// TODO: optional display name + number format
+				entity_name: String,
+				objective_name: String,
+				value: VarInt,
+				display_name: PrefixedOptional<TextComponent>,
+				number_format: PrefixedOptional<UpdateScoreFormat>
 			},
 			SetSimulationDistance, 0x6D => {
 				simulation_distance: VarInt
@@ -846,7 +862,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				// no fields
 			},
 			StopSound, 0x75 => {
-				// TODO: flags byte with conditional source/sound
+				details: StopSoundDetails
 			},
 			StoreCookie, 0x76 => {
 				key: String,
@@ -870,10 +886,27 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				pickup_item_count: VarInt
 			},
 			SynchronizeVehiclePosition, 0x7B => {
-				// TODO: position + velocity + flags
+				entity_id: VarInt,
+				x: f64,
+				y: f64,
+				z: f64,
+				velocity_x: f64,
+				velocity_y: f64,
+				velocity_z: f64,
+				yaw: f32,
+				pitch: f32,
+				flags: TeleportFlags,
+				on_ground: bool
 			},
 			TestInstanceBlockStatus, 0x7C => {
-				// TODO: status with optional size
+				status: TextComponent,
+				has_size: bool,
+				#[mc(deserialize_if = has_size)]
+				size_x: Option<f64>,
+				#[mc(deserialize_if = has_size)]
+				size_y: Option<f64>,
+				#[mc(deserialize_if = has_size)]
+				size_z: Option<f64>
 			},
 			SetTickingState, 0x7D => {
 				tick_rate: f32,
@@ -913,16 +946,21 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				tags: PrefixedArray<Mapping<PrefixedArray<Tag>>>
 			},
 			ProjectilePower, 0x85 => {
-				// TODO
+				entity_id: VarInt,
+				power: f64
 			},
 			CustomReportDetails, 0x86 => {
-				// TODO: array of structured details
+				details: PrefixedArray<CustomReportDetail>
 			},
 			ServerLinks, 0x87 => {
 				links: PrefixedArray<ServerLink>
 			},
 			Waypoint, 0x88 => {
-				// TODO: operation + branching waypoint data
+				operation: WaypointOperation,
+				identifier: Either<Uuid, String>,
+				icon_style: String,
+				color: PrefixedOptional<RgbColor>,
+				waypoint_type: WaypointData
 			},
 			ClearDialog, 0x89 => {
 				// no fields

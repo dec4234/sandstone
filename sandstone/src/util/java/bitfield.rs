@@ -114,7 +114,7 @@ macro_rules! bitflag {
 		$crate::bitflag!($name: u8 { $($flag),* });
 	};
 	($name:ident: $repr:ty { $($flag:ident),* $(,)? }) => {
-		#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+		#[derive(Default, ::sandstone_derive::McSerialize, ::sandstone_derive::McDeserialize, Debug, Clone, PartialEq)]
 		pub struct $name {
 			pub flags: $crate::util::java::bitfield::BitField<$repr>,
 		}
@@ -133,6 +133,14 @@ macro_rules! bitflag {
 			}
 
 			$crate::bitflag!(@methods 0usize; $($flag),*);
+		}
+
+		impl $crate::protocol::testing::McDefault for $name {
+			fn mc_default() -> Self {
+				Self {
+					flags: $crate::util::java::bitfield::BitField::new(0),
+				}
+			}
 		}
 	};
 	(@methods $index:expr; ) => {};
@@ -208,9 +216,6 @@ mod test {
 	fn test_bitflag_macro() {
 		use crate::protocol::serialization::serializer_error::SerializingErr;
 		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
-		use crate::protocol::testing::McDefault;
-		use sandstone_derive::{McDefault, McDeserialize, McSerialize};
-
 		crate::bitflag!(TestFlags: u8 { a, b, c });
 
 		// `new` assigns flags to bits 0, 1, 2 in order.

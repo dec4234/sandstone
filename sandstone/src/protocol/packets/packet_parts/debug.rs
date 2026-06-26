@@ -209,3 +209,9 @@ pub enum DebugSampleType {
 	/// and idle time.
 	TickTime = 0,
 }
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct CustomReportDetail {
+	pub title: String,
+	pub description: String,
+}

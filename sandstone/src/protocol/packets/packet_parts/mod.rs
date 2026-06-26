@@ -5,6 +5,9 @@ pub mod stats;
 pub mod entity;
 pub mod block;
 pub mod item;
+pub mod scoreboard;
+pub mod sound;
+pub mod player;
 
 use crate::bitflag;
 use crate::protocol::game::info::inventory::slotdata::SlotData;

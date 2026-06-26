@@ -12,6 +12,7 @@ use sandstone::network::CraftConnection;
 use sandstone::protocol::game::info::registry::registry_generator;
 use sandstone::protocol::game::world::generator::superflat;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
+use sandstone::protocol::packets::packet_parts::player::TeleportFlags;
 use sandstone::protocol::packets::packet_parts::{GameEventType, Tag};
 use sandstone::protocol::packets::{
 	ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, ClientboundKnownPacksPacket, FinishConfigurationPacket, GameEventPacket, LoginInfoPacket,
@@ -185,7 +186,7 @@ async fn main() {
 		debug!("Sending login info packet {login:?}");
 		client.send_packet(login).await.unwrap();
 
-		let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(VarInt(2), 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, BitField::new(0)));
+		let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(VarInt(2), 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TeleportFlags::default()));
 		client.send_packet(sync).await.unwrap();
 
 		debug!("Sent sync player position to {client}");
