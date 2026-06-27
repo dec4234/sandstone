@@ -1,6 +1,6 @@
 use crate::protocol::game::effects::particle::Particle;
-use crate::protocol::game::info::inventory::component_types::{IdOrPaintingVariant, ResolvableProfile};
-use crate::protocol::game::info::inventory::slotdata::SlotData;
+use crate::protocol::game::player::inventory::slotdata::SlotData;
+use crate::protocol::packets::packet_parts::item::IdOrPaintingVariant;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
@@ -111,8 +111,27 @@ impl McDeserialize for EntityMetadata {
 				break;
 			}
 			let value = EntityMetadataValue::mc_deserialize(deserializer)?;
-			entries.push(EntityMetadataEntry { index, value });
+			entries.push(EntityMetadataEntry {
+				index,
+				value,
+			});
 		}
-		Ok(EntityMetadata { entries })
+		Ok(EntityMetadata {
+			entries,
+		})
 	}
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ProfileProperty {
+	pub name: String,
+	pub value: String,
+	pub signature: PrefixedOptional<String>,
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ResolvableProfile {
+	pub name: PrefixedOptional<String>,
+	pub uuid: PrefixedOptional<Uuid>,
+	pub properties: PrefixedArray<ProfileProperty>,
 }

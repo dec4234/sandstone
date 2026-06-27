@@ -1,4 +1,4 @@
-use crate::protocol::game::info::inventory::slotdata::SlotData;
+use crate::protocol::game::player::inventory::slotdata::SlotData;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::McDeserializer;

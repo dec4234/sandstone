@@ -1,8 +1,6 @@
-﻿use crate::protocol::game::info::inventory::slotdata::SlotData;
+﻿use crate::protocol::game::player::inventory::slotdata::SlotData;
 use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::{
-	McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult,
-};
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::var_types::VarInt;

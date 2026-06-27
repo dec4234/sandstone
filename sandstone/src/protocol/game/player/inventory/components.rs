@@ -1,6 +1,11 @@
 ﻿use crate::protocol::game::effects::sound::SoundEvent;
-use crate::protocol::game::info::inventory::component_types::*;
-use crate::protocol::game::info::inventory::slotdata::SlotData;
+use crate::protocol::game::entity::ResolvableProfile;
+use crate::protocol::game::player::inventory::slotdata::SlotData;
+use crate::protocol::packets::packet_parts::block::BlockPredicate;
+use crate::protocol::packets::packet_parts::effects::{ConsumeEffect, FireworkExplosion, PotionEffect};
+use crate::protocol::packets::packet_parts::item::{IdOrBannerPattern, IdOrInstrument, IdOrTrimMaterial, IdOrTrimPattern, PaintingVariant};
+use crate::protocol::packets::packet_parts::item_modifiers::DyeColor;
+use crate::protocol::packets::packet_parts::sound::IdOrJukeboxSong;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};

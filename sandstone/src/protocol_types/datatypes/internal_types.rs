@@ -355,8 +355,53 @@ pub struct RgbColor {
 	pub blue: u8,
 }
 
+/// Map a string identifier to a given value of type T.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Mapping<T: McSerialize + McDeserialize + Clone + PartialEq> {
+	pub key: String,
+	pub value: T,
+}
+
+impl<T: McSerialize + McDeserialize + Clone + PartialEq> McSerialize for Mapping<T> {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		self.key.mc_serialize(serializer)?;
+		self.value.mc_serialize(serializer)?;
+		Ok(())
+	}
+}
+
+impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDeserialize for Mapping<T> {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
+		Ok(Mapping {
+			key: String::mc_deserialize(deserializer)?,
+			value: T::mc_deserialize(deserializer)?,
+		})
+	}
+}
+
+impl<T: McSerialize + McDeserialize + Clone + PartialEq + McDefault> McDefault for Mapping<T> {
+	fn mc_default() -> Self {
+		Mapping {
+			key: String::mc_default(),
+			value: T::mc_default(),
+		}
+	}
+}
+
+/// A struct of 3 doubles that could be used for position or velocity.
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct TripleDouble {
+	pub x: f64,
+	pub y: f64,
+	pub z: f64,
+}
+
 #[cfg(test)]
 mod test {
+	use crate::protocol::game::player::inventory::slots::SlotDisplay;
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 	use crate::protocol_types::datatypes::command::{NodeFlags, NodeType};
 	use crate::protocol_types::datatypes::internal_types::{IDSet, PackedEntries};
@@ -415,7 +460,6 @@ mod test {
 
 	#[test]
 	fn test_stonecutter_recipe_round_trip() {
-		use crate::protocol::game::info::inventory::slots::SlotDisplay;
 		use crate::protocol::packets::packet_parts::StonecutterRecipe;
 
 		let recipe = StonecutterRecipe {
@@ -437,7 +481,6 @@ mod test {
 
 	#[test]
 	fn test_stonecutter_recipe_inline_ids_round_trip() {
-		use crate::protocol::game::info::inventory::slots::SlotDisplay;
 		use crate::protocol::packets::packet_parts::StonecutterRecipe;
 
 		let recipe = StonecutterRecipe {
@@ -592,42 +635,5 @@ mod test {
 		assert!((result.y - (-3.0)).abs() < 0.01, "y: expected ~-3.0, got {}", result.y);
 		assert!((result.z - 8.0).abs() < 0.01, "z: expected ~8.0, got {}", result.z);
 		assert!(deserializer.is_at_end());
-	}
-}
-
-/// Map a string identifier to a given value of type T.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Mapping<T> {
-	pub key: String,
-	pub value: T,
-}
-
-impl<T: McSerialize> McSerialize for Mapping<T> {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		self.key.mc_serialize(serializer)?;
-		self.value.mc_serialize(serializer)
-	}
-}
-
-impl<T: McDeserialize> McDeserialize for Mapping<T> {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
-	where
-		Self: Sized,
-	{
-		let key = String::mc_deserialize(deserializer)?;
-		let value = T::mc_deserialize(deserializer)?;
-		Ok(Self {
-			key,
-			value,
-		})
-	}
-}
-
-impl<T: McDefault> McDefault for Mapping<T> {
-	fn mc_default() -> Self {
-		Self {
-			key: McDefault::mc_default(),
-			value: T::mc_default(),
-		}
 	}
 }

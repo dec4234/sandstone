@@ -8,10 +8,12 @@ pub mod item;
 pub mod scoreboard;
 pub mod sound;
 pub mod player;
+pub mod item_modifiers;
+pub mod effects;
 
 use crate::bitflag;
-use crate::protocol::game::info::inventory::slotdata::SlotData;
-use crate::protocol::game::info::inventory::slots::{RecipeDisplay, SlotDisplay};
+use crate::protocol::game::player::inventory::slotdata::SlotData;
+use crate::protocol::game::player::inventory::slots::{RecipeDisplay, SlotDisplay};
 use crate::protocol::game::world::chunk::BiomeByteData;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};

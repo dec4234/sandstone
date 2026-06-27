@@ -1,4 +1,4 @@
-use crate::protocol::game::info::inventory::components::StructuredComponent;
+use crate::protocol::game::player::inventory::components::StructuredComponent;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;

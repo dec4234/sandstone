@@ -5,6 +5,8 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, VarIntEnum};
 
 pub mod player_action;
+pub mod interface;
+pub mod inventory;
 
 #[derive(McDefault, VarIntEnum, Debug, Clone, PartialEq)]
 pub enum ClientStatusAction {

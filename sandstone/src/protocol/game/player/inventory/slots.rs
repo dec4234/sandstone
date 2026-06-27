@@ -1,4 +1,4 @@
-use crate::protocol::game::info::inventory::slotdata::SlotData;
+use crate::protocol::game::player::inventory::slotdata::SlotData;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::McDeserialize;
@@ -9,7 +9,6 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
-
 // https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Slot_Display_structure
 // https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Recipes
 

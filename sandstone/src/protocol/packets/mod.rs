@@ -16,9 +16,8 @@ use crate::packets;
 use crate::protocol::game::effects::particle::Particle;
 use crate::protocol::game::effects::sound::{SoundCategory, SoundEvent};
 use crate::protocol::game::entity::EntityMetadata;
-use crate::protocol::game::info::inventory::component_types::TripleDoubleVelocity;
-use crate::protocol::game::info::inventory::slotdata::SlotData;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
+use crate::protocol::game::player::inventory::slotdata::SlotData;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
@@ -41,7 +40,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::{JsonTextComponent, TextComponent};
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, GameDifficulty, Position, SectionBlockEntry, SourcePosition, WorldEventType};
-use crate::protocol_types::datatypes::internal_types::{Angle, Either, IDorX, LpVec3, Mapping, RgbColor};
+use crate::protocol_types::datatypes::internal_types::{Angle, Either, IDorX, LpVec3, Mapping, RgbColor, TripleDouble};
 use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use packet_parts::stats::StatisticAward;
@@ -418,7 +417,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				z: f64,
 				radius: f32,
 				block_count: i32,
-				player_delta_velocity: PrefixedOptional<TripleDoubleVelocity>,
+				player_delta_velocity: PrefixedOptional<TripleDouble>,
 				explosion_particle_id: VarInt,
 				explosion_particle_data: Particle,
 				explosion_sound: IDorX<SoundEvent>,

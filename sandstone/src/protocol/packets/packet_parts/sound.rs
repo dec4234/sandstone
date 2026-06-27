@@ -1,4 +1,5 @@
 use crate::bitflag;
+use crate::protocol::game::effects::sound::SoundEvent;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -6,8 +7,10 @@ use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::chat::TextComponent;
+use crate::protocol_types::datatypes::internal_types::IDorX;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use sandstone_derive::{McDefault, VarIntEnum};
+use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
 bitflag!(SoundControlFlags: u8 {
 	source, sound
@@ -74,3 +77,56 @@ impl McDeserialize for StopSoundDetails {
 	}
 }
 
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct InlineSoundEvent {
+	pub name: String,
+	pub has_fixed_range: bool,
+	#[mc(deserialize_if = has_fixed_range)]
+	pub fixed_range: Option<f32>,
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct JukeboxSong {
+	pub sound_event: IDorX<SoundEvent>,
+	pub description: TextComponent,
+	pub duration: f32,
+	pub output: VarInt,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum IdOrJukeboxSong {
+	Registry(VarInt),
+	Inline(Box<JukeboxSong>),
+}
+
+impl McSerialize for IdOrJukeboxSong {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		match self {
+			IdOrJukeboxSong::Registry(id) => {
+				VarInt(id.0 + 1).mc_serialize(serializer)?;
+			}
+			IdOrJukeboxSong::Inline(song) => {
+				VarInt(0).mc_serialize(serializer)?;
+				song.mc_serialize(serializer)?;
+			}
+		}
+		Ok(())
+	}
+}
+
+impl McDeserialize for IdOrJukeboxSong {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> where Self: Sized {
+		let typ = VarInt::mc_deserialize(deserializer)?.0;
+		if typ == 0 {
+			Ok(IdOrJukeboxSong::Inline(Box::new(JukeboxSong::mc_deserialize(deserializer)?)))
+		} else {
+			Ok(IdOrJukeboxSong::Registry(VarInt(typ - 1)))
+		}
+	}
+}
+
+impl McDefault for IdOrJukeboxSong {
+	fn mc_default() -> Self {
+		IdOrJukeboxSong::Registry(VarInt(0))
+	}
+}
