@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use syn::__private::Span;
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, Data, DeriveInput, Expr, Fields, GenericArgument, Ident, LitStr, PathArguments, Type};
+use syn::{parse_macro_input, Attribute, Data, DataEnum, DeriveInput, Expr, Field, Fields, GenericArgument, Ident, LitStr, PathArguments, Type, Variant};
 
 /// Derive the `McSerialize` trait for a struct. This implies that all fields of the struct also
 /// implement `McSerialize`.
@@ -328,67 +328,179 @@ pub fn nbt(_attr: TokenStream, item: TokenStream) -> TokenStream {
 	item
 }
 
-/// Convert a struct to an NbtCompound using the `as_nbt` method.
-#[proc_macro_derive(AsNbt, attributes(nbt))]
-pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
-	let input = parse_macro_input!(input as DeriveInput);
-	let struct_name = input.ident;
+/// The NBT key for a struct field, honoring `#[nbt(rename = "...")]`, plus whether the field is
+/// marked `#[nbt(flatten)]` (its nested compound is merged into the parent instead of nested
+/// under a key).
+fn nbt_field_opts(f: &Field) -> (String, bool) {
+	let raw_key = f.ident.as_ref().unwrap().to_string();
+	let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
+	let mut flatten = false;
 
-	// Extract fields from the struct
-	let fields = if let Data::Struct(data) = input.data {
-		data.fields
-	} else {
-		panic!("AsNbt can only be derived for structs");
-	};
+	for attr in &f.attrs {
+		if attr.path().is_ident("nbt") {
+			let mut rename_value: Option<String> = None;
+			let _ = attr.parse_nested_meta(|meta| {
+				if meta.path.is_ident("rename") {
+					let value = meta.value()?;
+					let lit: LitStr = value.parse()?;
+					rename_value = Some(lit.value());
+					Ok(())
+				} else if meta.path.is_ident("flatten") {
+					flatten = true;
+					Ok(())
+				} else {
+					Err(meta.error("unsupported nbt attribute"))
+				}
+			});
+			if let Some(v) = rename_value {
+				key = v;
+			}
+		}
+	}
 
-	let field_additions = fields.iter().map(|f| {
-		let field_ident = f.ident.as_ref().unwrap();
-		let raw_key = field_ident.to_string();
-		let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
+	(key, flatten)
+}
 
-		// Parse field attributes
-		for attr in &f.attrs {
-			if attr.path().is_ident("nbt") {
-				let mut rename_value: Option<String> = None;
+/// The NBT key used to hold an enum's discriminant, from `#[nbt(tag = "...")]` on the enum.
+/// Defaults to `"type"`, the Minecraft convention for internally-tagged compounds.
+fn nbt_container_tag(attrs: &[Attribute]) -> String {
+	for attr in attrs {
+		if attr.path().is_ident("nbt") {
+			let mut tag_value: Option<String> = None;
+			let _ = attr.parse_nested_meta(|meta| {
+				if meta.path.is_ident("tag") {
+					let value = meta.value()?;
+					let lit: LitStr = value.parse()?;
+					tag_value = Some(lit.value());
+					Ok(())
+				} else {
+					Err(meta.error("unsupported nbt attribute"))
+				}
+			});
+			if let Some(v) = tag_value {
+				return v;
+			}
+		}
+	}
+	"type".to_string()
+}
 
-				// Parse nested attributes using parse_nested_meta
-				let _ = attr.parse_nested_meta(|meta| {
-					if meta.path.is_ident("rename") {
-						// basically `#[nbt(rename = "new_name")]`
-						let value = meta.value()?;
-						let lit: LitStr = value.parse()?;
-						rename_value = Some(lit.value());
-						Ok(())
-					} else {
-						Err(meta.error("unsupported nbt attribute"))
-					}
-				});
+/// The discriminant string written for an enum variant, from `#[nbt(rename = "...")]`.
+/// Defaults to the variant identifier.
+fn nbt_variant_tag(variant: &Variant) -> String {
+	for attr in &variant.attrs {
+		if attr.path().is_ident("nbt") {
+			let mut rename_value: Option<String> = None;
+			let _ = attr.parse_nested_meta(|meta| {
+				if meta.path.is_ident("rename") {
+					let value = meta.value()?;
+					let lit: LitStr = value.parse()?;
+					rename_value = Some(lit.value());
+					Ok(())
+				} else {
+					Err(meta.error("unsupported nbt attribute"))
+				}
+			});
+			if let Some(v) = rename_value {
+				return v;
+			}
+		}
+	}
+	variant.ident.to_string()
+}
 
-				if let Some(v) = rename_value {
-					key = v;
+/// Unwrap the invisible `Group`/`Paren` delimiters that wrap a type captured by a `macro_rules!`
+/// `:ty` fragment, so the underlying type can be inspected structurally.
+fn unwrap_type_groups(ty: &Type) -> &Type {
+	match ty {
+		Type::Group(group) => unwrap_type_groups(&group.elem),
+		Type::Paren(paren) => unwrap_type_groups(&paren.elem),
+		other => other,
+	}
+}
+
+/// Extract `T` from a field type of the form `Option<T>`, returning `None` for any other type.
+fn option_inner_type(ty: &Type) -> Option<&Type> {
+	if let Type::Path(type_path) = unwrap_type_groups(ty) {
+		let segment = type_path.path.segments.last()?;
+		if segment.ident == "Option" {
+			if let PathArguments::AngleBracketed(args) = &segment.arguments {
+				if let Some(GenericArgument::Type(inner)) = args.args.first() {
+					return Some(inner);
 				}
 			}
 		}
+	}
+	None
+}
 
-		quote! {
-			compound.add(#key, self.#field_ident.clone());
+/// Returns the inner type of a `Box<T>`, if `ty` is one. The orphan rule blocks a blanket
+/// `TryFrom<NbtCompound> for Box<T>`, so reading into a boxed field is generated by converting the
+/// inner type and wrapping the result in `Box::new`.
+fn box_inner_type(ty: &Type) -> Option<&Type> {
+	if let Type::Path(type_path) = unwrap_type_groups(ty) {
+		let segment = type_path.path.segments.last()?;
+		if segment.ident == "Box" {
+			if let PathArguments::AngleBracketed(args) = &segment.arguments {
+				if let Some(GenericArgument::Type(inner)) = args.args.first() {
+					return Some(inner);
+				}
+			}
+		}
+	}
+	None
+}
+
+/// Convert a struct or enum to an NbtCompound using the `as_nbt` method.
+///
+/// Structs map each field to a compound entry (keyed by the field name or `#[nbt(rename = "...")]`);
+/// a `#[nbt(flatten)]` field has its own compound merged into the parent. Enums are written as
+/// internally-tagged compounds: the variant's compound plus a discriminant entry under the
+/// `#[nbt(tag = "...")]` key (default `"type"`) set to the variant's `#[nbt(rename = "...")]` value.
+/// Only unit and single-field newtype variants are supported.
+#[proc_macro_derive(AsNbt, attributes(nbt))]
+pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = input.ident.clone();
+
+	match &input.data {
+		Data::Struct(data) => as_nbt_struct(&name, &data.fields),
+		Data::Enum(data) => as_nbt_enum(&name, &input.attrs, data),
+		_ => panic!("AsNbt can only be derived for structs and enums"),
+	}
+}
+
+fn as_nbt_struct(name: &Ident, fields: &Fields) -> TokenStream {
+	let field_additions = fields.iter().map(|f| {
+		let field_ident = f.ident.as_ref().unwrap();
+		let (key, flatten) = nbt_field_opts(f);
+
+		if flatten {
+			quote! {
+				let __flattened: NbtCompound = self.#field_ident.clone().into();
+				compound.merge(__flattened);
+			}
+		} else {
+			quote! {
+				compound.add(#key, self.#field_ident.clone());
+			}
 		}
 	});
 
 	let expanded = quote! {
-		impl Into<NbtCompound> for #struct_name {
+		impl Into<NbtCompound> for #name {
 			fn into(self) -> NbtCompound {
 				self.as_nbt()
 			}
 		}
 
-		impl Into<NbtTag> for #struct_name {
+		impl Into<NbtTag> for #name {
 			fn into(self) -> NbtTag {
 				NbtTag::Compound(self.as_nbt())
 			}
 		}
 
-		impl #struct_name {
+		impl #name {
 			pub fn as_nbt(&self) -> NbtCompound {
 				let mut compound = NbtCompound::new_no_name();
 				#(#field_additions)*
@@ -400,80 +512,116 @@ pub fn as_nbt_derive(input: TokenStream) -> TokenStream {
 	TokenStream::from(expanded)
 }
 
-/// Convert an NbtCompound into a struct using the `TryFrom` trait.
-#[proc_macro_derive(FromNbt, attributes(nbt))]
-pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
-	let input = parse_macro_input!(input as DeriveInput);
-	let struct_name = input.ident;
+fn as_nbt_enum(name: &Ident, attrs: &[Attribute], data: &DataEnum) -> TokenStream {
+	let tag_key = nbt_container_tag(attrs);
 
-	let fields = if let Data::Struct(data) = input.data {
-		data.fields
-	} else {
-		panic!("FromNbt can only be derived for structs");
-	};
+	let arms = data.variants.iter().map(|variant| {
+		let variant_ident = &variant.ident;
+		let tag_value = nbt_variant_tag(variant);
 
-	let struct_name_str = struct_name.to_string();
-
-	let field_initializers = fields.iter().map(|f| {
-		let field_ident = f.ident.as_ref().unwrap();
-		let raw_key = field_ident.to_string();
-		let mut key = raw_key.strip_prefix("r#").unwrap_or(&raw_key).to_string();
-		let field_ty = &f.ty;
-
-		// Parse rename attribute
-		for attr in &f.attrs {
-			if attr.path().is_ident("nbt") {
-				let mut rename_value: Option<String> = None;
-				let _ = attr.parse_nested_meta(|meta| {
-					if meta.path.is_ident("rename") {
-						let value = meta.value()?;
-						let lit: LitStr = value.parse()?;
-						rename_value = Some(lit.value());
-						Ok(())
-					} else {
-						Err(meta.error("unsupported nbt attribute"))
-					}
-				});
-				if let Some(v) = rename_value {
-					key = v;
+		match &variant.fields {
+			Fields::Unit => quote! {
+				#name::#variant_ident => {
+					let mut compound = NbtCompound::new_no_name();
+					compound.add(#tag_key, #tag_value);
+					compound
 				}
+			},
+			Fields::Unnamed(fields) if fields.unnamed.len() == 1 => quote! {
+				#name::#variant_ident(inner) => {
+					let mut compound: NbtCompound = inner.clone().into();
+					compound.add(#tag_key, #tag_value);
+					compound
+				}
+			},
+			_ => panic!("AsNbt enum variants must be unit or single-field newtype variants, but '{}' is not", variant_ident),
+		}
+	});
+
+	let expanded = quote! {
+		impl Into<NbtCompound> for #name {
+			fn into(self) -> NbtCompound {
+				self.as_nbt()
 			}
 		}
 
+		impl Into<NbtTag> for #name {
+			fn into(self) -> NbtTag {
+				NbtTag::Compound(self.as_nbt())
+			}
+		}
+
+		impl #name {
+			pub fn as_nbt(&self) -> NbtCompound {
+				match self {
+					#(#arms)*
+				}
+			}
+		}
+	};
+
+	TokenStream::from(expanded)
+}
+
+/// Convert an NbtCompound into a struct or enum using the `TryFrom` trait.
+///
+/// Structs read each field from its keyed entry (missing required fields error; missing optional
+/// fields become `None`); a `#[nbt(flatten)]` field is built from the whole compound. Enums read
+/// the discriminant string under the `#[nbt(tag = "...")]` key (default `"type"`) and dispatch to
+/// the matching variant by its `#[nbt(rename = "...")]` value.
+#[proc_macro_derive(FromNbt, attributes(nbt))]
+pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
+	let input = parse_macro_input!(input as DeriveInput);
+	let name = input.ident.clone();
+
+	match &input.data {
+		Data::Struct(data) => from_nbt_struct(&name, &data.fields),
+		Data::Enum(data) => from_nbt_enum(&name, &input.attrs, data),
+		_ => panic!("FromNbt can only be derived for structs and enums"),
+	}
+}
+
+fn from_nbt_struct(name: &Ident, fields: &Fields) -> TokenStream {
+	let name_str = name.to_string();
+
+	let field_initializers = fields.iter().map(|f| {
+		let field_ident = f.ident.as_ref().unwrap();
+		let field_ty = &f.ty;
+		let (key, flatten) = nbt_field_opts(f);
 		let key_str = key.clone();
-		let sname = struct_name_str.clone();
+		let sname = name_str.clone();
 
-		let is_option = field_ty.to_token_stream().to_string().starts_with("Option");
-
-		if is_option {
+		if flatten {
+			// A flattened field is rebuilt from the entire compound rather than a single key.
 			quote! {
-				#field_ident: {
-					match nbt.get(#key_str) {
-						Some(tag) => {
-							<#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
-								.map_err(|_| NbtError::MissingField(
-									format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
-								))?
-						}
-						None => None,
+				#field_ident: <#field_ty as ::std::convert::TryFrom<NbtCompound>>::try_from(nbt.clone())?,
+			}
+		} else if let Some(inner_ty) = option_inner_type(field_ty) {
+			// Optional field: absent, stored as `NbtTag::None`, or present-but-wrong-type all resolve
+			// to `None`, matching the lenient `Option<T>` conversions in nbt.rs while also supporting
+			// custom inner types. (`add` keeps `NbtTag::None` entries in the in-memory map, so guard
+			// against them explicitly rather than relying on the inner conversion.)
+			quote! {
+				#field_ident: match nbt.get(#key_str) {
+					Some(tag) if *tag != NbtTag::None => {
+						<#inner_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone()).ok()
 					}
+					_ => None,
 				},
 			}
 		} else {
 			quote! {
-				#field_ident: {
-					match nbt.get(#key_str) {
-						Some(tag) => {
-							<#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
-								.map_err(|_| NbtError::MissingField(
-									format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
-								))?
-						}
-						None => {
-							return Err(NbtError::MissingField(
-								format!("'{}' in '{}'", #key_str, #sname)
-							));
-						}
+				#field_ident: match nbt.get(#key_str) {
+					Some(tag) => {
+						<#field_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone())
+							.map_err(|_| NbtError::MissingField(
+								format!("Invalid type for field '{}' in '{}'", #key_str, #sname)
+							))?
+					}
+					None => {
+						return Err(NbtError::MissingField(
+							format!("'{}' in '{}'", #key_str, #sname)
+						));
 					}
 				},
 			}
@@ -481,7 +629,7 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
 	});
 
 	let expanded = quote! {
-		impl ::std::convert::TryFrom<NbtCompound> for #struct_name {
+		impl ::std::convert::TryFrom<NbtCompound> for #name {
 			type Error = NbtError;
 
 			fn try_from(nbt: NbtCompound) -> Result<Self, Self::Error> {
@@ -491,7 +639,7 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
 			}
 		}
 
-		impl ::std::convert::TryFrom<NbtTag> for #struct_name {
+		impl ::std::convert::TryFrom<NbtTag> for #name {
 			type Error = NbtError;
 
 			fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
@@ -502,7 +650,82 @@ pub fn from_nbt_derive(input: TokenStream) -> TokenStream {
 			}
 		}
 
-		impl #struct_name {
+		impl #name {
+			pub fn from_nbt(nbt: NbtCompound) -> Result<Self, NbtError> {
+				Self::try_from(nbt)
+			}
+		}
+	};
+
+	TokenStream::from(expanded)
+}
+
+fn from_nbt_enum(name: &Ident, attrs: &[Attribute], data: &DataEnum) -> TokenStream {
+	let tag_key = nbt_container_tag(attrs);
+	let name_str = name.to_string();
+
+	let arms = data.variants.iter().map(|variant| {
+		let variant_ident = &variant.ident;
+		let tag_value = nbt_variant_tag(variant);
+
+		match &variant.fields {
+			Fields::Unit => quote! {
+				#tag_value => Ok(#name::#variant_ident),
+			},
+			Fields::Unnamed(fields) if fields.unnamed.len() == 1 => {
+				let inner_ty = &fields.unnamed.first().unwrap().ty;
+				// `Box<T>` can't impl `TryFrom<NbtCompound>` (orphan rule), so convert the boxed
+				// value's type and re-box it.
+				if let Some(boxed_ty) = box_inner_type(inner_ty) {
+					quote! {
+						#tag_value => Ok(#name::#variant_ident(
+							::std::boxed::Box::new(
+								<#boxed_ty as ::std::convert::TryFrom<NbtCompound>>::try_from(nbt.clone())?
+							)
+						)),
+					}
+				} else {
+					quote! {
+						#tag_value => Ok(#name::#variant_ident(
+							<#inner_ty as ::std::convert::TryFrom<NbtCompound>>::try_from(nbt.clone())?
+						)),
+					}
+				}
+			}
+			_ => panic!("FromNbt enum variants must be unit or single-field newtype variants, but '{}' is not", variant_ident),
+		}
+	});
+
+	let expanded = quote! {
+		impl ::std::convert::TryFrom<NbtCompound> for #name {
+			type Error = NbtError;
+
+			fn try_from(nbt: NbtCompound) -> Result<Self, Self::Error> {
+				let __tag = nbt.get_string(#tag_key).ok_or_else(|| NbtError::MissingField(
+					format!("'{}' in '{}'", #tag_key, #name_str)
+				))?;
+
+				match __tag.as_str() {
+					#(#arms)*
+					other => Err(NbtError::MissingField(
+						format!("unknown {} '{}' for '{}'", #tag_key, other, #name_str)
+					)),
+				}
+			}
+		}
+
+		impl ::std::convert::TryFrom<NbtTag> for #name {
+			type Error = NbtError;
+
+			fn try_from(value: NbtTag) -> Result<Self, Self::Error> {
+				match value {
+					NbtTag::Compound(nbt) => Self::try_from(nbt),
+					_ => Err(NbtError::InvalidType),
+				}
+			}
+		}
+
+		impl #name {
 			pub fn from_nbt(nbt: NbtCompound) -> Result<Self, NbtError> {
 				Self::try_from(nbt)
 			}

@@ -199,7 +199,7 @@ fn gen_enum(enum_name: &str, struct_name: &str, to_full: &str, by_id: &str, entr
     for e in entries {
         s.push_str(&format!("            {} => Some({enum_name}::{}),\n", e.id, e.variant));
     }
-    s.push_str(&format!("            _ => None,\n        }}\n    }}\n\n"));
+    s.push_str("            _ => None,\n        }\n    }\n\n");
 
     // from_name()
     s.push_str("    /// Looks up an entry by its registry name.\n");
@@ -207,7 +207,7 @@ fn gen_enum(enum_name: &str, struct_name: &str, to_full: &str, by_id: &str, entr
     for e in entries {
         s.push_str(&format!("            {:?} => Some({enum_name}::{}),\n", e.name, e.variant));
     }
-    s.push_str(&format!("            _ => None,\n        }}\n    }}\n\n"));
+    s.push_str("            _ => None,\n        }\n    }\n\n");
 
     // to_block()/to_item()
     s.push_str(&format!("    /// Returns the full [`{struct_name}`] metadata for this entry.\n"));

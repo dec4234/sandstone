@@ -295,6 +295,75 @@ mod test {
 		str: String,
 	}
 
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	struct NoticeVariant {
+		message: String,
+	}
+
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	struct ConfirmVariant {
+		yes: String,
+		no: String,
+	}
+
+	/// An internally-tagged enum: each variant is written as a compound with a discriminant entry
+	/// (here under the `kind` key) alongside the variant's own fields.
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	#[nbt(tag = "kind")]
+	enum TaggedEnum {
+		#[nbt(rename = "minecraft:notice")]
+		Notice(NoticeVariant),
+		#[nbt(rename = "minecraft:confirmation")]
+		Confirm(ConfirmVariant),
+	}
+
+	/// The derived enum support must write the discriminant under the configured tag key and read it
+	/// back to the same variant. If the tag were dropped or mis-keyed, a receiver could not tell the
+	/// variants apart — the whole point of an internally-tagged union.
+	#[test]
+	fn test_enum_internally_tagged_round_trip() {
+		let notice = TaggedEnum::Notice(NoticeVariant {
+			message: "hello".to_string(),
+		});
+		let nbt: NbtCompound = notice.clone().into();
+		assert_eq!(nbt["kind"], NbtTag::String("minecraft:notice".to_string()));
+		assert_eq!(nbt["message"], NbtTag::String("hello".to_string()));
+		assert_eq!(TaggedEnum::try_from(nbt).unwrap(), notice);
+
+		let confirm = TaggedEnum::Confirm(ConfirmVariant {
+			yes: "y".to_string(),
+			no: "n".to_string(),
+		});
+		let nbt: NbtCompound = confirm.clone().into();
+		assert_eq!(nbt["kind"], NbtTag::String("minecraft:confirmation".to_string()));
+		assert_eq!(TaggedEnum::try_from(nbt).unwrap(), confirm);
+	}
+
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	struct FlattenParent {
+		title: String,
+		#[nbt(flatten)]
+		inner: TaggedEnum,
+	}
+
+	/// A `#[nbt(flatten)]` field merges its compound into the parent rather than nesting it. The
+	/// flattened enum's discriminant and fields must sit at the same level as the parent's own
+	/// fields, and survive the round trip, since that flat layout is what the wire format requires.
+	#[test]
+	fn test_flatten_round_trip() {
+		let parent = FlattenParent {
+			title: "t".to_string(),
+			inner: TaggedEnum::Notice(NoticeVariant {
+				message: "m".to_string(),
+			}),
+		};
+		let nbt: NbtCompound = parent.clone().into();
+		assert_eq!(nbt["title"], NbtTag::String("t".to_string()));
+		assert_eq!(nbt["kind"], NbtTag::String("minecraft:notice".to_string()));
+		assert_eq!(nbt["message"], NbtTag::String("m".to_string()));
+		assert_eq!(FlattenParent::try_from(nbt).unwrap(), parent);
+	}
+
 	/// Tests that NbtCompound can be serialized to and deserialized from JSON.
 	#[test]
 	fn test_nbt_json() {

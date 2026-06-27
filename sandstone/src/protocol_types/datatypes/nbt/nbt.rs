@@ -223,7 +223,11 @@ impl TryFrom<NbtTag> for String {
 
 impl From<bool> for NbtTag {
 	fn from(value: bool) -> Self {
-		NbtTag::Byte(if value { 1 } else { 0 })
+		NbtTag::Byte(if value {
+			1
+		} else {
+			0
+		})
 	}
 }
 
@@ -352,6 +356,14 @@ impl NbtCompound {
 		}
 
 		self.map.insert(name.into(), tag);
+	}
+
+	/// Move every entry of `other` into this compound, overwriting any existing entries with the
+	/// same name. Used to flatten a nested compound's fields into a parent (e.g. `#[nbt(flatten)]`).
+	pub fn merge(&mut self, other: NbtCompound) {
+		for (name, tag) in other.map {
+			self.add(name, tag);
+		}
 	}
 
 	/// Get the tag mapped to the given name. Returns 'None' if the name does not exist in the compound.
@@ -541,6 +553,15 @@ impl From<NbtTag> for Option<NbtCompound> {
 			NbtTag::Compound(c) => Some(c),
 			_ => None,
 		}
+	}
+}
+
+impl<T> From<Box<T>> for NbtCompound
+where
+	T: Into<NbtCompound>,
+{
+	fn from(boxed: Box<T>) -> Self {
+		(*boxed).into()
 	}
 }
 

@@ -24,7 +24,6 @@ use sandstone::protocol::status::{DefaultServerHandshakeHandler, DefaultServerPi
 use sandstone::protocol_types::datatypes::internal_types::Mapping;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
-use sandstone::util::java::bitfield::BitField;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use uuid::Uuid;

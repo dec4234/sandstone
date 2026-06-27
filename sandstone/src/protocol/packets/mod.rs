@@ -17,6 +17,7 @@ use crate::protocol::game::effects::particle::Particle;
 use crate::protocol::game::effects::sound::{SoundCategory, SoundEvent};
 use crate::protocol::game::entity::EntityMetadata;
 use crate::protocol::game::info::registry::RegistryDataPacketInternal;
+use crate::protocol::game::player::interface::dialog::Dialog;
 use crate::protocol::game::player::inventory::slotdata::SlotData;
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
@@ -965,7 +966,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				// no fields
 			},
 			ShowDialog, 0x8A => {
-				// TODO: dialog definition
+				dialog: Box<Dialog>
 			}
 		},
 		SERVER => {
