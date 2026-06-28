@@ -10,6 +10,7 @@ pub mod sound;
 pub mod player;
 pub mod item_modifiers;
 pub mod effects;
+pub mod auth;
 
 use crate::bitflag;
 use crate::protocol::game::player::inventory::slotdata::SlotData;

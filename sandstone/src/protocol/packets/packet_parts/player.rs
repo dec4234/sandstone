@@ -26,19 +26,43 @@ pub enum WaypointData {
 pub struct PositionVarInt {
 	pub x: VarInt,
 	pub y: VarInt,
-	pub z: VarInt
+	pub z: VarInt,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ChunkPositionVarInt {
 	pub x: VarInt,
-	pub z: VarInt
+	pub z: VarInt,
 }
 
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
-#[repr(i32)]
 pub enum WaypointOperation {
 	Track = 0,
 	Untrack = 1,
 	Update = 2,
+}
+
+/// # Player Action Status (Packet Part)
+/// Used to communicate a change in player status.
+///
+/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum PlayerActionStatus {
+	StartedDigging = 0,
+	CancelledDigging = 1,
+	FinishedDigging = 2,
+	DropItemStack = 3,
+	DropItem = 4,
+	ShootArrowOrFinishEating = 5,
+	SwapItemInHand = 6,
+}
+
+/// # Seen Advancement Action (Packet Part)
+/// Action that occurs when interacting with Advancements tab
+/// 
+/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Seen_Advancements
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum SeenAdvancementsAction {
+	OpenedTab = 0,
+	ClosedScreen = 1,
 }

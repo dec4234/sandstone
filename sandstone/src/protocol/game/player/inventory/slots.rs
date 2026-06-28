@@ -1,3 +1,4 @@
+use crate::protocol::game::player::inventory::components::StructuredComponent;
 use crate::protocol::game::player::inventory::slotdata::SlotData;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::PrefixedArray;
@@ -9,9 +10,10 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
-// https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Slot_Display_structure
-// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Recipes
 
+/// Description of a recipe ingredient slot for use for use by the client.
+///
+/// https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Slot_Display_structure
 #[derive(VarIntEnum, McDefault, Debug, PartialEq, Clone)]
 #[repr(i32)]
 pub enum SlotDisplay {
@@ -94,4 +96,56 @@ pub struct SmithingDisplay {
 	pub addition: SlotDisplay,
 	pub result: SlotDisplay,
 	pub crafting_station: SlotDisplay,
+}
+
+/// # Changed Slot (Packet Part)
+///
+/// New data for a slot that the client wants to inform the server about.
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ChangedSlot {
+	pub slot: i16,
+	/// New data for this slot, in the client's opinion. Server verifies this data.
+	pub slot_data: HashedSlot
+}
+
+/// # Hashed Slot (Packet Part)
+///
+/// Used to communicate slot changes in an inventory.
+///
+/// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Hashed_Format
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct HashedSlot {
+	pub has_item: bool,
+	#[mc(deserialize_if = has_item)]
+	pub item_id: Option<VarInt>,
+	#[mc(deserialize_if = has_item)]
+	pub item_count: Option<VarInt>,
+	#[mc(deserialize_if = has_item)]
+	pub components: Option<PrefixedArray<ComponentHashed>>,
+	#[mc(deserialize_if = has_item)]
+	pub components_to_remove: Option<PrefixedArray<StructuredComponent>>
+}
+
+/// # Slot Data Hash (Packet Part)
+///
+/// Used for inventory updates.
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct ComponentHashed {
+	pub component_type: StructuredComponent,
+	/// A CRC32C (note: CRC32C is not the same thing as CRC32) checksum of the component data. Currently undocumented
+	pub data_hash: i32
+}
+
+// TODO: Map valid mode and button combinations?
+/// # Inventory Operation Mode (Packet Part)
+/// Used to determine valid buttons and operations for inventory actions.
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum InventoryOperationMode {
+	Pickup = 0,
+	ShiftClick = 1,
+	NumberKeySwap = 2,
+	MiddleClick = 3,
+	Drop = 4,
+	Drag = 5,
+	PickupAll = 6
 }

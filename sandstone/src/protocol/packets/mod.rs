@@ -16,18 +16,21 @@ use crate::packets;
 use crate::protocol::game::effects::particle::Particle;
 use crate::protocol::game::effects::sound::{SoundCategory, SoundEvent};
 use crate::protocol::game::entity::EntityMetadata;
-use crate::protocol::game::info::registry::RegistryDataPacketInternal;
+use crate::protocol::game::info::registry::{ChatType, RegistryDataPacketInternal};
+use crate::protocol::game::info::stats::advancement::Advancement;
 use crate::protocol::game::player::interface::dialog::Dialog;
 use crate::protocol::game::player::inventory::slotdata::SlotData;
+use crate::protocol::game::player::inventory::slots::{ChangedSlot, HashedSlot, InventoryOperationMode, RecipeDisplay};
 use crate::protocol::game::player::player_action::PlayerInfoUpdateData;
 use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use crate::protocol::packets::packet_parts::block::BlockParticleAlternative;
+use crate::protocol::packets::packet_parts::auth::PublicKeyNetwork;
+use crate::protocol::packets::packet_parts::block::{BlockParticleAlternative, CommandBlockFlag, CommandBlockMode, SpecialBlockRotation, StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode, TestBlockMode, TestInstanceBlockActionAction, TestInstanceStatus};
 use crate::protocol::packets::packet_parts::debug::{CustomReportDetail, DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
 use crate::protocol::packets::packet_parts::entity::{EntityStatusEnum, MinecartMoveStep};
 use crate::protocol::packets::packet_parts::item::{MapColorPatch, MapIcons, Trade};
-use crate::protocol::packets::packet_parts::player::{TeleportFlags, WaypointData, WaypointOperation};
+use crate::protocol::packets::packet_parts::player::{PlayerActionStatus, SeenAdvancementsAction, TeleportFlags, WaypointData, WaypointOperation};
 use crate::protocol::packets::packet_parts::scoreboard::{ObjectiveNumberFormat, ObjectiveType, UpdateScoreFormat, UpdateTeamOptions};
 use crate::protocol::packets::packet_parts::sound::StopSoundDetails;
 use crate::protocol::packets::packet_parts::{ChatTypeNetwork, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags};
@@ -38,12 +41,13 @@ use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol::testing::McDefault;
-use crate::protocol_types::datatypes::chat::{JsonTextComponent, TextComponent};
+use crate::protocol_types::datatypes::chat::{JsonTextComponent, PlayerChatFilter, PlayerChatSignature, TextComponent};
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, GameDifficulty, Position, SectionBlockEntry, SourcePosition, WorldEventType};
 use crate::protocol_types::datatypes::internal_types::{Angle, Either, IDorX, LpVec3, Mapping, RgbColor, TripleDouble};
 use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
+use crate::util::java::bitset::BitSet;
 use packet_parts::stats::StatisticAward;
 use packet_parts::ProtocolPropertyElement;
 use packet_parts::{
@@ -595,15 +599,34 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				payload: i64
 			},
 			PlaceGhostRecipe, 0x3D => {
-				// TODO: window id + recipe display
+				window_id: VarInt,
+				recipe_display: RecipeDisplay
 			},
 			PlayerAbilities, 0x3E => {
 				flags: PlayerAbilityFlags,
 				flying_speed: f32,
 				fov_modifier: f32
 			},
-			PlayerChatMessage, 0x3F => {
-				// TODO: signed chat message with branching fields
+			PlayerChatMessage, 0x3F #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Chat_Message"] => {
+				global_index: VarInt,
+				sender: Uuid,
+				index: VarInt,
+				message_signature_bytes: PrefixedOptional<[u8; 256]>,
+				message: String,
+				timestamp: i64,
+				salt: i64,
+				signatures: Box<PrefixedArray<PlayerChatSignature>>,
+				unsigned_content: PrefixedOptional<Box<TextComponent>>,
+				filter: PlayerChatFilter,
+				#[doc = "Only present if the Filter Type is Partially Filtered. Specifies the indices at which characters in the original message string should be replaced with the # symbol (i.e., filtered) by the vanilla client"]
+				#[mc(deserialize_if = filter == PlayerChatFilter::PartiallyFiltered)]
+				filter_type_bits: Option<BitSet>,
+				#[doc = "Either the type of chat in the minecraft:chat_type registry, defined by the Registry Data packet, or an inline definition."]
+				chat_type: IDorX<ChatType>,
+				#[doc = "The name of the one sending the message, usually the sender's display name."]
+				sender_name: Box<TextComponent>,
+				#[doc = "The name of the one receiving the message, usually the receiver's display name."]
+				target_name: PrefixedOptional<Box<TextComponent>>
 			},
 			EndCombat, 0x40 => {
 				duration: VarInt
@@ -920,12 +943,11 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				port: VarInt
 			},
 			UpdateAdvancements, 0x80 => {
-				unimplemented: Vec<u8> // todo: fix UpdateAdvancements
-				/*reset: bool,
+				reset: bool,
 				advancement_mapping: PrefixedArray<Mapping<Advancement>>,
 				identifiers: PrefixedArray<String>,
 				progress_mapping: PrefixedArray<Mapping<PrefixedArray<Mapping<PrefixedOptional<i64>>>>>,
-				show_advancements: bool*/
+				show_advancements: bool
 			},
 			UpdateAttributes, 0x81 => {
 				entity_id: VarInt,
@@ -978,7 +1000,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				location: Position
 			},
 			BundleItemSelected, 0x02 => {
-				// TODO
+				slot_of_bundle: VarInt,
+				slot_in_bundle: VarInt
 			},
 			ChangeDifficultyServer, 0x03 => {
 				new_difficulty: GameDifficulty
@@ -992,14 +1015,28 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			ChatCommand, 0x06 => {
 				command: String
 			},
-			SignedChatCommand, 0x07 => {
-				// TODO: argument signatures array + acknowledged bitset
+			SignedChatCommand, 0x07 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Signed_Chat_Command"] => {
+				#[doc = "The command typed by the client excluding the /"]
+				command: String,
+				time: i64,
+				salt: i64,
+				argument_signatures: PrefixedArray<Mapping<Box<[u8; 256]>>>,
+				message_count: VarInt,
+				acknowledged: BitSet,
+				checksum: i8
 			},
-			ChatMessage, 0x08 => {
-				// TODO: signature + acknowledged bitset
+			ChatMessage, 0x08 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chat_Message"] => {
+				message: String,
+				time: i64,
+				salt: i64,
+				signature: PrefixedOptional<Box<[u8; 256]>>,
+				message_count: VarInt,
+				acknowledged: BitSet,
+				checksum: i8
 			},
-			PlayerSession, 0x09 => {
-				// TODO: public key + signature
+			PlayerSession, 0x09 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Session"] => {
+				session_id: Uuid,
+				public_key: Box<PublicKeyNetwork>
 			},
 			ChunkBatchReceived, 0x0A #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Batch_Received"] => {
 				#[doc = "Chunks received per tick"]
@@ -1033,8 +1070,16 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				window_id: VarInt,
 				button_id: VarInt
 			},
-			ClickContainer, 0x11 => {
-				// TODO: changed slots array + carried item
+			ClickContainer, 0x11 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Click_Container"] => {
+				window_id: VarInt,
+				#[doc = "The last received State ID from either a **Set Container Slot** or a **Set Container Content** packet."]
+				state_id: VarInt,
+				slot: i16,
+				button: i8,
+				mode: InventoryOperationMode,
+				changed_slots: PrefixedArray<ChangedSlot>,
+				#[doc = "Item carried by the cursor"]
+				carried_item: HashedSlot
 			},
 			CloseContainerServer, 0x12 => {
 				window_id: VarInt
@@ -1142,13 +1187,16 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				payload: i64
 			},
 			PlaceRecipe, 0x26 => {
-				// TODO: window id + recipe id + make all
+				window_id: VarInt,
+				#[doc = "ID of recipe previously defined in **Recipe Book Add**."]
+				recipe_id: VarInt,
+				make_all: bool
 			},
 			PlayerAbilitiesServer, 0x27 => {
 				flags: PlayerAbilityFlags
 			},
-			PlayerAction, 0x28 => {
-				status: VarInt,
+			PlayerAction, 0x28 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action"] => {
+				status: PlayerActionStatus,
 				location: Position,
 				face: u8,
 				sequence_id: VarInt
@@ -1183,35 +1231,70 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				result: VarInt
 			},
 			SeenAdvancements, 0x31 => {
-				// TODO: action + optional tab id
+				action: SeenAdvancementsAction,
+				#[mc(deserialize_if = action == SeenAdvancementsAction::OpenedTab)]
+				tab_id: Option<String>
 			},
 			SelectTrade, 0x32 => {
 				selected_slot: VarInt
 			},
 			SetBeaconEffect, 0x33 => {
-				// TODO: optional primary/secondary effects
+				#[doc = "A potion ID"]
+				primary_effect: PrefixedOptional<VarInt>,
+				#[doc = "A potion ID"]
+				secondary_effect: PrefixedOptional<VarInt>
 			},
 			SetHeldItemServer, 0x34 => {
 				slot: i16
 			},
-			ProgramCommandBlock, 0x35 => {
-				// TODO
+			ProgramCommandBlock, 0x35 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Command_Block"] => {
+				location: Position,
+				command: String,
+				mode: CommandBlockMode,
+				flags: CommandBlockFlag
 			},
 			ProgramCommandBlockMinecart, 0x36 => {
-				// TODO
+				entity_id: VarInt,
+				command: String,
+				track_output: bool
 			},
 			SetCreativeModeSlot, 0x37 => {
 				slot: i16,
 				clicked_item: SlotData
 			},
 			ProgramJigsawBlock, 0x38 => {
-				// TODO
+				location: Position,
+				name: String,
+				target: String,
+				pool: String,
+				final_state: String,
+				joint_type: String,
+				selection_priority: VarInt,
+				placement_priority: VarInt
 			},
 			ProgramStructureBlock, 0x39 => {
-				// TODO
+				location: Position,
+				action: StructureBlockAction,
+				mode: StructureBlockMode,
+				name: String,
+				offset_x: i8,
+				offset_y: i8,
+				offset_z: i8,
+				size_x: i8,
+				size_y: i8,
+				size_z: i8,
+				mirror: StructureBlockMirror,
+				rotation: SpecialBlockRotation,
+				metadata: String,
+				#[doc = "Between 0 and 1"]
+				integrity: f32,
+				seed: VarLong,
+				flags: StructureBlockFlags
 			},
 			SetTestBlock, 0x3A => {
-				// TODO
+				position: Position,
+				mode: TestBlockMode,
+				message: String
 			},
 			UpdateSign, 0x3B => {
 				location: Position,
@@ -1228,7 +1311,16 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				target_player: Uuid
 			},
 			TestInstanceBlockAction, 0x3E => {
-				// TODO
+				position: Position,
+				action: TestInstanceBlockActionAction,
+				test: PrefixedOptional<String>,
+				size_x: VarInt,
+				size_y: VarInt,
+				size_z: VarInt,
+				rotation: SpecialBlockRotation,
+				ignore_entities: bool,
+				status: TestInstanceStatus,
+				error_message: PrefixedOptional<TextComponent>
 			},
 			UseItemOn, 0x3F => {
 				// TODO: hand + location + face + cursor + flags + sequence

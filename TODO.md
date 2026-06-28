@@ -21,3 +21,6 @@
 - [ ] Lots of packets are repeated across multiple states with different ids = deduplicate
 - [ ] Add Copy to a lot more things
 - [ ] Max size string (variable, usually 32767)
+- [ ] Fixed range VarInt
+- [ ] Change #[mc(deserialize_if)] to a more applicable "include_if" that applies for serialization and deserialization?
+- [ ] Chat message signatures

@@ -5,7 +5,8 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtList, NbtTag};
-use sandstone_derive::McDefault;
+use crate::protocol_types::datatypes::var_types::VarInt;
+use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 use serde::de::value::MapAccessDeserializer;
 use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Serialize};
@@ -796,6 +797,20 @@ pub struct ItemHover {
 	pub id: String,
 	pub count: i32,
 	pub tag: Option<String>,
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct PlayerChatSignature {
+	message_id: VarInt,
+	#[mc(deserialize_if = message_id.0 == 0)]
+	signature: Option<[u8; 256]>
+}
+
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum PlayerChatFilter {
+	PassThrough = 0,
+	FullyFiltered = 1,
+	PartiallyFiltered = 2,
 }
 
 #[cfg(test)]
