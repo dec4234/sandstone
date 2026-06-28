@@ -41,15 +41,15 @@ impl StatusResponseSpec {
 		Self {
 			version: VersionInfo {
 				name: protocol_version.get_fancy_name(),
-				protocol: protocol_version.get_version_number(),
+				protocol: protocol_version,
 			},
 			players: PlayerInfo {
 				max: 0,
 				online: 0,
 				sample: Vec::new(),
 			},
-			// description: TextComponent::new(description.into().replace("&", "§")), //todo: revist color code translation
-			description: TextComponent::new(description.into()),
+			// color code translation needed here because client uses section symbol for color
+			description: TextComponent::new(description.into().replace("&", "§")),
 			favicon: None,
 			enforcesSecureChat: false,
 			previewsChat: false,
@@ -93,7 +93,7 @@ impl StatusResponseSpec {
 	}
 
 	/// `version` can really be anything you want, but `protocol_version` must be a valid protocol version number
-	pub fn set_protocol_version(&mut self, version: String, protocol_version: i16) {
+	pub fn set_protocol_version(&mut self, version: String, protocol_version: ProtocolVerison) {
 		self.version = VersionInfo {
 			name: version,
 			protocol: protocol_version,
@@ -136,6 +136,7 @@ impl From<StatusResponseSpec> for StatusResponsePacket {
 	}
 }
 
+/// # Version Info (Packet Part)
 /// Represents the version information for the server. The `name` of the version can be anything you want.
 /// The `protocol` must be a valid protocol version number, and must match the protocol version of the
 /// connecting client.
@@ -144,13 +145,18 @@ pub struct VersionInfo {
 	// On 1.20+ servers `name` may be omitted; the Notchian client treats it as "Old" if so.
 	#[serde(default = "version_name_default")]
 	pub name: String,
-	pub protocol: i16,
+	pub protocol: ProtocolVerison,
 }
 
+/// Function for a default version name if the name for the version is omitted by the server.
 fn version_name_default() -> String {
 	"Old".to_string()
 }
 
+/// # Player Info (Packet Part)
+/// Player info which includes the current number of online users, max slots for the server, and a sample of online users.
+///
+/// Many servers will customize this information so it shouldn't be taken literally.
 #[derive(McDefault, Default, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerInfo {
 	pub max: i32,
@@ -190,7 +196,94 @@ impl PlayerSample {
 	pub fn new_random<S: Into<String>>(name: S) -> Self {
 		Self {
 			name: name.into().replace("&", "§"),
-			id: Uuid::new_v4().to_string(), // TODO: no-std support?
+			id: Uuid::new_v4().to_string(),
 		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use crate::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
+	use crate::protocol_types::datatypes::chat::ComponentType;
+	use crate::protocol_types::protocol_verison::ProtocolVerison;
+	use uuid::Uuid;
+
+	#[test]
+	fn test_color_code_translation() {
+		// `new` must translate the '&' color code symbol into the section symbol '§' used by the client.
+		let spec = StatusResponseSpec::new(ProtocolVerison::latest(), "&a&lTest");
+		assert_eq!(spec.description.content, ComponentType::Text { text: "§a§lTest".to_string() });
+	}
+
+	#[test]
+	fn test_new_uses_protocol_version() {
+		// `new` must derive version info from the supplied protocol version so the client sees a match.
+		let version = ProtocolVerison::latest();
+		let spec = StatusResponseSpec::new(version, "Test");
+		assert_eq!(spec.version.name, version.get_fancy_name());
+		assert_eq!(spec.version.protocol, version);
+	}
+
+	#[test]
+	fn test_set_protocol_version() {
+		let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "Test");
+		spec.set_protocol_version("Custom 1.0".to_string(), ProtocolVerison::V1_8);
+		assert_eq!(spec.version.name, "Custom 1.0");
+		assert_eq!(spec.version.protocol, ProtocolVerison::V1_8);
+	}
+
+	#[test]
+	fn test_set_player_info() {
+		// Player info drives the count/hover preview shown in the client server list.
+		let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "Test");
+		let sample = vec![PlayerSample::new_random("Steve")];
+		spec.set_player_info(20, 1, sample.clone());
+		assert_eq!(spec.players.max, 20);
+		assert_eq!(spec.players.online, 1);
+		assert_eq!(spec.players.sample, sample);
+	}
+
+	#[test]
+	fn test_player_sample_color_code_translation() {
+		// Player sample names are displayed by the client and must use the section color symbol.
+		let sample = PlayerSample::new("&cAdmin", Uuid::nil());
+		assert_eq!(sample.name, "§cAdmin");
+		assert_eq!(sample.id, Uuid::nil().to_string());
+	}
+
+	#[test]
+	fn test_set_description_no_translation() {
+		// `set_description` intentionally does not translate color codes, unlike `new`.
+		let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "Test");
+		spec.set_description("&aRaw".to_string());
+		assert_eq!(spec.description.content, ComponentType::Text { text: "&aRaw".to_string() });
+	}
+
+	#[test]
+	fn test_chat_flags() {
+		let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "Test");
+		assert!(!spec.enforcesSecureChat);
+		assert!(!spec.previewsChat);
+		spec.set_secure_chat(true);
+		spec.set_preview_chat(true);
+		assert!(spec.enforcesSecureChat);
+		assert!(spec.previewsChat);
+	}
+
+	#[test]
+	fn test_serialize_deserialize_round_trip() {
+		// The spec travels over the wire as a length-prefixed JSON string; it must survive a round-trip.
+		let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "&aHello");
+		spec.set_player_info(100, 5, vec![PlayerSample::new("Notch", Uuid::nil())]);
+		spec.set_secure_chat(true);
+
+		let mut serializer = McSerializer::new();
+		spec.mc_serialize(&mut serializer).unwrap();
+
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let decoded = StatusResponseSpec::mc_deserialize(&mut deserializer).unwrap();
+
+		assert_eq!(spec, decoded);
 	}
 }

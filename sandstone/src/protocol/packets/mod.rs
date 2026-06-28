@@ -26,11 +26,11 @@ use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::packet_parts::auth::PublicKeyNetwork;
-use crate::protocol::packets::packet_parts::block::{BlockParticleAlternative, CommandBlockFlag, CommandBlockMode, SpecialBlockRotation, StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode, TestBlockMode, TestInstanceBlockActionAction, TestInstanceStatus};
+use crate::protocol::packets::packet_parts::block::{BlockFace, BlockParticleAlternative, CommandBlockFlag, CommandBlockMode, SpecialBlockRotation, StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode, TestBlockMode, TestInstanceBlockActionAction, TestInstanceStatus};
 use crate::protocol::packets::packet_parts::debug::{CustomReportDetail, DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
 use crate::protocol::packets::packet_parts::entity::{EntityStatusEnum, MinecartMoveStep};
 use crate::protocol::packets::packet_parts::item::{MapColorPatch, MapIcons, Trade};
-use crate::protocol::packets::packet_parts::player::{PlayerActionStatus, SeenAdvancementsAction, TeleportFlags, WaypointData, WaypointOperation};
+use crate::protocol::packets::packet_parts::player::{PlayerActionStatus, SeenAdvancementsAction, TeleportFlags, UseItemHand, WaypointData, WaypointOperation};
 use crate::protocol::packets::packet_parts::scoreboard::{ObjectiveNumberFormat, ObjectiveType, UpdateScoreFormat, UpdateTeamOptions};
 use crate::protocol::packets::packet_parts::sound::StopSoundDetails;
 use crate::protocol::packets::packet_parts::{ChatTypeNetwork, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags};
@@ -1198,7 +1198,7 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			PlayerAction, 0x28 #[doc = "https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action"] => {
 				status: PlayerActionStatus,
 				location: Position,
-				face: u8,
+				face: BlockFace,
 				sequence_id: VarInt
 			},
 			PlayerCommand, 0x29 => {
@@ -1323,13 +1323,29 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				error_message: PrefixedOptional<TextComponent>
 			},
 			UseItemOn, 0x3F => {
-				// TODO: hand + location + face + cursor + flags + sequence
+				hand: UseItemHand,
+				location: Position,
+				face: BlockFace,
+				#[doc = "The position of the crosshair on the block, from 0 to 1 increasing from west to east."]
+				cursor_position_x: f32,
+				#[doc = "The position of the crosshair on the block, from 0 to 1 increasing from bottom to top."]
+				cursor_position_y: f32,
+				#[doc = "The position of the crosshair on the block, from 0 to 1 increasing from north to south."]
+				cursor_position_z: f32,
+				inside_block: bool,
+				world_border_hit: bool,
+				#[doc = "Block change sequence number"]
+				sequence: VarInt
 			},
 			UseItem, 0x40 => {
-				// TODO: hand + sequence + rotation
+				hand: UseItemHand,
+				sequence: VarInt,
+				yaw: f32,
+				pitch: f32
 			},
 			CustomClickAction, 0x41 => {
-				// TODO: identifier + NBT payload
+				id: String,
+				payload: NbtCompound
 			}
 		}
 	}

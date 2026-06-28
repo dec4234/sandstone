@@ -1,6 +1,13 @@
 //! Defines the protocol version numbers for the final patch of each Minecraft version. This is important
 //! for verifying client protocol versions.
 
+use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::var_types::VarInt;
+use sandstone_derive::{McDeserialize, McSerialize};
+use serde::{Deserialize, Serialize};
+
 /// Internal Only. Creates an enum of Minecraft versions with their protocol numbers and fancy names.
 #[macro_export]
 macro_rules! versions {
@@ -17,10 +24,10 @@ macro_rules! versions {
             ///
             /// Please keep in mind that while protocol numbers are provided back all the way to 1.8.9,
             /// the library typically only supports the latest version of Minecraft: Java Edition.
-            #[derive(Clone, Copy, PartialEq, Debug)]
+            #[derive(McSerialize, McDeserialize, Clone, Copy, PartialEq, Eq, Debug, Hash)]
             #[allow(non_snake_case)]
             pub enum $name {
-                $($na),*,
+                $($na = $lit),*,
             }
         }
 
@@ -54,6 +61,25 @@ macro_rules! versions {
                 }
             }
         }
+
+        impl McDefault for $name {
+            fn mc_default() -> Self {
+                Self::latest()
+            }
+        }
+
+        impl Serialize for $name {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_i16(self.get_version_number())
+            }
+        }
+
+      impl<'de> Deserialize<'de> for $name {
+          fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+              let n = i16::deserialize(d)?;
+              $name::try_from(n).map_err(serde::de::Error::custom)
+          }
+      }
     };
 }
 
@@ -102,5 +128,67 @@ mod tests {
         assert_eq!(ProtocolVerison::V1_8.get_fancy_name(), "1.8.9");
         assert_eq!(ProtocolVerison::V1_9.get_fancy_name(), "1.9.4");
         assert_eq!(ProtocolVerison::V1_20.get_fancy_name(), "1.20.6");
+    }
+
+    /// Every version must survive a wire round-trip, since `ProtocolVerison` is sent on the wire
+    /// (e.g. in the handshake). A break here means clients would be misidentified.
+    #[test]
+    fn test_mc_serialize_deserialize_round_trip() {
+        use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+        use crate::protocol_types::protocol_verison::ProtocolVerison;
+
+        for version in ProtocolVerison::get_all() {
+            let mut serializer = McSerializer::init_size(8);
+            version.mc_serialize(&mut serializer).unwrap();
+
+            let mut deserializer = McDeserializer::new(&serializer.output);
+            let decoded = ProtocolVerison::mc_deserialize(&mut deserializer).unwrap();
+
+            assert_eq!(version, decoded);
+        }
+    }
+
+    /// The wire form must be the protocol number encoded as a VarInt (not the variant's ordinal),
+    /// because that is exactly the value the Notchian client/server exchanges.
+    #[test]
+    fn test_mc_serialize_writes_varint_protocol_number() {
+        use crate::protocol::serialization::{McSerialize, McSerializer};
+        use crate::protocol_types::datatypes::var_types::VarInt;
+        use crate::protocol_types::protocol_verison::ProtocolVerison;
+
+        for version in ProtocolVerison::get_all() {
+            let mut actual = McSerializer::init_size(8);
+            version.mc_serialize(&mut actual).unwrap();
+
+            let mut expected = McSerializer::init_size(8);
+            VarInt(version.get_version_number() as i32).mc_serialize(&mut expected).unwrap();
+
+            assert_eq!(actual.output, expected.output, "wrong wire form for {:?}", version);
+        }
+    }
+
+    /// Deserializing an unknown protocol number must fail rather than silently picking a variant.
+    #[test]
+    fn test_mc_deserialize_unknown_version_errors() {
+        use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+        use crate::protocol_types::datatypes::var_types::VarInt;
+        use crate::protocol_types::protocol_verison::ProtocolVerison;
+
+        let mut serializer = McSerializer::init_size(8);
+        VarInt(999).mc_serialize(&mut serializer).unwrap();
+
+        let mut deserializer = McDeserializer::new(&serializer.output);
+        assert!(ProtocolVerison::mc_deserialize(&mut deserializer).is_err());
+    }
+
+    /// `McDefault` is the value packet round-trip tests fall back on, and the library only targets the
+    /// newest version, so it must resolve to `latest()`.
+    #[test]
+    fn test_mc_default_is_latest() {
+        use crate::protocol::testing::McDefault;
+        use crate::protocol_types::protocol_verison::ProtocolVerison;
+
+        assert_eq!(ProtocolVerison::mc_default(), ProtocolVerison::latest());
+        assert_eq!(ProtocolVerison::mc_default(), ProtocolVerison::V1_21);
     }
 }

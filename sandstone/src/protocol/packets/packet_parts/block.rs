@@ -11,7 +11,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::internal_types::IDSet;
 use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
-use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
+use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum, VarIntEnum};
 
 bitflag!(CommandBlockFlag: u8 {
 	track_output, is_conditional, automatic
@@ -217,7 +217,7 @@ pub enum TestInstanceBlockActionAction {
 	Run = 6,
 }
 
-/// # Test Instance Status
+/// # Test Instance Status (Packet Part)
 /// The status of the test instance.
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action
@@ -228,8 +228,12 @@ pub enum TestInstanceStatus {
 	Finished = 2,
 }
 
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
-#[repr(i8)]
+/// # Block Face - Byte Enum (Packet Part)
+/// The face of a block
+///
+/// As seen here: https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action
+#[derive(TypeEnum, McDefault, Debug, Clone, PartialEq)]
+#[type_enum(i8)]
 pub enum BlockFace {
 	Bottom = 0,
 	Top = 1,

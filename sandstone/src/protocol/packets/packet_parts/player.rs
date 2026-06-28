@@ -59,10 +59,20 @@ pub enum PlayerActionStatus {
 
 /// # Seen Advancement Action (Packet Part)
 /// Action that occurs when interacting with Advancements tab
-/// 
+///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Seen_Advancements
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 pub enum SeenAdvancementsAction {
 	OpenedTab = 0,
 	ClosedScreen = 1,
+}
+
+/// # Hand (Packet Part)
+/// The hand involved in an item use event
+///
+/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Use_Item
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum UseItemHand {
+	MainHand = 0,
+	OffHand = 1
 }
