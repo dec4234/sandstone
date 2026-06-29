@@ -58,8 +58,6 @@ mod macros {
             $(
                 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
                 pub struct $fancyname {
-                    #[serde(skip_serializing)]
-                    pub count: u32, // used for iterator
                     pub list: Vec<$t>,
                 }
 
@@ -67,22 +65,25 @@ mod macros {
                     pub fn new(list: Vec<$t>) -> Self {
                         Self {
                             list,
-                            count: 0,
                         }
                     }
                 }
 
-                impl Iterator for $fancyname {
+                impl IntoIterator for $fancyname {
                     type Item = $t;
+                    type IntoIter = std::vec::IntoIter<$t>;
 
-                    fn next(&mut self) -> Option<Self::Item> {
-                        if self.count < self.list.len() as u32 {
-                            let tag = self.list[self.count as usize];
-                            self.count += 1;
-                            Some(tag)
-                        } else {
-                            None
-                        }
+                    fn into_iter(self) -> Self::IntoIter {
+                        self.list.into_iter()
+                    }
+                }
+
+                impl<'a> IntoIterator for &'a $fancyname {
+                    type Item = &'a $t;
+                    type IntoIter = std::slice::Iter<'a, $t>;
+
+                    fn into_iter(self) -> Self::IntoIter {
+                        self.list.iter()
                     }
                 }
 

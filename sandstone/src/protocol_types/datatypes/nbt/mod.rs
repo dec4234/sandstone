@@ -66,46 +66,6 @@ impl NbtTag {
 		}
 	}
 
-	/// Used to assist in deserialization. Returns 'None' if payload size is variable
-	pub fn get_payload_size(&self) -> Option<u8> {
-		match self {
-			NbtTag::End => Some(0),
-			NbtTag::Byte(_) => Some(1),
-			NbtTag::Short(_) => Some(2),
-			NbtTag::Int(_) => Some(4),
-			NbtTag::Long(_) => Some(8),
-			NbtTag::Float(_) => Some(4),
-			NbtTag::Double(_) => Some(8),
-			NbtTag::ByteArray(_) => None,
-			NbtTag::String(_) => None,
-			NbtTag::List(_) => None,
-			NbtTag::Compound(_) => None,
-			NbtTag::IntArray(_) => None,
-			NbtTag::LongArray(_) => None,
-			NbtTag::None => Some(0),
-		}
-	}
-
-	/// Get the string representation of a tag, used for sNBT
-	pub fn get_name(&self) -> String {
-		match self {
-			NbtTag::End => "TAG_End".to_string(),
-			NbtTag::Byte(_) => "TAG_Byte".to_string(),
-			NbtTag::Short(_) => "TAG_Short".to_string(),
-			NbtTag::Int(_) => "TAG_Int".to_string(),
-			NbtTag::Long(_) => "TAG_Long".to_string(),
-			NbtTag::Float(_) => "TAG_Float".to_string(),
-			NbtTag::Double(_) => "TAG_Double".to_string(),
-			NbtTag::ByteArray(_) => "TAG_Byte_Array".to_string(),
-			NbtTag::String(_) => "TAG_String".to_string(),
-			NbtTag::List(_) => "TAG_List".to_string(),
-			NbtTag::Compound(_) => "TAG_Compound".to_string(),
-			NbtTag::IntArray(_) => "TAG_Int_Array".to_string(),
-			NbtTag::LongArray(_) => "TAG_Long_Array".to_string(),
-			NbtTag::None => "TAG_None".to_string(),
-		}
-	}
-
 	/// Given the type ID, deserialize the corresponding NbtTag.
 	pub fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
 		match ty {
@@ -332,7 +292,7 @@ where
 pub struct NbtCompound {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub root_name: Option<String>,
-	pub map: HashMap<String, NbtTag>,
+	pub(crate) map: HashMap<String, NbtTag>,
 }
 
 impl NbtCompound {
@@ -351,23 +311,13 @@ impl NbtCompound {
 		Self::new::<String>(None)
 	}
 
-	/// Change the root name of the compound
-	pub fn change_root_name<T: Into<String>>(&mut self, name: T) {
-		self.root_name = Some(name.into());
-	}
-
-	/// Clear the root name. Only needed if you need a compound to send over network.
-	pub fn clear_root_name(&mut self) {
-		self.root_name = None;
-	}
-
 	/// Add a tag to the compound with a String key.
 	#[inline]
 	pub fn add<K: Into<String>, V: Into<NbtTag>>(&mut self, name: K, tag: V) {
 		let tag = tag.into();
 
 		if tag == NbtTag::End {
-			return; // do not add None tag
+			return; // do not add End tag
 		}
 
 		self.map.insert(name.into(), tag);
@@ -597,7 +547,6 @@ impl Eq for NbtCompound {}
 pub struct NbtList {
 	pub type_id: u8,
 	pub list: Vec<NbtTag>,
-	count: u32, // used for iterator
 }
 
 impl NbtList {
@@ -605,7 +554,6 @@ impl NbtList {
 		Self {
 			type_id: 0, // set to END by default
 			list: vec![],
-			count: 0,
 		}
 	}
 
@@ -644,17 +592,21 @@ impl NbtList {
 	}
 }
 
-impl Iterator for NbtList {
+impl IntoIterator for NbtList {
 	type Item = NbtTag;
+	type IntoIter = std::vec::IntoIter<NbtTag>;
 
-	fn next(&mut self) -> Option<Self::Item> {
-		if self.count < self.list.len() as u32 {
-			let tag = self.list[self.count as usize].clone();
-			self.count += 1;
-			Some(tag)
-		} else {
-			None
-		}
+	fn into_iter(self) -> Self::IntoIter {
+		self.list.into_iter()
+	}
+}
+
+impl<'a> IntoIterator for &'a NbtList {
+	type Item = &'a NbtTag;
+	type IntoIter = std::slice::Iter<'a, NbtTag>;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.list.iter()
 	}
 }
 
@@ -726,5 +678,383 @@ impl McDefault for NbtList {
 		list.add_tag(NbtTag::mc_default()).expect("Mixed types in NbtList default");
 
 		list
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use crate::protocol_types::datatypes::nbt::NbtError;
+	use crate::protocol_types::datatypes::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
+	use sandstone_derive::{AsNbt, FromNbt};
+
+	/// Test standard serialization of a NbtCompound.
+	#[test]
+	fn test_compound_serialization() {
+		let mut compound = NbtCompound::new(Some("A"));
+		compound.add("i8", 123i8);
+		compound.add("i16", 1234i16);
+		compound.add("i32", 12345i32);
+		compound.add("f32", -3.6f32);
+		compound.add("f64", -3.6789f64);
+		compound.add("str", "hello");
+		compound.add("byte_array", NbtByteArray::new(vec![1, 2, 3, 4, 5]));
+		compound.add("int_array", NbtIntArray::new(vec![1, 2, 3, 4, 5]));
+		compound.add("long_array", NbtLongArray::new(vec![1, 2, 3, 4, 5]));
+		compound.add("list", NbtList::from_vec(vec![NbtTag::Int(1), NbtTag::Int(2), NbtTag::Int(3)]).unwrap());
+
+		let mut compound2 = NbtCompound::new::<String>(None);
+		compound2.add("byte", 13i8);
+		compound.add("compound", compound2);
+
+		let mut serializer = McSerializer::new();
+		compound.mc_serialize(&mut serializer).unwrap();
+
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let deserialized = NbtCompound::from_root(&mut deserializer).unwrap();
+
+		assert_eq!(compound["i8"], deserialized["i8"]);
+		assert_eq!(compound["i16"], deserialized["i16"]);
+		assert_eq!(compound["i32"], deserialized["i32"]);
+		assert_eq!(compound["f32"], deserialized["f32"]);
+		assert_eq!(compound["f64"], deserialized["f64"]);
+		assert_eq!(compound["str"], deserialized["str"]);
+		assert_eq!(compound["byte_array"], deserialized["byte_array"]);
+		assert_eq!(compound["int_array"], deserialized["int_array"]);
+		assert_eq!(compound["long_array"], deserialized["long_array"]);
+		assert_eq!(compound["list"], deserialized["list"]);
+
+		assert_eq!(compound["compound"], deserialized["compound"]);
+
+		assert_eq!(compound.root_name, deserialized.root_name);
+	}
+
+	/// Test compounds within compounds and their serialization.
+	#[test]
+	fn test_compounds_in_compounds() {
+		let mut outer = NbtCompound::new(Some("outer"));
+		let mut mid1 = NbtCompound::new::<String>(None);
+		let mut mid2 = NbtCompound::new::<String>(None);
+		let mut inner1 = NbtCompound::new::<String>(None);
+		let mut inner2 = NbtCompound::new::<String>(None);
+		let mut inner3 = NbtCompound::new::<String>(None);
+
+		inner1.add("i8", 123i8);
+		inner1.add("i16", 1234i16);
+
+		inner2.add("i8", 123i8);
+		inner2.add("str", "hello");
+
+		inner3.add("byte_list", NbtByteArray::new(vec![8, 3, 9, 0, 2, 1]));
+		inner3.add("int_list", NbtIntArray::new(vec![97197, 288, -28238, -89, 8373]));
+
+		mid1.add("inner1", inner1);
+		mid1.add("i32", 12345i32);
+
+		mid2.add("inner2", inner2);
+		mid2.add("i32", 187585i32);
+		mid2.add("inner3", inner3);
+		mid2.add("long_list", NbtLongArray::new(vec![8766897606966, 78287698760875, 786876876732, 125435138536]));
+
+		outer.add("mid1", mid1);
+		outer.add("mid2", mid2);
+
+		let mut serializer = McSerializer::new();
+		outer.mc_serialize(&mut serializer).unwrap();
+
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let deserialized = NbtCompound::from_root(&mut deserializer).unwrap();
+
+		assert_eq!(outer, deserialized);
+		assert_eq!(outer["mid1"], deserialized["mid1"]);
+		assert_eq!(outer["mid2"], deserialized["mid2"]);
+	}
+
+	/// Test network compound deserialization.
+	#[test]
+	fn test_network() {
+		let mut compound = NbtCompound::new_no_name();
+		compound.add("i8", 123i8);
+		compound.add("i16", 1234i16);
+		compound.add("i32", 12345i32);
+		compound.add("f32", -3.6f32);
+		compound.add("f64", -3.6789f64);
+		compound.add("str", "hello");
+
+		let mut serializer = McSerializer::new();
+		compound.mc_serialize(&mut serializer).unwrap();
+
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let deserialized = NbtCompound::mc_deserialize(&mut deserializer).unwrap();
+
+		assert_eq!(deserialized["i8"], NbtTag::Byte(123i8));
+		assert_eq!(deserialized["i16"], NbtTag::Short(1234i16));
+		assert_eq!(deserialized["i32"], NbtTag::Int(12345i32));
+		assert_eq!(deserialized["f32"], NbtTag::Float(-3.6f32));
+		assert_eq!(deserialized["f64"], NbtTag::Double(-3.6789f64));
+		assert_eq!(deserialized["str"], NbtTag::String("hello".to_string()));
+	}
+
+	/// Test how NbtTag::None behaves when serialized and deserialized. It can be present in a compound but
+	/// it should not be included in the serialization output.
+	#[test]
+	fn test_none() {
+		let mut compound = NbtCompound::new(Some("A"));
+		compound.add("none", NbtTag::None);
+
+		assert_eq!(compound["none"], NbtTag::None); // actually mapped to None inside of the compound
+		assert_eq!(compound["abc123"], NbtTag::None); // not because 'None' was added to the compound, but because it returns None when a certain key is not found
+
+		let mut serializer = McSerializer::new();
+		compound.mc_serialize(&mut serializer).unwrap();
+
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		match NbtTag::mc_deserialize(&mut deserializer) {
+			Ok(NbtTag::Compound(c)) => {
+				assert_eq!(c["none"], NbtTag::None);
+				assert_eq!(c["abc123"], NbtTag::None);
+			}
+			_ => panic!("Expected NbtTag::Compound"),
+		}
+	}
+
+	/// Test struct for conversion to/from NbtCompound.
+	#[derive(AsNbt, FromNbt, Debug, PartialEq)]
+	struct TestStruct {
+		a: i32,
+		b: String,
+		c: f64,
+	}
+
+	/// Confirm that the `as_nbt` and `from_nbt` methods work the same.
+	#[test]
+	fn test_into_vs_as() {
+		let test = TestStruct {
+			a: 42,
+			b: "Hello".to_string(),
+			c: 3.19,
+		};
+
+		let as_test = test.as_nbt();
+		let nbt: NbtCompound = test.into();
+
+		assert_eq!(as_test, nbt);
+	}
+
+	/// Test that a struct can be converted into an NbtCompound using the `as_nbt` function.
+	#[test]
+	fn test_as_nbt() {
+		let test = TestStruct {
+			a: 42,
+			b: "Hello".to_string(),
+			c: 3.19,
+		};
+
+		let nbt: NbtCompound = test.into();
+
+		assert_eq!(nbt["a"], NbtTag::Int(42));
+		assert_eq!(nbt["b"], NbtTag::String("Hello".to_string()));
+		assert_eq!(nbt["c"], NbtTag::Double(3.19));
+	}
+
+	/// Test that an NbtCompound can be converted into a struct using the `from_nbt` function.
+	#[test]
+	fn test_from_nbt() {
+		let mut nbt = NbtCompound::new(Some("Test"));
+
+		nbt.add("a", NbtTag::Int(42));
+		nbt.add("b", NbtTag::String("Hello".to_string()));
+		nbt.add("c", NbtTag::Double(3.19));
+
+		let test: TestStruct = nbt.try_into().unwrap();
+
+		assert_eq!(test.a, 42);
+		assert_eq!(test.b, "Hello");
+		assert_eq!(test.c, 3.19);
+	}
+
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	struct OptionTestStruct {
+		a: i32,
+		b: Option<String>,
+		c: Option<f64>,
+	}
+
+	/// Test struct with None values to and from NBT.
+	#[test]
+	fn test_simple_none_nbt() {
+		let test = OptionTestStruct {
+			a: 0,
+			b: None,
+			c: None,
+		};
+
+		let nbt: NbtCompound = test.clone().into();
+		assert_eq!(nbt["a"], NbtTag::Int(0));
+		assert_eq!(nbt["b"], NbtTag::None);
+		assert_eq!(nbt["c"], NbtTag::None);
+
+		let test2: OptionTestStruct = nbt.try_into().unwrap();
+		assert_eq!(test, test2);
+	}
+
+	/// Test for struct with Option fields to and from NBT
+	#[test]
+	fn test_simple_option_nbt() {
+		let test = OptionTestStruct {
+			a: 0,
+			b: Some("Hello".to_string()),
+			c: Some(2.6),
+		};
+
+		let nbt: NbtCompound = test.clone().into();
+		assert_eq!(nbt["a"], NbtTag::Int(0));
+		assert_eq!(nbt["b"], NbtTag::String("Hello".to_string()));
+		assert_eq!(nbt["c"], NbtTag::Double(2.6));
+
+		let test2: OptionTestStruct = nbt.try_into().unwrap();
+		assert_eq!(test, test2);
+	}
+
+	/// Test how bytes are deserialized directly from NbtTag. Previously, the NbtTag and NbtCompound would both
+	/// try to pull the compound id (10) and then deserialize the tags, which would cause an off by-one error.
+	#[test]
+	fn test_deserialize_compound_via_nbttag() {
+		let mut deserializer = McDeserializer::new(&[10, 0, 11, 100, 101, 115, 99, 114, 105, 112, 116, 105, 111, 110, 8, 0, 9, 116, 114, 97, 110, 115, 108, 97, 116, 101, 0]);
+		NbtTag::mc_deserialize(&mut deserializer).expect("Failed to deserialize NBT from bytes");
+
+		let mut compound = NbtCompound::new_no_name();
+		compound.add("translate", "translate".to_string());
+		let mut compound2 = NbtCompound::new_no_name();
+		compound2.add("some_key", "some_value".to_string());
+		compound.add("compound", compound2);
+
+		let mut serializer = McSerializer::new();
+		compound.mc_serialize(&mut serializer).expect("Failed to serialize NBT to bytes");
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		// NbtTag assumes that the root compound has no name
+		let deserialized = NbtTag::mc_deserialize(&mut deserializer).expect("Failed to deserialize NBT from bytes");
+		assert_eq!(deserialized, NbtTag::Compound(compound));
+	}
+
+	/// Test that NbtList can be converted to and from Vec<T> types.
+	#[test]
+	fn test_list_conversions() {
+		let v = vec![1i8, 2, 3, 4, 5];
+		let nbt_list = NbtTag::from(v.clone());
+		let deserialized: Vec<i8> = nbt_list.try_into().unwrap();
+		assert_eq!(deserialized, v);
+
+		let v = vec![13, 42, 99];
+		let nbt_list = NbtTag::from(v.clone());
+		let deserialized: Vec<i32> = nbt_list.try_into().unwrap();
+		assert_eq!(deserialized, v);
+
+		let v = vec![1i64, 2, 3, 4, 5];
+		let nbt_list = NbtTag::from(v.clone());
+		let deserialized: Vec<i64> = nbt_list.try_into().unwrap();
+		assert_eq!(deserialized, v);
+
+		let v = vec![
+			ListTestStruct {
+				i: 1,
+				str: "one".to_string(),
+			},
+			ListTestStruct {
+				i: 2,
+				str: "two".to_string(),
+			},
+		];
+		let nbt_list = NbtTag::from(v.clone());
+		let deserialized: Vec<ListTestStruct> = nbt_list.try_into().unwrap();
+		assert_eq!(deserialized, v);
+	}
+
+	#[derive(FromNbt, AsNbt, Debug, PartialEq, Clone)]
+	pub struct ListTestStruct {
+		i: i32,
+		str: String,
+	}
+
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	struct NoticeVariant {
+		message: String,
+	}
+
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	struct ConfirmVariant {
+		yes: String,
+		no: String,
+	}
+
+	/// An internally-tagged enum: each variant is written as a compound with a discriminant entry
+	/// (here under the `kind` key) alongside the variant's own fields.
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	#[nbt(tag = "kind")]
+	enum TaggedEnum {
+		#[nbt(rename = "minecraft:notice")]
+		Notice(NoticeVariant),
+		#[nbt(rename = "minecraft:confirmation")]
+		Confirm(ConfirmVariant),
+	}
+
+	/// The derived enum support must write the discriminant under the configured tag key and read it
+	/// back to the same variant. If the tag were dropped or mis-keyed, a receiver could not tell the
+	/// variants apart — the whole point of an internally-tagged union.
+	#[test]
+	fn test_enum_internally_tagged_round_trip() {
+		let notice = TaggedEnum::Notice(NoticeVariant {
+			message: "hello".to_string(),
+		});
+		let nbt: NbtCompound = notice.clone().into();
+		assert_eq!(nbt["kind"], NbtTag::String("minecraft:notice".to_string()));
+		assert_eq!(nbt["message"], NbtTag::String("hello".to_string()));
+		assert_eq!(TaggedEnum::try_from(nbt).unwrap(), notice);
+
+		let confirm = TaggedEnum::Confirm(ConfirmVariant {
+			yes: "y".to_string(),
+			no: "n".to_string(),
+		});
+		let nbt: NbtCompound = confirm.clone().into();
+		assert_eq!(nbt["kind"], NbtTag::String("minecraft:confirmation".to_string()));
+		assert_eq!(TaggedEnum::try_from(nbt).unwrap(), confirm);
+	}
+
+	#[derive(AsNbt, FromNbt, Debug, PartialEq, Clone)]
+	struct FlattenParent {
+		title: String,
+		#[nbt(flatten)]
+		inner: TaggedEnum,
+	}
+
+	/// A `#[nbt(flatten)]` field merges its compound into the parent rather than nesting it. The
+	/// flattened enum's discriminant and fields must sit at the same level as the parent's own
+	/// fields, and survive the round trip, since that flat layout is what the wire format requires.
+	#[test]
+	fn test_flatten_round_trip() {
+		let parent = FlattenParent {
+			title: "t".to_string(),
+			inner: TaggedEnum::Notice(NoticeVariant {
+				message: "m".to_string(),
+			}),
+		};
+		let nbt: NbtCompound = parent.clone().into();
+		assert_eq!(nbt["title"], NbtTag::String("t".to_string()));
+		assert_eq!(nbt["kind"], NbtTag::String("minecraft:notice".to_string()));
+		assert_eq!(nbt["message"], NbtTag::String("m".to_string()));
+		assert_eq!(FlattenParent::try_from(nbt).unwrap(), parent);
+	}
+
+	/// Tests that NbtCompound can be serialized to and deserialized from JSON.
+	#[test]
+	fn test_nbt_json() {
+		let mut compound = NbtCompound::new(Some("TestCompound"));
+		compound.add("i8", 123i8);
+		compound.add("i16", 1234i16);
+		compound.add("bool", true);
+		compound.add("str", "hello".to_string());
+		let json = serde_json::to_string(&compound).expect("Failed to serialize NBT to JSON");
+		let deserialized: NbtCompound = serde_json::from_str(&json).expect("Failed to deserialize NBT from JSON");
+		assert_eq!(compound, deserialized);
 	}
 }

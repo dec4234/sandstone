@@ -1,3 +1,5 @@
+//! NBT file parsing large scale test.
+
 #[cfg(test)]
 mod test {
 	use std::io::Read;
