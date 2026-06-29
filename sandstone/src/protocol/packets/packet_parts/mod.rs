@@ -1,16 +1,16 @@
 //! Parts of packet bodies that are shared or complex.
 
-pub mod debug;
-pub mod stats;
-pub mod entity;
+pub mod auth;
 pub mod block;
+pub mod debug;
+pub mod effects;
+pub mod entity;
 pub mod item;
+pub mod item_modifiers;
+pub mod player;
 pub mod scoreboard;
 pub mod sound;
-pub mod player;
-pub mod item_modifiers;
-pub mod effects;
-pub mod auth;
+pub mod stats;
 
 use crate::bitflag;
 use crate::protocol::game::player::inventory::slotdata::SlotData;
@@ -23,7 +23,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::EquipmentSlot;
 use crate::protocol_types::datatypes::internal_types::IDSet;
-use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::protocol_types::datatypes::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum, VarIntEnum};
 use uuid::Uuid;
@@ -377,7 +377,7 @@ pub struct ChatTypeNetwork {
 pub struct ChatTypeEntry {
 	pub translation_key: String,
 	parameters: PrefixedArray<ChatTypeParemeter>,
-	style: NbtCompound
+	style: NbtCompound,
 }
 
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]

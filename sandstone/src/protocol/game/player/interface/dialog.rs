@@ -6,8 +6,8 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
-use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 use sandstone_derive::{AsNbt, FromNbt, McDefault};
 
 /// The root of a dialog. Holds the fields common to every dialog type.
@@ -449,6 +449,7 @@ impl McDeserialize for Dialog {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 
 	fn button(label: &str) -> ActionButton {
 		ActionButton {

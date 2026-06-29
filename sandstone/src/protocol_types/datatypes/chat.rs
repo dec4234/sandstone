@@ -1,10 +1,12 @@
 //! This file defines the TextComponent type in the Minecraft network API.
 //! Seen in books, disconnect messages, chat messages, action bar, etc.
+//!
+//! https://minecraft.wiki/w/Text_component_format
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
-use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtList, NbtTag};
+use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtList, NbtTag};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 use serde::de::value::MapAccessDeserializer;
@@ -803,7 +805,7 @@ pub struct ItemHover {
 pub struct PlayerChatSignature {
 	message_id: VarInt,
 	#[mc(deserialize_if = message_id.0 == 0)]
-	signature: Option<[u8; 256]>
+	signature: Option<[u8; 256]>,
 }
 
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]

@@ -4,12 +4,11 @@ use crate::protocol::game::info::registry::McDeserialize;
 use crate::protocol::game::info::registry::McDeserializer;
 use crate::protocol::game::info::registry::McSerialize;
 use crate::protocol::game::info::registry::McSerializer;
-use crate::protocol::game::info::registry::NbtCompound;
 use crate::protocol::game::info::registry::SerializingErr;
 use crate::protocol::game::info::registry::SerializingResult;
 use crate::protocol::testing::McDefault;
-use crate::protocol_types::datatypes::nbt::nbt::NbtTag;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 use sandstone_derive::{AsNbt, FromNbt, McDefault, McDeserialize};
 use serde::{Deserialize, Serialize};
 
@@ -245,7 +244,7 @@ pub struct WolfVariantAssets {
 mod tests {
 	use crate::protocol::game::info::registry::registry_components::{MonsterSpawnLightLevel, MonsterSpawnLightLevelRange};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+	use crate::protocol_types::datatypes::nbt::NbtCompound;
 
 	/// Test that MonsterSpawnLightLevel can either be a struct or an integer
 	#[test]

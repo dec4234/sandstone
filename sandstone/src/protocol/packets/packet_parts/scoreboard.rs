@@ -8,7 +8,7 @@ use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
-use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::protocol_types::datatypes::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
@@ -159,5 +159,5 @@ impl McDeserialize for UpdateTeamOptions {
 pub enum UpdateScoreFormat {
 	Blank = 0,
 	Styled(NbtCompound) = 1,
-	Fixed(TextComponent) = 2
+	Fixed(TextComponent) = 2,
 }

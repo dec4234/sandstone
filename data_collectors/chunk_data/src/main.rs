@@ -83,7 +83,9 @@ async fn main() {
 		}
 	}
 
-	let serverbound_known_packs = Packet::ServerboundKnownPacks(ServerboundKnownPacksPacket { entries: PrefixedArray::new(vec![]) });
+	let serverbound_known_packs = Packet::ServerboundKnownPacks(ServerboundKnownPacksPacket {
+		entries: PrefixedArray::new(vec![]),
+	});
 
 	debug!("Sending serverbound known packs: {serverbound_known_packs:?}");
 	client.send_packet(serverbound_known_packs).await.unwrap();
@@ -273,7 +275,9 @@ async fn main() {
 			Packet::ClientboundKeepAlive(ka) => {
 				debug!("Received clientbound keep alive: {ka:?}");
 
-				let keep_alive = Packet::ServerboundKeepAlive(ServerboundKeepAlivePacket { keep_alive_id: ka.keep_alive_id });
+				let keep_alive = Packet::ServerboundKeepAlive(ServerboundKeepAlivePacket {
+					keep_alive_id: ka.keep_alive_id,
+				});
 
 				debug!("Sending serverbound keep alive: {keep_alive:?}");
 				client.send_packet(keep_alive).await.unwrap();

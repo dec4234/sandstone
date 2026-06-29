@@ -2,9 +2,9 @@
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::nbt::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
-	use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+	use sandstone::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use sandstone::protocol_types::datatypes::nbt::nbt_error::NbtError;
+	use sandstone::protocol_types::datatypes::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
 	use sandstone_derive::{AsNbt, FromNbt};
 
 	/// Test standard serialization of a NbtCompound.

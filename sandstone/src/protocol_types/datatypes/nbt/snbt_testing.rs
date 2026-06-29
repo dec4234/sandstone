@@ -3,7 +3,7 @@
 
 #![allow(unused_imports)]
 
-use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
+use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 
 #[test]
 pub fn simple_test() {

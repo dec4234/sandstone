@@ -13,7 +13,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::internal_types::{IDSet, IDorX};
-use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
+use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 

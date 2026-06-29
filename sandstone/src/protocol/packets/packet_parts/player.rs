@@ -22,6 +22,8 @@ pub enum WaypointData {
 	Azimuth(f32) = 3,
 }
 
+/// # Position VarInt (Packet Part)
+/// Represents a block position in the world as 3 VarInts
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct PositionVarInt {
 	pub x: VarInt,
@@ -29,6 +31,8 @@ pub struct PositionVarInt {
 	pub z: VarInt,
 }
 
+/// # Chunk Position VarInt (Packet Part)
+/// Represents a chunk location in the world as 2 VarInts
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ChunkPositionVarInt {
 	pub x: VarInt,

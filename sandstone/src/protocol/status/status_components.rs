@@ -14,6 +14,7 @@ use sandstone_derive::McDefault;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// # Status Response Spec (Packet Part)
 /// A prepared response to a status request from a client. This provides useful functions for building
 /// the complicated nested structure of the status response.
 #[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -37,6 +38,8 @@ pub struct StatusResponseSpec {
 impl StatusResponseSpec {
 	/// Create a new status response with the given protocol version and description. The description
 	/// will have its color codes translated from the symbol '&' to the symbol '§'.
+	///
+	/// All other fields will be set to defaults.
 	pub fn new<T: Into<String>>(protocol_version: ProtocolVerison, description: T) -> Self {
 		Self {
 			version: VersionInfo {
@@ -174,6 +177,7 @@ impl PlayerInfo {
 	}
 }
 
+/// # Player Sample (Packet Part)
 /// Represents a single entry in the player list sample response, seen when the user hovers over the player count.
 #[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlayerSample {

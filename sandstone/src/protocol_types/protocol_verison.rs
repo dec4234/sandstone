@@ -1,5 +1,7 @@
 //! Defines the protocol version numbers for the final patch of each Minecraft version. This is important
 //! for verifying client protocol versions.
+//!
+//! https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Protocol_version_numbers
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
@@ -16,6 +18,7 @@ macro_rules! versions {
         }
     )  => {
         $crate::as_item!{
+            /// # Protocol Version (Packet Part)
             /// Protocol version describes each major version of Minecraft: Java Edition since 1.8.9 <br>
             /// For each major version (ie. 1.8, 1.9, etc) the last released sub-version is used, since there
             /// is no conceivable reason to use any of the previous sub-versions.<br>
@@ -24,6 +27,12 @@ macro_rules! versions {
             ///
             /// Please keep in mind that while protocol numbers are provided back all the way to 1.8.9,
             /// the library typically only supports the latest version of Minecraft: Java Edition.
+            ///
+            /// Get the latest version with
+            /// ```rust
+            /// use sandstone::protocol_types::protocol_verison::ProtocolVerison;
+            /// println!("{}", ProtocolVerison::latest());
+            /// ```
             #[derive(McSerialize, McDeserialize, Clone, Copy, PartialEq, Eq, Debug, Hash)]
             #[allow(non_snake_case)]
             pub enum $name {
@@ -68,22 +77,27 @@ macro_rules! versions {
             }
         }
 
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.get_fancy_name())
+            }
+        }
+
         impl Serialize for $name {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 s.serialize_i16(self.get_version_number())
             }
         }
 
-      impl<'de> Deserialize<'de> for $name {
+        impl<'de> Deserialize<'de> for $name {
           fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
               let n = i16::deserialize(d)?;
               $name::try_from(n).map_err(serde::de::Error::custom)
           }
-      }
+        }
     };
 }
 
-// https://wiki.vg/Protocol_History
 versions!(ProtocolVerison, i16 => {
     V1_8, 47, "1.8.9",
     V1_9, 110, "1.9.4",
@@ -99,7 +113,7 @@ versions!(ProtocolVerison, i16 => {
     V1_19, 762, "1.19.4",
     V1_20, 766, "1.20.6",
     V1_21, 774, "1.21.11",
-    V26_1, 775, "26.1.2"
+    V26_1, 776, "26.2"
 });
 
 impl ProtocolVerison {

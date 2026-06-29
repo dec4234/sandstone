@@ -12,7 +12,7 @@ use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::internal_types::PackedEntries;
-use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::protocol_types::datatypes::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
@@ -85,7 +85,11 @@ impl LightArray {
 		}
 
 		let byte = self.data.vec[byte_index];
-		Ok(if is_high { byte >> 4 } else { byte & 0x0F })
+		Ok(if is_high {
+			byte >> 4
+		} else {
+			byte & 0x0F
+		})
 	}
 }
 

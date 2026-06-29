@@ -9,7 +9,6 @@ use crate::protocol::testing::McDefault;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 /// # Public Key (Packet Part)
-///
 /// Type used to communicate a public key on network.
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct PublicKeyNetwork {

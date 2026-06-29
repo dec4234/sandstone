@@ -9,7 +9,7 @@ use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::internal_types::IDSet;
-use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::protocol_types::datatypes::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum, VarIntEnum};
 

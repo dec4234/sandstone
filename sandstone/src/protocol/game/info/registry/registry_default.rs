@@ -7,7 +7,7 @@ use crate::protocol::game::info::registry::{
 	BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
 	WolfVariant, ZombieNautilusVariant,
 };
-use crate::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use crate::protocol_types::datatypes::nbt::NbtCompound;
 
 impl Default for BannerPattern {
 	fn default() -> Self {

@@ -14,7 +14,7 @@ use sandstone::protocol::serialization::McDeserializer;
 use sandstone::protocol::serialization::McSerialize;
 use sandstone::protocol::serialization::McSerializer;
 use sandstone::protocol::serialization::SerializingResult;
-use sandstone::protocol_types::datatypes::nbt::nbt::NbtCompound;
+use sandstone::protocol_types::datatypes::nbt::NbtCompound;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use sandstone_derive::{McDeserialize, McSerialize};
@@ -95,7 +95,9 @@ async fn main() {
 		}
 	}
 
-	let serverbound_known_packs = Packet::ServerboundKnownPacks(ServerboundKnownPacksPacket { entries: PrefixedArray::new(vec![]) });
+	let serverbound_known_packs = Packet::ServerboundKnownPacks(ServerboundKnownPacksPacket {
+		entries: PrefixedArray::new(vec![]),
+	});
 
 	debug!("Sending serverbound known packs: {serverbound_known_packs:?}");
 	client.send_packet(serverbound_known_packs).await.unwrap();

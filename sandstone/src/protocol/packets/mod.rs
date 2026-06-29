@@ -26,7 +26,10 @@ use crate::protocol::game::player::{ClientStatusAction, RespawnKeptData};
 use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::packet_parts::auth::PublicKeyNetwork;
-use crate::protocol::packets::packet_parts::block::{BlockFace, BlockParticleAlternative, CommandBlockFlag, CommandBlockMode, SpecialBlockRotation, StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode, TestBlockMode, TestInstanceBlockActionAction, TestInstanceStatus};
+use crate::protocol::packets::packet_parts::block::{
+	BlockFace, BlockParticleAlternative, CommandBlockFlag, CommandBlockMode, SpecialBlockRotation, StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode, TestBlockMode,
+	TestInstanceBlockActionAction, TestInstanceStatus,
+};
 use crate::protocol::packets::packet_parts::debug::{CustomReportDetail, DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
 use crate::protocol::packets::packet_parts::entity::{EntityStatusEnum, MinecartMoveStep};
 use crate::protocol::packets::packet_parts::item::{MapColorPatch, MapIcons, Trade};
@@ -45,7 +48,7 @@ use crate::protocol_types::datatypes::chat::{JsonTextComponent, PlayerChatFilter
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, GameDifficulty, Position, SectionBlockEntry, SourcePosition, WorldEventType};
 use crate::protocol_types::datatypes::internal_types::{Angle, Either, IDorX, LpVec3, Mapping, RgbColor, TripleDouble};
-use crate::protocol_types::datatypes::nbt::nbt::{NbtCompound, NbtTag};
+use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitset::BitSet;
 use packet_parts::stats::StatisticAward;

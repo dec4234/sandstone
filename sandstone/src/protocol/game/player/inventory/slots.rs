@@ -99,7 +99,6 @@ pub struct SmithingDisplay {
 }
 
 /// # Changed Slot (Packet Part)
-///
 /// New data for a slot that the client wants to inform the server about.
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ChangedSlot {
@@ -109,7 +108,6 @@ pub struct ChangedSlot {
 }
 
 /// # Hashed Slot (Packet Part)
-///
 /// Used to communicate slot changes in an inventory.
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Hashed_Format
@@ -127,7 +125,6 @@ pub struct HashedSlot {
 }
 
 /// # Slot Data Hash (Packet Part)
-///
 /// Used for inventory updates.
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ComponentHashed {
