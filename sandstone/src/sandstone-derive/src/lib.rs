@@ -480,6 +480,13 @@ fn as_nbt_struct(name: &Ident, fields: &Fields) -> TokenStream {
 				let __flattened: NbtCompound = self.#field_ident.clone().into();
 				compound.merge(__flattened);
 			}
+		} else if option_inner_type(&f.ty).is_some() {
+			// An `Option` field maps to key-presence: only insert the entry when it is `Some`.
+			quote! {
+				if let Some(__v) = &self.#field_ident {
+					compound.add(#key, __v.clone());
+				}
+			}
 		} else {
 			quote! {
 				compound.add(#key, self.#field_ident.clone());
@@ -597,16 +604,14 @@ fn from_nbt_struct(name: &Ident, fields: &Fields) -> TokenStream {
 				#field_ident: <#field_ty as ::std::convert::TryFrom<NbtCompound>>::try_from(nbt.clone())?,
 			}
 		} else if let Some(inner_ty) = option_inner_type(field_ty) {
-			// Optional field: absent, stored as `NbtTag::None`, or present-but-wrong-type all resolve
-			// to `None`, matching the lenient `Option<T>` conversions in nbt.rs while also supporting
-			// custom inner types. (`add` keeps `NbtTag::None` entries in the in-memory map, so guard
-			// against them explicitly rather than relying on the inner conversion.)
+			// Optional field: an absent key or a present-but-wrong-type value both resolve to `None`,
+			// matching the lenient `Option<T>` conversions in nbt.rs while supporting custom inner types.
 			quote! {
 				#field_ident: match nbt.get(#key_str) {
-					Some(tag) if *tag != NbtTag::None => {
+					Some(tag) => {
 						<#inner_ty as ::std::convert::TryFrom<NbtTag>>::try_from(tag.clone()).ok()
 					}
-					_ => None,
+					None => None,
 				},
 			}
 		} else {

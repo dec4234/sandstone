@@ -41,8 +41,6 @@ pub enum NbtTag {
 	Compound(NbtCompound),
 	IntArray(NbtIntArray),
 	LongArray(NbtLongArray),
-	/// Used to mark the absence of a tag, like for an Option
-	None,
 }
 
 impl NbtTag {
@@ -62,7 +60,6 @@ impl NbtTag {
 			NbtTag::Compound(_) => 10,
 			NbtTag::IntArray(_) => 11,
 			NbtTag::LongArray(_) => 12,
-			NbtTag::None => 255, // not an actual type
 		}
 	}
 
@@ -143,7 +140,6 @@ impl McSerialize for NbtTag {
 			NbtTag::LongArray(b) => b.mc_serialize(serializer)?,
 			NbtTag::List(b) => b.mc_serialize(serializer)?,
 			NbtTag::Compound(c) => c.serialize_no_tag(serializer)?,
-			_ => {} // do nothing for None
 		}
 
 		Ok(())
@@ -208,15 +204,6 @@ impl TryFrom<NbtTag> for bool {
 	}
 }
 
-impl<T: Into<NbtTag>> From<Option<T>> for NbtTag {
-	fn from(value: Option<T>) -> Self {
-		match value {
-			Some(v) => v.into(),
-			None => NbtTag::None,
-		}
-	}
-}
-
 // this is replicated for the other types in the primvalue_nbtvalue! macro
 impl From<NbtTag> for Option<String> {
 	fn from(value: NbtTag) -> Self {
@@ -232,7 +219,8 @@ impl<T: Into<NbtTag>> From<Vec<T>> for NbtTag {
 		let tags: Vec<NbtTag> = value.into_iter().map(Into::into).collect();
 		match NbtList::from_vec(tags) {
 			Ok(list) => List(list),
-			Err(_) => NbtTag::None,
+			// Fall back to an empty list if mixed types are in a list
+			Err(_) => List(NbtList::new()),
 		}
 	}
 }
@@ -255,7 +243,7 @@ where
 			List(list) => {
 				let mut vec = vec![];
 				for tag in list.list {
-					if tag == NbtTag::None || tag == NbtTag::End {
+					if tag == NbtTag::End {
 						continue;
 					}
 					vec.push(T::try_from(tag)?);
@@ -412,7 +400,8 @@ impl NbtCompound {
 	/// Serialize only the tags mapped inside of a compound.
 	fn serialize_tags(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		for (name, tag) in self.map.iter() {
-			if *tag != NbtTag::None && *tag != NbtTag::End {
+			// End marks the end of the compound so cancel iter here if it is End
+			if *tag != NbtTag::End {
 				serializer.serialize_u8(tag.get_type_id());
 				(name.len() as u16).mc_serialize(serializer)?;
 				serializer.serialize_bytes(name.as_bytes());
@@ -444,10 +433,11 @@ impl Index<&str> for NbtCompound {
 	type Output = NbtTag;
 
 	/// Returns a reference to the value inside of the HashMap mapped to the given key.
-	/// Returns `NbtTag::None` if the key does not exist.
+	/// Returns `NbtTag::End` (which `add` never stores) as an absent-key sentinel if the key does
+	/// not exist; use [NbtCompound::get] for an `Option` instead.
 	fn index(&self, index: &str) -> &Self::Output {
 		if !self.map.contains_key(index) {
-			return &NbtTag::None;
+			return &NbtTag::End;
 		}
 
 		&self.map[index]
@@ -795,15 +785,18 @@ mod test {
 		assert_eq!(deserialized["str"], NbtTag::String("hello".to_string()));
 	}
 
-	/// Test how NbtTag::None behaves when serialized and deserialized. It can be present in a compound but
-	/// it should not be included in the serialization output.
+	/// With `NbtTag::None` removed, absence is modeled by key-absence rather than a sentinel value.
+	/// A missing key must not be in the map, `get` must return `None`, and `Index` returns the `End`
+	/// absent-key sentinel. Crucially, an absent key must round-trip as still-absent.
 	#[test]
-	fn test_none() {
-		let mut compound = NbtCompound::new(Some("A"));
-		compound.add("none", NbtTag::None);
+	fn test_absent_key() {
+		// No root name: `NbtTag::mc_deserialize` reads a network (unnamed) root compound.
+		let mut compound = NbtCompound::new_no_name();
+		compound.add("present", 1i32);
 
-		assert_eq!(compound["none"], NbtTag::None); // actually mapped to None inside of the compound
-		assert_eq!(compound["abc123"], NbtTag::None); // not because 'None' was added to the compound, but because it returns None when a certain key is not found
+		assert!(compound.get("absent").is_none());
+		assert_eq!(compound["absent"], NbtTag::End); // absent-key sentinel
+		assert_eq!(compound["present"], NbtTag::Int(1));
 
 		let mut serializer = McSerializer::new();
 		compound.mc_serialize(&mut serializer).unwrap();
@@ -811,8 +804,8 @@ mod test {
 		let mut deserializer = McDeserializer::new(&serializer.output);
 		match NbtTag::mc_deserialize(&mut deserializer) {
 			Ok(NbtTag::Compound(c)) => {
-				assert_eq!(c["none"], NbtTag::None);
-				assert_eq!(c["abc123"], NbtTag::None);
+				assert!(c.get("absent").is_none());
+				assert_eq!(c["present"], NbtTag::Int(1));
 			}
 			_ => panic!("Expected NbtTag::Compound"),
 		}
@@ -891,8 +884,8 @@ mod test {
 
 		let nbt: NbtCompound = test.clone().into();
 		assert_eq!(nbt["a"], NbtTag::Int(0));
-		assert_eq!(nbt["b"], NbtTag::None);
-		assert_eq!(nbt["c"], NbtTag::None);
+		assert!(nbt.get("b").is_none()); // None Option fields are simply absent from the compound
+		assert!(nbt.get("c").is_none());
 
 		let test2: OptionTestStruct = nbt.try_into().unwrap();
 		assert_eq!(test, test2);
