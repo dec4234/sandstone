@@ -22,6 +22,23 @@ primvalue_nbtvalue!((i8, Byte), (i16, Short), (i32, Int), (i64, Long), (f32, Flo
 
 list_nbtvalue!((i8, ByteArray, NbtByteArray, 7), (i32, IntArray, NbtIntArray, 11), (i64, LongArray, NbtLongArray, 12));
 
+/// Serialize a string using Java's UTF format prefixed with a u16 of the length.
+fn serialize_nbt_string<'a>(serializer: &mut McSerializer, s: &str) -> SerializingResult<'a, ()> {
+	let encoded = cesu8::to_java_cesu8(s);
+	(encoded.len() as u16).mc_serialize(serializer)?;
+	serializer.serialize_bytes(&encoded);
+	Ok(())
+}
+
+/// Deserialize a string written by [serialize_nbt_string]: a `u16` byte length followed by that many
+/// bytes of Java modified UTF-8.
+fn deserialize_nbt_string<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, String> {
+	let len = u16::mc_deserialize(deserializer)?;
+	let bytes = deserializer.slice(len as usize);
+	let decoded = cesu8::from_java_cesu8(bytes).map_err(|e| SerializingErr::UniqueFailure(format!("Invalid modified UTF-8 NBT string: {e}")))?;
+	Ok(decoded.into_owned())
+}
+
 /// # NBT Tag (Protocol Type)
 /// A tag is a component of an NBT compound/map. Each type of tag represents a different primitive datatype or list type.
 /// Also check out [NbtCompound]
@@ -74,13 +91,7 @@ impl NbtTag {
 			4 => Ok(NbtTag::Long(i64::mc_deserialize(deserializer)?)),
 			5 => Ok(NbtTag::Float(f32::mc_deserialize(deserializer)?)),
 			6 => Ok(NbtTag::Double(f64::mc_deserialize(deserializer)?)),
-			8 => {
-				// String
-				let len = u16::mc_deserialize(deserializer)?;
-				let bytes = deserializer.slice(len as usize);
-
-				Ok(NbtTag::String(String::from_utf8_lossy(bytes).to_string()))
-			}
+			8 => Ok(NbtTag::String(deserialize_nbt_string(deserializer)?)),
 			7 => {
 				// Byte array
 				Ok(NbtTag::ByteArray(NbtByteArray::mc_deserialize(deserializer)?))
@@ -113,9 +124,7 @@ impl McSerialize for NbtTag {
 			// stuff with special cases
 			NbtTag::End => {}
 			NbtTag::String(s) => {
-				// not the same as regular string serialization (no varint)
-				(s.len() as u16).mc_serialize(serializer)?;
-				serializer.serialize_bytes(s.as_bytes());
+				serialize_nbt_string(serializer, s)?;
 			}
 			NbtTag::Byte(i) => {
 				serializer.serialize_bytes(i.to_be_bytes().as_slice());
@@ -341,8 +350,7 @@ impl NbtCompound {
 			return Err(SerializingErr::UniqueFailure(format!("Expected compound tag id, got {t} instead")));
 		}
 
-		let name_length = u16::mc_deserialize(deserializer)?;
-		let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
+		let name = deserialize_nbt_string(deserializer)?;
 		let mut compound = NbtCompound::new(Some(name));
 
 		loop {
@@ -353,8 +361,7 @@ impl NbtCompound {
 				break;
 			}
 
-			let name_length = u16::mc_deserialize(deserializer)?;
-			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
+			let name = deserialize_nbt_string(deserializer)?;
 
 			let tag = NbtTag::deserialize_specific(deserializer, tag.unwrap())?;
 			compound.add(name, tag);
@@ -375,8 +382,7 @@ impl NbtCompound {
 				break;
 			}
 
-			let name_length = u16::mc_deserialize(deserializer)?;
-			let name = String::from_utf8_lossy(deserializer.slice(name_length as usize)).to_string();
+			let name = deserialize_nbt_string(deserializer)?;
 
 			let tag = NbtTag::deserialize_specific(deserializer, tag.unwrap())?;
 			compound.add(name, tag);
@@ -389,8 +395,7 @@ impl NbtCompound {
 	fn serialize_no_tag(&self, serializer: &mut McSerializer) -> Result<(), SerializingErr> {
 		// only serialize root name if present (non-network compound tag or pre 1.20.2)
 		if let Some(root_name) = &self.root_name {
-			(root_name.len() as u16).mc_serialize(serializer)?;
-			serializer.serialize_bytes(root_name.as_bytes());
+			serialize_nbt_string(serializer, root_name)?;
 		}
 
 		self.serialize_tags(serializer)?;
@@ -403,8 +408,7 @@ impl NbtCompound {
 			// End marks the end of the compound so cancel iter here if it is End
 			if *tag != NbtTag::End {
 				serializer.serialize_u8(tag.get_type_id());
-				(name.len() as u16).mc_serialize(serializer)?;
-				serializer.serialize_bytes(name.as_bytes());
+				serialize_nbt_string(serializer, name)?;
 				tag.mc_serialize(serializer)?;
 			}
 		}
@@ -1049,5 +1053,36 @@ mod test {
 		let json = serde_json::to_string(&compound).expect("Failed to serialize NBT to JSON");
 		let deserialized: NbtCompound = serde_json::from_str(&json).expect("Failed to deserialize NBT from JSON");
 		assert_eq!(compound, deserialized);
+	}
+
+	/// NBT strings (both tag names and values) use Java's modified UTF-8, not standard UTF-8.
+	#[test]
+	fn test_modified_utf8_strings() {
+		let mut compound = NbtCompound::new_no_name();
+		compound.add("k", "😀"); // U+1F600, a supplementary character
+
+		let mut serializer = McSerializer::new();
+		compound.mc_serialize(&mut serializer).unwrap();
+		let bytes = &serializer.output;
+
+		let cesu8_surrogate_pair = [0xED, 0xA0, 0xBD, 0xED, 0xB8, 0x80];
+		let standard_utf8 = [0xF0, 0x9F, 0x98, 0x80];
+		assert!(bytes.windows(6).any(|w| w == cesu8_surrogate_pair), "expected CESU-8 surrogate pair");
+		assert!(!bytes.windows(4).any(|w| w == standard_utf8), "must not emit standard 4-byte UTF-8 for a supplementary char");
+
+		let mut deserializer = McDeserializer::new(&serializer.output);
+		let deserialized = NbtCompound::mc_deserialize(&mut deserializer).unwrap();
+		assert_eq!(deserialized["k"], NbtTag::String("😀".to_string()));
+
+		// NUL is written as 0xC0 0x80, and survives the round trip in both names and values.
+		let mut nul_compound = NbtCompound::new_no_name();
+		nul_compound.add("a\0b", "x\0y");
+		let mut nul_serializer = McSerializer::new();
+		nul_compound.mc_serialize(&mut nul_serializer).unwrap();
+		assert!(nul_serializer.output.windows(2).any(|w| w == [0xC0, 0x80]), "NUL must be encoded as 0xC0 0x80");
+
+		let mut nul_deserializer = McDeserializer::new(&nul_serializer.output);
+		let nul_deserialized = NbtCompound::mc_deserialize(&mut nul_deserializer).unwrap();
+		assert_eq!(nul_deserialized["a\0b"], NbtTag::String("x\0y".to_string()));
 	}
 }
