@@ -11,6 +11,7 @@ pub mod player;
 pub mod scoreboard;
 pub mod sound;
 pub mod stats;
+pub mod status;
 
 use crate::bitflag;
 use crate::protocol::game::player::inventory::slotdata::SlotData;

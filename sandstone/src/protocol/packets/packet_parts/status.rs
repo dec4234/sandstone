@@ -1,10 +1,8 @@
-//! Status protocol components.
-
-use crate::protocol::testing::McDefault;
-use std::io::Cursor;
+//! Status Protocol Components
 
 use crate::protocol::packets::StatusResponsePacket;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
 use base64::engine::general_purpose;
@@ -12,6 +10,7 @@ use base64::Engine;
 use image::{DynamicImage, ImageFormat};
 use sandstone_derive::McDefault;
 use serde::{Deserialize, Serialize};
+use std::io::Cursor;
 use uuid::Uuid;
 
 /// # Status Response Spec (Packet Part)
@@ -207,8 +206,8 @@ impl PlayerSample {
 
 #[cfg(test)]
 mod test {
+	use crate::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
 	use crate::protocol_types::datatypes::chat::ComponentType;
 	use crate::protocol_types::protocol_verison::ProtocolVerison;
 	use uuid::Uuid;
@@ -217,7 +216,12 @@ mod test {
 	fn test_color_code_translation() {
 		// `new` must translate the '&' color code symbol into the section symbol '§' used by the client.
 		let spec = StatusResponseSpec::new(ProtocolVerison::latest(), "&a&lTest");
-		assert_eq!(spec.description.content, ComponentType::Text { text: "§a§lTest".to_string() });
+		assert_eq!(
+			spec.description.content,
+			ComponentType::Text {
+				text: "§a§lTest".to_string()
+			}
+		);
 	}
 
 	#[test]
@@ -261,7 +265,12 @@ mod test {
 		// `set_description` intentionally does not translate color codes, unlike `new`.
 		let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "Test");
 		spec.set_description("&aRaw".to_string());
-		assert_eq!(spec.description.content, ComponentType::Text { text: "&aRaw".to_string() });
+		assert_eq!(
+			spec.description.content,
+			ComponentType::Text {
+				text: "&aRaw".to_string()
+			}
+		);
 	}
 
 	#[test]

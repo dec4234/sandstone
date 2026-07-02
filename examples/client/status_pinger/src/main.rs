@@ -1,7 +1,7 @@
 use log::{debug, LevelFilter};
-use sandstone::network::server::server_handler::ClientStatusHandler;
+use sandstone::network::client::client_handlers::ClientStatusHandler;
+use sandstone::network::client::client_status_handler::DefaultClientStatusHandler;
 use sandstone::network::CraftConnection;
-use sandstone::protocol::status::DefaultClientStatusHandler;
 use simple_logger::SimpleLogger;
 
 #[tokio::main]

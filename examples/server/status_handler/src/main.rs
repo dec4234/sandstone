@@ -2,12 +2,12 @@ use log::{debug, LevelFilter};
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
 
-use sandstone::network::client::client_handlers::{ServerHandshakeHandler, ServerStatusHandler};
+use sandstone::network::server::server_handler::{ServerHandshakeHandler, ServerStatusHandler};
+use sandstone::network::server::server_login_handlers::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::PacketDirection;
+use sandstone::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::packets::StatusResponsePacket;
-use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
-use sandstone::protocol::status::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 
 /// This demonstrates how to respond to a status request from a client.

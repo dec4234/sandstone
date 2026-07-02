@@ -5,7 +5,7 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
 
-mod http;
+pub mod http;
 mod profile;
 mod uuid;
 mod auth;

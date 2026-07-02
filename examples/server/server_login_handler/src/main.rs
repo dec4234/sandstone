@@ -6,21 +6,21 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 
 use sandstone::game::player::PlayerGamemode;
-use sandstone::network::client::client_handlers::{ServerHandshakeHandler, ServerStatusHandler};
 use sandstone::network::network_error::NetworkError;
+use sandstone::network::server::server_handler::{ServerHandshakeHandler, ServerStatusHandler};
+use sandstone::network::server::server_login_handlers::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::info::registry::registry_generator;
 use sandstone::protocol::game::world::generator::superflat;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use sandstone::protocol::packets::packet_parts::player::TeleportFlags;
+use sandstone::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::packets::packet_parts::{GameEventType, Tag};
 use sandstone::protocol::packets::{
 	ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, ClientboundKnownPacksPacket, FinishConfigurationPacket, GameEventPacket, LoginInfoPacket,
 	LoginSuccessPacket, Packet, SetCenterChunkPacket, SetCompressionPacket, StatusResponsePacket, SyncPlayerPositionPacket, UpdateTagsPacket,
 };
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
-use sandstone::protocol::status::status_components::{PlayerSample, StatusResponseSpec};
-use sandstone::protocol::status::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
 use sandstone::protocol_types::datatypes::internal_types::Mapping;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;

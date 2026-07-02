@@ -11,6 +11,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
+use crate::util::encryption::aes::CraftCipher;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
@@ -54,6 +55,7 @@ pub struct CraftConnection {
 	pub compression_threshold: Option<u32>,
 	pub protocol_version: Option<VarInt>,
 	pub client_type: ConnectionRole,
+	craft_cipher: Option<CraftCipher>,
 	/// Reusable buffer for packet reads, avoids allocating per packet
 	read_buffer: Vec<u8>,
 }
@@ -118,6 +120,7 @@ impl CraftConnection {
 			compression_threshold: None,
 			protocol_version: None,
 			client_type,
+			craft_cipher: None,
 			read_buffer: Vec::with_capacity(1024),
 		})
 	}
@@ -157,12 +160,16 @@ impl CraftConnection {
 				frame.merge(inner);
 			}
 			trace!("Compressed packet for {self} : {} bytes compressed to {} bytes", body.len(), frame.output.len());
-			self.tcp_stream.write_all(&frame.output).await?;
 		} else {
-			self.tcp_stream.write_all(output).await?;
+			frame.output.extend_from_slice(output);
 		}
 
-		// TODO: encrypt here
+		// Encrypt the fully-framed packet after compression, if encryption is enabled.
+		if let Some(cipher) = &mut self.craft_cipher {
+			cipher.encrypt(&mut frame.output);
+		}
+
+		self.tcp_stream.write_all(&frame.output).await?;
 
 		Ok(())
 	}
@@ -212,7 +219,14 @@ impl CraftConnection {
 		let mut varint_len = 0usize;
 
 		loop {
-			let b = self.tcp_stream.read_u8().await?;
+			let mut b = self.tcp_stream.read_u8().await?;
+
+			if let Some(cipher) = &mut self.craft_cipher {
+				let mut one = [b];
+				cipher.decrypt(&mut one);
+				b = one[0];
+			}
+
 			varint_buf[varint_len] = b;
 			varint_len += 1;
 
@@ -253,7 +267,9 @@ impl CraftConnection {
 
 		trace!("Received from {} : {:?}", self, &self.read_buffer[..total_len]);
 
-		// TODO: decrypt here
+		if let Some(cipher) = &mut self.craft_cipher {
+			cipher.decrypt(&mut self.read_buffer[varint_len..]);
+		}
 
 		let buffer = self.build_deserializer_buffer(&self.read_buffer[varint_len..total_len])?;
 		let mut deserializer = McDeserializer::new(&buffer);
@@ -265,17 +281,38 @@ impl CraftConnection {
 	/// Try to receive a packet from the buffer without blocking. This will return 'NoDataReceived'
 	/// if no data is available.
 	pub fn try_receive_packet(&mut self) -> Result<Packet, NetworkError> {
-		let vari = VarInt::from_tcp_stream(&self.tcp_stream)?;
-		let (var_buf, var_len) = vari.to_byte_array();
+		let mut varint_buf = [0u8; 3];
+		let mut var_len = 0usize;
 
-		if vari.0 > PACKET_MAX_SIZE as i32 {
+		loop {
+			let mut one = [0u8; 1];
+			if self.tcp_stream.try_read(&mut one)? == 0 {
+				return Err(NetworkError::NoDataReceived);
+			}
+
+			if let Some(cipher) = &mut self.craft_cipher {
+				cipher.decrypt(&mut one);
+			}
+
+			varint_buf[var_len] = one[0];
+			var_len += 1;
+
+			if one[0] & CONTINUE_BIT == 0 {
+				break;
+			} else if var_len >= 3 {
+				return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
+			}
+		}
+
+		let packet_len = VarInt::from_slice(&varint_buf[..var_len])?.0 as usize;
+
+		if packet_len > PACKET_MAX_SIZE {
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		let packet_len = vari.0 as usize;
 		let total_len = var_len + packet_len;
 		let mut buffer = vec![0u8; total_len];
-		buffer[..var_len].copy_from_slice(&var_buf[..var_len]);
+		buffer[..var_len].copy_from_slice(&varint_buf[..var_len]);
 
 		let length = self.tcp_stream.try_read(&mut buffer[var_len..])?;
 
@@ -287,7 +324,9 @@ impl CraftConnection {
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		// TODO: decrypt here
+		if let Some(cipher) = &mut self.craft_cipher {
+			cipher.decrypt(&mut buffer[var_len..]);
+		}
 
 		let deser_buf = self.build_deserializer_buffer(&buffer[var_len..])?;
 		let mut deserializer = McDeserializer::new(&deser_buf);
@@ -313,7 +352,13 @@ impl CraftConnection {
 	}
 
 	/// Peek the next packet in the queue without removing it. This will block until a packet is received.
+	///
+	/// Cannot be used if encryption is enabled.
 	pub async fn peek_packet(&mut self) -> Result<Packet, NetworkError> {
+		if self.craft_cipher.is_some() {
+			return Err(NetworkError::PeekNotSupportedWhileEncrypted);
+		}
+
 		// Peek VarInt length using a stack array — we peek incrementally since we
 		// don't know how many bytes the VarInt occupies
 		let mut peek_buf = [0u8; 3];
@@ -364,8 +409,6 @@ impl CraftConnection {
 		} else if length == PACKET_MAX_SIZE {
 			return Err(NetworkError::PacketTooLarge);
 		}
-
-		// TODO: decrypt here
 
 		let deser_buf = self.build_deserializer_buffer(&buffer[varint_len..])?;
 		let mut deserializer = McDeserializer::new(&deser_buf);
@@ -419,6 +462,23 @@ impl CraftConnection {
 		self.compression_threshold = threshold;
 	}
 
+	/// Set the shared secret and enable encryption on this connection. All further packets sent and received will be encrypted with this shared secret.
+	/// This should be called after the handshake and encryption request/response have been completed.
+	///
+	/// See [server::server_handler::ServerEncryptionHandler] to auto-handle encryption handshakes for incoming connections.
+	pub fn set_shared_secret(&mut self, secret: &[u8]) -> Result<(), NetworkError> {
+		let secret = match <[u8; 16]>::try_from(secret) {
+			Ok(s) => s,
+			Err(_) => {
+				return Err(NetworkError::EncryptionError(crate::util::encryption::EncryptionError::InvalidSharedSecretLength(secret.len())));
+			}
+		};
+
+		self.craft_cipher = Some(CraftCipher::new(&secret)?);
+
+		Ok(())
+	}
+
 	/// Shutdown the connection as soon as possible
 	pub async fn close(&mut self) -> bool {
 		debug!("Closing connection to {self}");
@@ -434,7 +494,11 @@ impl CraftConnection {
 
 impl Display for CraftConnection {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let s = if let Ok(addr) = self.tcp_stream.peer_addr() { format!("{addr}") } else { "Unknown".to_string() };
+		let s = if let Ok(addr) = self.tcp_stream.peer_addr() {
+			format!("{addr}")
+		} else {
+			"Unknown".to_string()
+		};
 
 		write!(f, "CraftConnection: {s}")
 	}

@@ -12,16 +12,16 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 /// An HTTP client used to interact with Mojang's API
-pub struct MojangServerQueryClient;
+pub(crate) struct MojangServerQueryClient;
 
 impl MojangServerQueryClient {
 	/// A simple GET request to an endpoint
-	pub async fn get(url: String) -> Result<String, HttpError> {
+	pub(crate) async fn get(url: String) -> Result<String, HttpError> {
 		MojangServerQueryClient::get_params(url, HashMap::new()).await
 	}
 
 	/// A simple GET request with a map of query parameters
-	pub async fn get_params(url: String, map: HashMap<&str, &str>) -> Result<String, HttpError> {
+	pub(crate) async fn get_params(url: String, map: HashMap<&str, &str>) -> Result<String, HttpError> {
 		let client = Client::new();
 		let resp = client.get(&url).query(&map).send().await?;
 
@@ -40,7 +40,7 @@ impl MojangServerQueryClient {
 	/// A simple GET request that also converts to the specified type upon a response
 	///
 	/// When dewrap is true, the outer JSON object will be removed prior to parsing
-	pub async fn get_parse<T: DeserializeOwned>(url: String, dewrap: bool) -> Result<T, HttpError> {
+	pub(crate) async fn get_parse<T: DeserializeOwned>(url: String, dewrap: bool) -> Result<T, HttpError> {
 		if dewrap {
 			let val = serde_json::from_str::<Value>(MojangServerQueryClient::get(url.clone()).await?.as_str())?;
 
@@ -57,7 +57,7 @@ impl MojangServerQueryClient {
 	/// GET to an endpoint with a map of query parameters and then convert to the specified type upon return
 	///
 	/// When dewrap is true, the outer JSON object will be removed prior to parsing
-	pub async fn get_parse_params<T: DeserializeOwned>(url: String, dewrap: bool, map: HashMap<&str, &str>) -> Result<T, HttpError> {
+	pub(crate) async fn get_parse_params<T: DeserializeOwned>(url: String, dewrap: bool, map: HashMap<&str, &str>) -> Result<T, HttpError> {
 		if dewrap {
 			let val = serde_json::from_str::<Value>(MojangServerQueryClient::get_params(url.clone(), map).await?.as_str())?;
 
@@ -70,12 +70,12 @@ impl MojangServerQueryClient {
 	}
 
 	/// A simple POST to an endpoint
-	pub async fn post<S: Into<String>>(url: S, body: S) -> Result<String, HttpError> {
+	pub(crate) async fn post<S: Into<String>>(url: S, body: S) -> Result<String, HttpError> {
 		MojangServerQueryClient::post_params(url, body, HashMap::new()).await
 	}
 
 	/// A simple POST to an endpoint with a map of query parameters
-	pub async fn post_params<S: Into<String>>(url: S, body: S, map: HashMap<&str, &str>) -> Result<String, HttpError> {
+	pub(crate) async fn post_params<S: Into<String>>(url: S, body: S, map: HashMap<&str, &str>) -> Result<String, HttpError> {
 		let url = url.into();
 		let body = body.into();
 
@@ -97,7 +97,7 @@ impl MojangServerQueryClient {
 	/// A simple POST to an endpoint and a conversion to the specified type upon response
 	///
 	/// When dewrap is true, the outer JSON object will be removed prior to parsing
-	pub async fn post_parse<T: DeserializeOwned, S: Into<String>>(url: S, body: S, dewrap: bool) -> Result<T, HttpError> {
+	pub(crate) async fn post_parse<T: DeserializeOwned, S: Into<String>>(url: S, body: S, dewrap: bool) -> Result<T, HttpError> {
 		if dewrap {
 			let val = serde_json::from_str::<Value>(MojangServerQueryClient::post(url.into(), body.into()).await?.as_str())?;
 
@@ -114,7 +114,7 @@ impl MojangServerQueryClient {
 	/// POST to an endpoint with a map of query parameters and then convert to the specified type upon return
 	///
 	/// When dewrap is true, the outer JSON object will be removed prior to parsing
-	pub async fn post_parse_params<T: DeserializeOwned, S: Into<String>>(url: S, body: S, map: HashMap<&str, &str>, dewrap: bool) -> Result<T, HttpError> {
+	pub(crate) async fn post_parse_params<T: DeserializeOwned, S: Into<String>>(url: S, body: S, map: HashMap<&str, &str>, dewrap: bool) -> Result<T, HttpError> {
 		if dewrap {
 			let val = serde_json::from_str::<Value>(MojangServerQueryClient::post_params(url.into(), body.into(), map).await?.as_str())?;
 
@@ -140,6 +140,8 @@ pub enum HttpError {
 	Utf8Error(#[from] std::string::FromUtf8Error),
 	#[error("Received error code: {0}")]
 	StatusCode(String),
+	#[error("Mojang returned an empty response (HTTP 204): the player is not authenticated / has no matching join record")]
+	NotAuthenticated,
 	#[error(transparent)]
 	UuidError(#[from] uuid::Error),
 }

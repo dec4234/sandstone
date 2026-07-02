@@ -42,7 +42,6 @@ use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOp
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::StateBasedDeserializer;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-use crate::protocol::status::status_components::StatusResponseSpec;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::{JsonTextComponent, PlayerChatFilter, PlayerChatSignature, TextComponent};
 use crate::protocol_types::datatypes::command::Node;
@@ -52,6 +51,7 @@ use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitset::BitSet;
 use packet_parts::stats::StatisticAward;
+use packet_parts::status::StatusResponseSpec;
 use packet_parts::ProtocolPropertyElement;
 use packet_parts::{
 	AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, InteractType, LoginCookieResponseSpec,
@@ -102,12 +102,12 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 			},
 			EncryptionRequest, 0x01 => {
 				server_id: String,
-				public_key_length: VarInt,
-				public_key: Vec<u8>,
-				verify_token_length: VarInt, // always 4 for Notchian servers
-				verify_token: Vec<u8>
+				public_key: PrefixedArray<u8>,
+				verify_token: PrefixedArray<u8>,
+				#[doc = "Set this to false if you want encryption but want to be in offline mode"]
+				should_authenticate_with_mojang: bool
 			},
-			LoginSuccess, 0x02 => {
+			LoginSuccess, 0x02 => { // todo: needs to be fixed
 				uuid: Uuid,
 				username: String,
 				array: PrefixedArray<ProtocolPropertyElement>
@@ -131,10 +131,8 @@ packets!(v1_21 => { // version name is for reference only, has no effect
 				uuid: Uuid
 			},
 			EncryptionResponse, 0x01 => {
-				shared_secret_length: VarInt,
-				shared_secret: Vec<u8>,
-				verify_token_length: VarInt,
-				verify_token: Vec<u8>
+				shared_secret: PrefixedArray<u8>,
+				verify_token: PrefixedArray<u8>
 			},
 			LoginPluginResponse, 0x02 => {
 				response: LoginPluginSpec

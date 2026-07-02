@@ -1,32 +1,13 @@
-//! Lists the traits used to handle packet sequences for the server. These are included so that you can
+//! Lists the traits used to handle packet sequences for the client. These are included so that you can
 //! override the default functionality for your own purposes.
 
 use crate::network::network_error::NetworkError;
 use crate::network::CraftConnection;
-use crate::protocol::packets::StatusResponsePacket;
+use crate::protocol::packets::packet_parts::status::StatusResponseSpec;
 
-/// The procedure required to handle a handshake as a server. Check [DefaultHandshakeHandler] for a default implementation.
+/// Lists the methods required to handle a status request as a client. Check [crate::network::client::client_status_handler::DefaultClientStatusHandler] for a default implementation.
 ///
-/// If you would like to implement it yourself then check [here](https://wiki.vg/Protocol#Handshake)
-pub trait ServerHandshakeHandler {
-	async fn handle_handshake(client: &mut CraftConnection) -> Result<(), NetworkError>;
-}
-
-/// Lists the methods required to handle a status request as a server. Check [DefaultStatusHandler] for a default implementation.
-///
-/// The status procedure can be found [here](https://wiki.vg/Server_List_Ping)
-pub trait ServerStatusHandler {
-	async fn handle_status<P: ServerPingHandler>(connection: &mut CraftConnection, status_response: StatusResponsePacket, ping_handler: P) -> Result<(), NetworkError>;
-}
-
-/// Lists the methods required to handle a ping request as a server. Check [DefaultPingHandler] for a default implementation.
-///
-/// The ping procedure can be found [here](https://wiki.vg/Server_List_Ping)
-pub trait ServerPingHandler {
-	async fn handle_ping(connection: &mut CraftConnection) -> Result<(), NetworkError>;
-}
-
-/// Lists the methods required to handle a login request as a server. Check [DefaultLoginHandler] for a default implementation.
-pub trait ServerLoginHandler {
-	fn handle_login(connection: &mut CraftConnection) -> Result<(), NetworkError>;
+/// The status procedure can be found [here](https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping#Status_Request)
+pub trait ClientStatusHandler {
+	async fn handle_status(connection: &mut CraftConnection) -> Result<StatusResponseSpec, NetworkError>;
 }

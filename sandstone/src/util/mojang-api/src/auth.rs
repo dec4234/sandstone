@@ -115,7 +115,13 @@ pub async fn has_joined(username: String, server_id: String, ip: Option<String>)
 		map.insert("ip", ip.as_str());
 	}
 
-	MojangServerQueryClient::get_parse_params("https://sessionserver.mojang.com/session/minecraft/hasJoined".to_string(), false, map).await
+	let text = MojangServerQueryClient::get_params("https://sessionserver.mojang.com/session/minecraft/hasJoined".to_string(), map).await?;
+
+	if text.trim().is_empty() {
+		return Err(HttpError::NotAuthenticated);
+	}
+
+	Ok(serde_json::from_str::<HasJoinedResponse>(&text)?)
 }
 
 /// A single Base64-encoded DER public key returned by the `publickeys` endpoint.

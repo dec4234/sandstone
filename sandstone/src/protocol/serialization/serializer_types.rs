@@ -268,6 +268,30 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 	}
 }
 
+impl<T: McSerialize + McDeserialize> From<Vec<T>> for PrefixedArray<T> {
+	fn from(vec: Vec<T>) -> Self {
+		PrefixedArray::new(vec)
+	}
+}
+
+impl<T: McSerialize + McDeserialize> From<PrefixedArray<T>> for Vec<T> {
+	fn from(prefixed_array: PrefixedArray<T>) -> Self {
+		prefixed_array.vec
+	}
+}
+
+impl<T: McSerialize + McDeserialize> From<Box<[T]>> for PrefixedArray<T> {
+	fn from(boxed_slice: Box<[T]>) -> Self {
+		PrefixedArray::new(boxed_slice.into_vec())
+	}
+}
+
+impl<T: McSerialize + McDeserialize> From<PrefixedArray<T>> for Box<[T]> {
+	fn from(prefixed_array: PrefixedArray<T>) -> Self {
+		prefixed_array.vec.into_boxed_slice()
+	}
+}
+
 /// # PrefixedOptional (Protocol Type)
 /// An Optional<T> with a bool prefix indicating if the value is present.
 /// This has started to replace most occurrences of Option<T> in the protocol, as it is more explicit.
@@ -337,5 +361,17 @@ impl<T: McSerialize + McDeserialize + McDefault> McDefault for PrefixedOptional<
 			is_present: true,
 			value: Some(T::mc_default()),
 		}
+	}
+}
+
+impl<T: McSerialize + McDeserialize> From<Option<T>> for PrefixedOptional<T> {
+	fn from(option: Option<T>) -> Self {
+		PrefixedOptional::new(option)
+	}
+}
+
+impl<T: McSerialize + McDeserialize> From<PrefixedOptional<T>> for Option<T> {
+	fn from(prefixed_optional: PrefixedOptional<T>) -> Self {
+		prefixed_optional.value
 	}
 }
