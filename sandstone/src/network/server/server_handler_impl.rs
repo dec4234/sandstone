@@ -1,5 +1,5 @@
 use crate::network::network_error::NetworkError;
-use crate::network::server::server_handler::{ServerEncryptionHandler, ServerHandshakeHandler, ServerPingHandler, ServerStatusHandler};
+use crate::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerPingHandler, ServerStatusHandler};
 use crate::network::CraftConnection;
 use crate::protocol::packets::packet_definer::PacketState;
 use crate::protocol::packets::{EncryptionRequestPacket, Packet, PingResponsePacket, StatusResponsePacket};
@@ -10,7 +10,11 @@ use log::{debug, error, info, trace, warn};
 use mojang_api::{generate_server_id, has_joined, HasJoinedResponse};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// The default server-list status handler. Not sure why you wouldn't want to use it, but it's here.
+/// The default server-list status handler. No reason to really override this but you could if you wanted to.
+/// 
+/// ```ignore
+/// DefaultServerStatusHandler::handle_status(connection, status_response, DefaultServerPingHandler).await.unwrap();
+/// ```
 pub struct DefaultServerStatusHandler;
 
 impl ServerStatusHandler for DefaultServerStatusHandler {
@@ -54,7 +58,7 @@ impl ServerStatusHandler for DefaultServerStatusHandler {
 	}
 }
 
-/// The default server ping handler. Not sure why you wouldn't want to use it, but it's here.
+/// The default server ping handler. Usually attached to [DefaultServerStatusHandler] to handle ping requests after a status request.
 pub struct DefaultServerPingHandler;
 
 impl ServerPingHandler for DefaultServerPingHandler {
@@ -89,7 +93,12 @@ impl ServerPingHandler for DefaultServerPingHandler {
 	}
 }
 
-/// The default handshake handler. Not sure why you wouldn't want to use it, but it's here.
+/// The default handler for the handshake packet. Receives handshake, changes connection state appropriately.
+///
+/// Example usage:
+/// ```ignore
+/// DefaultServerHandshakeHandler::handle_handshake(connection).await?;
+/// ```
 pub struct DefaultServerHandshakeHandler;
 
 impl ServerHandshakeHandler for DefaultServerHandshakeHandler {
@@ -124,6 +133,12 @@ impl ServerHandshakeHandler for DefaultServerHandshakeHandler {
 	}
 }
 
+/// Handle the encryption handshake and Mojang authentication for an incoming client connection.
+///
+/// Example usage:
+/// ```ignore
+/// DefaultServerEncryptionHandler::handle_encryption(connection, true, "dec4234".to_string(), None).await?;
+/// ```
 pub struct DefaultServerEncryptionHandler;
 
 impl ServerEncryptionHandler for DefaultServerEncryptionHandler {

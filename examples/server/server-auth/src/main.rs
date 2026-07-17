@@ -1,6 +1,6 @@
 use log::{debug, info, LevelFilter};
-use sandstone::network::server::server_handler::{ServerEncryptionHandler, ServerHandshakeHandler, ServerStatusHandler};
-use sandstone::network::server::server_login_handlers::{DefaultServerEncryptionHandler, DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+use sandstone::network::server::server_handler_impl::{DefaultServerEncryptionHandler, DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+use sandstone::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerStatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use sandstone::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};

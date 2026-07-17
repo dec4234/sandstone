@@ -10,6 +10,8 @@ use mojang_api::HasJoinedResponse;
 ///
 /// If you would like to implement it yourself then check [here](https://minecraft.wiki/w/Java_Edition_protocol/Packets#Handshake)
 pub trait ServerHandshakeHandler {
+	/// ## Arguments
+	/// * `connection` - The connection to the client.
 	async fn handle_handshake(connection: &mut CraftConnection) -> Result<(), NetworkError>;
 }
 
@@ -17,6 +19,10 @@ pub trait ServerHandshakeHandler {
 ///
 /// The status procedure can be found [here](https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping#Status_Request)
 pub trait ServerStatusHandler {
+	/// ## Arguments
+	/// * `connection` - The connection to the client.
+	/// * `status_response` - The status response to send to the client.
+	/// * `ping_handler` - The ping handler to use for the ping request. You should use [crate::network::server::server_handler_impl::DefaultServerPingHandler] unless you have a good reason not to.
 	async fn handle_status<P: ServerPingHandler>(connection: &mut CraftConnection, status_response: StatusResponsePacket, ping_handler: P) -> Result<(), NetworkError>;
 }
 
@@ -24,6 +30,8 @@ pub trait ServerStatusHandler {
 ///
 /// The ping procedure can be found [here](https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping#Ping_Request)
 pub trait ServerPingHandler {
+	/// ## Arguments
+	/// * `connection` - The connection to the client.
 	async fn handle_ping(connection: &mut CraftConnection) -> Result<(), NetworkError>;
 }
 
@@ -33,6 +41,8 @@ pub trait ServerLoginHandler {
 }
 
 /// Handle enabling encryption for an incoming client connections.
+///
+/// More info here: https://minecraft.wiki/w/Java_Edition_protocol/Encryption
 pub trait ServerEncryptionHandler {
 	/// ## Arguments
 	/// * `connection` - The connection to the client.

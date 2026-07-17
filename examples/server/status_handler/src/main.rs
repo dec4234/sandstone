@@ -2,8 +2,8 @@ use log::{debug, LevelFilter};
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
 
-use sandstone::network::server::server_handler::{ServerHandshakeHandler, ServerStatusHandler};
-use sandstone::network::server::server_login_handlers::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+use sandstone::network::server::server_handler_impl::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+use sandstone::network::server::server_handler_trait::{ServerHandshakeHandler, ServerStatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::PacketDirection;
 use sandstone::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};

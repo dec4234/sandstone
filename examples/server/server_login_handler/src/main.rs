@@ -7,8 +7,8 @@ use tokio::net::TcpListener;
 
 use sandstone::game::player::PlayerGamemode;
 use sandstone::network::network_error::NetworkError;
-use sandstone::network::server::server_handler::{ServerHandshakeHandler, ServerStatusHandler};
-use sandstone::network::server::server_login_handlers::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+use sandstone::network::server::server_handler_impl::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+use sandstone::network::server::server_handler_trait::{ServerHandshakeHandler, ServerStatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::info::registry::registry_generator;
 use sandstone::protocol::game::world::generator::superflat;

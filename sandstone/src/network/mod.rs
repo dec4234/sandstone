@@ -43,7 +43,6 @@ pub(crate) const CONTINUE_BIT: u8 = 0b10000000;
 /// This represents an active Minecraft protocol connection. Either from a client to the server or
 /// from the server to a client. This is possible because they are functionally the same.
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct CraftConnection {
 	pub tcp_stream: TcpStream,
 	pub socket_addr: SocketAddr,
@@ -465,7 +464,7 @@ impl CraftConnection {
 	/// Set the shared secret and enable encryption on this connection. All further packets sent and received will be encrypted with this shared secret.
 	/// This should be called after the handshake and encryption request/response have been completed.
 	///
-	/// See [server::server_handler::ServerEncryptionHandler] to auto-handle encryption handshakes for incoming connections.
+	/// See [server::server_handler_trait::ServerEncryptionHandler] to auto-handle encryption handshakes for incoming connections.
 	pub fn set_shared_secret(&mut self, secret: &[u8]) -> Result<(), NetworkError> {
 		let secret = match <[u8; 16]>::try_from(secret) {
 			Ok(s) => s,
