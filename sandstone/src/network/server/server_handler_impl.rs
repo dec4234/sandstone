@@ -11,7 +11,7 @@ use mojang_api::{generate_server_id, has_joined, HasJoinedResponse};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The default server-list status handler. No reason to really override this but you could if you wanted to.
-/// 
+///
 /// ```ignore
 /// DefaultServerStatusHandler::handle_status(connection, status_response, DefaultServerPingHandler).await.unwrap();
 /// ```

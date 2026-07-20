@@ -51,14 +51,14 @@ async fn main() {
 			}
 		};
 
-		DefaultServerEncryptionHandler::handle_encryption(&mut client, true, username, None).await.unwrap();
+		DefaultServerEncryptionHandler::handle_encryption(&mut client, true, username.clone(), None).await.unwrap();
 
 		let set_compression = Packet::SetCompression(SetCompressionPacket::new(VarInt(400)));
 		client.send_packet(set_compression).await.unwrap();
 		client.enable_compression(Some(400));
 		debug!("Sent set compression to {client} and enabled compression");
 
-		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), "TestUser".to_string(), PrefixedArray::new(vec![])));
+		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), username, PrefixedArray::new(vec![])));
 		client.send_packet(login_success).await.unwrap();
 
 		let login_ack = client.receive_packet().await.unwrap();

@@ -7,8 +7,8 @@ use tokio::net::TcpListener;
 
 use sandstone::game::player::PlayerGamemode;
 use sandstone::network::network_error::NetworkError;
-use sandstone::network::server::server_handler_impl::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
-use sandstone::network::server::server_handler_trait::{ServerHandshakeHandler, ServerStatusHandler};
+use sandstone::network::server::server_handler_impl::{DefaultServerEncryptionHandler, DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+use sandstone::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerStatusHandler};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::info::registry::registry_generator;
 use sandstone::protocol::game::world::generator::superflat;
@@ -55,25 +55,26 @@ async fn main() {
 		debug!("Beginning login sequence for {client}");
 
 		let login_start = client.receive_packet().await.unwrap();
-		match login_start {
+		let username = match login_start {
 			Packet::LoginStart(packet) => {
 				debug!("Received login start packet from {client}");
 				debug!("Login start packet: {packet:?}");
 
-				// todo: extract player details like username
+				packet.username
 			}
 			_ => {
-				debug!("Expected login start packet, got {login_start:?}");
-				continue;
+				panic!("Expected login start packet, got {login_start:?}");
 			}
-		}
+		};
+
+		DefaultServerEncryptionHandler::handle_encryption(&mut client, true, username.clone(), None).await.unwrap();
 
 		let set_compression = Packet::SetCompression(SetCompressionPacket::new(VarInt(400)));
 		client.send_packet(set_compression).await.unwrap();
 		client.enable_compression(Some(400));
 		debug!("Sent set compression to {client} and enabled compression");
 
-		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), "TestUser".to_string(), PrefixedArray::new(vec![])));
+		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), username, PrefixedArray::new(vec![])));
 		client.send_packet(login_success).await.unwrap();
 
 		let login_ack = client.receive_packet().await.unwrap();

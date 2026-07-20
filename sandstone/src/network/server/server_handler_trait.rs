@@ -37,7 +37,7 @@ pub trait ServerPingHandler {
 
 /// Lists the methods required to handle a login request as a server. Check [DefaultLoginHandler] for a default implementation.
 pub trait ServerLoginHandler {
-	async fn handle_login(connection: &mut CraftConnection) -> Result<(), NetworkError>;
+	async fn handle_login(&self, connection: &mut CraftConnection) -> Result<(), NetworkError>;
 }
 
 /// Handle enabling encryption for an incoming client connections.
