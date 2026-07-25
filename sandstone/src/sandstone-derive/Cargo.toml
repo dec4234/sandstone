@@ -15,5 +15,5 @@ categories = ["network-programming", "game-development", "game-engines"]
 proc-macro = true
 
 [dependencies]
-syn = "2.0.66"
-quote = "1.0.36"
+syn = "3.0.3"
+quote = "1.0.47"

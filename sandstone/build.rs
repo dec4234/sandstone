@@ -243,6 +243,6 @@ fn fetch_with_cache(url: &str, cache_path: &Path) -> Result<String, Box<dyn Erro
 
 /// Performs a blocking HTTP GET and returns the response body as a string.
 fn fetch(url: &str) -> Result<String, Box<dyn Error>> {
-    let body = ureq::get(url).call()?.into_string()?;
+    let body = ureq::get(url).call()?.body_mut().read_to_string()?;
     Ok(body)
 }

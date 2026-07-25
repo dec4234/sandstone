@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 sandstone = {path = "../../../sandstone"}
-tokio = {version = "1.45.0", features = ["full", "macros"]}
-simple_logger = "5.0.0"
-log = "0.4.27"
-image = "0.25.6"
+tokio = {version = "1.53.1", features = ["full", "macros"]}
+simple_logger = "5.2.0"
+log = "0.4.33"
+image = "0.25.10"
