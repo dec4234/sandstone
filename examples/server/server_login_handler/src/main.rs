@@ -1,32 +1,26 @@
 //! https://minecraft.wiki/w/Java_Edition_protocol/FAQ#What%27s_the_normal_login_sequence_for_a_client%3F
 
-use log::{debug, LevelFilter};
+use log::{LevelFilter, debug};
 use simple_logger::SimpleLogger;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
-use sandstone::game::player::PlayerGamemode;
-use sandstone::network::network_error::NetworkError;
-use sandstone::network::server::server_handler_impl::{DefaultServerEncryptionHandler, DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
-use sandstone::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerStatusHandler};
 use sandstone::network::CraftConnection;
-use sandstone::protocol::game::info::registry::registry_generator;
+use sandstone::network::network_error::NetworkError;
+use sandstone::network::server::server_handler_impl::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+use sandstone::network::server::server_handler_trait::{ServerHandshakeHandler, ServerLoginHandler, ServerStatusHandler};
+use sandstone::network::server::server_login_impl::DefaultServerLoginHandler;
 use sandstone::protocol::game::world::generator::superflat;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
-use sandstone::protocol::packets::packet_parts::player::TeleportFlags;
+use sandstone::protocol::packets::packet_parts::GameEventType;
 use sandstone::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
-use sandstone::protocol::packets::packet_parts::{GameEventType, Tag};
 use sandstone::protocol::packets::{
-	ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, ClientboundKnownPacksPacket, FinishConfigurationPacket, GameEventPacket, LoginInfoPacket,
-	LoginSuccessPacket, Packet, SetCenterChunkPacket, SetCompressionPacket, StatusResponsePacket, SyncPlayerPositionPacket, UpdateTagsPacket,
+	ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, GameEventPacket, Packet, SetCenterChunkPacket, StatusResponsePacket,
 };
-use sandstone::protocol::serialization::serializer_types::PrefixedArray;
-use sandstone::protocol_types::datatypes::internal_types::Mapping;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use std::time::Duration;
 use tokio::sync::Mutex;
-use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
@@ -52,168 +46,7 @@ async fn main() {
 			continue;
 		}
 
-		debug!("Beginning login sequence for {client}");
-
-		let login_start = client.receive_packet().await.unwrap();
-		let username = match login_start {
-			Packet::LoginStart(packet) => {
-				debug!("Received login start packet from {client}");
-				debug!("Login start packet: {packet:?}");
-
-				packet.username
-			}
-			_ => {
-				panic!("Expected login start packet, got {login_start:?}");
-			}
-		};
-
-		DefaultServerEncryptionHandler::handle_encryption(&mut client, true, username.clone(), None).await.unwrap();
-
-		let set_compression = Packet::SetCompression(SetCompressionPacket::new(VarInt(400)));
-		client.send_packet(set_compression).await.unwrap();
-		client.enable_compression(Some(400));
-		debug!("Sent set compression to {client} and enabled compression");
-
-		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), username, PrefixedArray::new(vec![])));
-		client.send_packet(login_success).await.unwrap();
-
-		let login_ack = client.receive_packet().await.unwrap();
-		match login_ack {
-			Packet::LoginAcknowledged(..) => {
-				debug!("Received login acknowledged packet from {client}");
-				debug!("Login acknowledged packet: {login_ack:?}");
-				client.change_state(PacketState::CONFIGURATION);
-			}
-			_ => {
-				debug!("Expected login acknowledged, got {login_ack:?}");
-				continue;
-			}
-		}
-
-		let packs = Packet::ClientboundKnownPacks(ClientboundKnownPacksPacket::new(PrefixedArray::new(vec![])));
-		client.send_packet(packs).await.unwrap();
-
-		debug!("Sent clientbound known packs to {client}");
-
-		loop {
-			let packs = client.receive_packet().await.unwrap();
-			match packs {
-				Packet::ServerboundPluginMessage(..) => {
-					// optional: before known packs
-					debug!("Received plugin message from {client}");
-					debug!("Plugin message: {packs:?}");
-					continue;
-				}
-				Packet::ClientInformation(..) => {
-					// optional: before known packs
-					debug!("Received client information from {client}");
-					debug!("Client information: {packs:?}");
-					continue;
-				}
-				Packet::ServerboundKnownPacks(..) => {
-					debug!("Received serverbound known packs from {client}");
-					debug!("Serverbound known packs: {packs:?}");
-					break;
-				}
-				_ => {
-					debug!("Expected serverbound known packs, got {packs:?}");
-					break;
-				}
-			}
-		}
-
-		// send all registry packets
-		debug!("Sending registry packets to {client}");
-		for p in registry_generator::default() {
-			client.send_packet(p).await.unwrap();
-		}
-
-		let tags = Packet::UpdateTags(UpdateTagsPacket::new(PrefixedArray::new(vec![Mapping {
-			key: "minecraft:timeline".to_string(),
-			value: PrefixedArray::new(vec![Tag {
-				identifier: "minecraft:in_overworld".to_string(),
-				entries: PrefixedArray::new(vec![VarInt(0), VarInt(2)]),
-			}]),
-		}])));
-		client.send_packet(tags).await.unwrap();
-
-		debug!("Sent update tags to {client}");
-
-		let packet = Packet::FinishConfiguration(FinishConfigurationPacket::new());
-		client.send_packet(packet).await.unwrap();
-
-		debug!("Sent finish configuration to {client}");
-
-		let ack = client.receive_packet().await.unwrap();
-		match ack {
-			Packet::AcknowledgeFinishConfiguration(..) => {
-				debug!("Received acknowledge finish configuration from {client}");
-				debug!("Acknowledge finish configuration: {ack:?}");
-			}
-			_ => {
-				debug!("Expected acknowledge finish configuration, got {ack:?}");
-				continue;
-			}
-		}
-
-		client.change_state(PacketState::PLAY);
-
-		let login = Packet::LoginInfo(LoginInfoPacket::new(
-			9,
-			false,
-			PrefixedArray::new(vec!["minecraft:overworld".to_string(), "minecraft:the_nether".to_string(), "minecraft:the_end".to_string()]),
-			20.into(),
-			10.into(),
-			10.into(),
-			false,
-			true,
-			false,
-			VarInt(0),
-			"minecraft:overworld".to_string(),
-			-4546743471931916645i64,
-			PlayerGamemode::SURVIVAL,
-			PlayerGamemode::UNDEFINED,
-			false,
-			true,
-			false,
-			None,
-			None,
-			VarInt(0),
-			VarInt(63),
-			false,
-		));
-
-		debug!("Sending login info packet {login:?}");
-		client.send_packet(login).await.unwrap();
-
-		let sync = Packet::SyncPlayerPosition(SyncPlayerPositionPacket::new(VarInt(2), 0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, TeleportFlags::default()));
-		client.send_packet(sync).await.unwrap();
-
-		debug!("Sent sync player position to {client}");
-
-		let telep = client.receive_packet().await.unwrap();
-		match telep {
-			Packet::ConfirmTeleport(..) => {
-				debug!("Received teleport confirm from {client}");
-				debug!("Teleport confirm: {telep:?}");
-			}
-			_ => {
-				debug!("Expected teleport confirm, got {telep:?}");
-				continue;
-			}
-		}
-
-		let setpos = client.receive_packet().await.unwrap();
-		match setpos {
-			Packet::SetPlayerPositionRotation(..) => {
-				debug!("Received set player position rotation from {client}");
-				debug!("Set player position rotation: {setpos:?}");
-			}
-			_ => {
-				debug!("Expected set player position rotation, got {setpos:?}");
-				continue;
-			}
-		}
+		DefaultServerLoginHandler::default().handle_login(&mut client).await.unwrap();
 
 		// Tell the client to begin loading terrain, then send the chunks around spawn.
 		let game_event = Packet::GameEvent(GameEventPacket::new(GameEventType::StartWaitingForLevelChunks, 0.0));
