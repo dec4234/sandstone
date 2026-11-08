@@ -36,6 +36,9 @@ sandstone-derive = { path = "src/sandstone-derive" } #todo: implications of loca
 mc-data = { path = "src/protocol/game/info/content/mc-data" }
 mojang-api = { path = "src/util/mojang-api" }
 
+[dev-dependencies]
+tokio = { version = "1.54.1", features = ["net", "io-util", "rt", "macros", "time"] }
+
 [build-dependencies]
 serde_json = "1.0.154"
 ureq = "3.5.1"

@@ -5,19 +5,19 @@
 //! See the documentation for the [client](client) and [server](server) modules for more information on how to use the network API.
 
 use crate::network::network_error::NetworkError;
-use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::Packet;
+use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
 use crate::util::encryption::aes::CraftCipher;
+use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
-use flate2::Compression;
-use hickory_resolver::proto::rr::rdata::SRV;
-use hickory_resolver::proto::rr::RecordRef;
 use hickory_resolver::Resolver;
+use hickory_resolver::proto::rr::RecordRef;
+use hickory_resolver::proto::rr::rdata::SRV;
 use log::{debug, error, trace};
 use std::fmt::Display;
 use std::io::{Read, Write};
@@ -386,9 +386,9 @@ impl CraftConnection {
 		let packet_len = vari.0 as usize;
 		let total_len = varint_len + packet_len;
 		let mut buffer = vec![0u8; total_len];
-		buffer[..varint_len].copy_from_slice(&peek_buf[..varint_len]);
 
-		let length = match self.tcp_stream.peek(&mut buffer[varint_len..]).await {
+		// peek always reads from the start of the stream, so peek the full frame (length prefix included)
+		let length = match self.tcp_stream.peek(&mut buffer).await {
 			Ok(len) => len,
 			Err(e) => {
 				if e.to_string().contains("An established connection was aborted by the software in your host machine") {
@@ -411,7 +411,7 @@ impl CraftConnection {
 
 		let deser_buf = self.build_deserializer_buffer(&buffer[varint_len..])?;
 		let mut deserializer = McDeserializer::new(&deser_buf);
-		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
+		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, self.client_type)?;
 
 		Ok(packet)
 	}
