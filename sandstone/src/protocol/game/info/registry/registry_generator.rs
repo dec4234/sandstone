@@ -130,3 +130,88 @@ pub fn default() -> Vec<Packet> {
 		}
     )
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use std::collections::HashSet;
+
+	fn registries() -> Vec<RegistryDataPacketInternal> {
+		default()
+			.into_iter()
+			.map(|p| match p {
+				Packet::RegistryData(r) => r.packet,
+				_ => panic!("default() must only return Registry Data packets"),
+			})
+			.collect()
+	}
+
+	#[test]
+	fn count_items_counts_each_token() {
+		assert_eq!(crate::count_items!(), 0);
+		assert_eq!(crate::count_items!("a"), 1);
+		assert_eq!(crate::count_items!("a", "b", "c"), 3);
+	}
+
+	#[test]
+	fn entry_count_matches_entries() {
+		// The client reads exactly num_entries entries. A wrong count breaks every later byte.
+		for r in registries() {
+			assert_eq!(r.num_entries.0 as usize, r.entries.len(), "{}", r.registry_id);
+			assert!(!r.entries.is_empty(), "{}", r.registry_id);
+		}
+	}
+
+	#[test]
+	fn ids_are_unique_and_entries_have_data() {
+		let regs = registries();
+		let mut seen = HashSet::new();
+		for r in &regs {
+			assert!(seen.insert(r.registry_id.clone()), "duplicate registry {}", r.registry_id);
+			let mut entry_ids = HashSet::new();
+			for e in &r.entries {
+				assert!(entry_ids.insert(e.id.clone()), "duplicate entry {} in {}", e.id, r.registry_id);
+				// default() builds every entry with Some(data). An entry with no data tells the
+				// client to use its own copy from a known pack, which this server does not rely on.
+				assert!(e.is_present && e.data.is_some(), "entry {} in {}", e.id, r.registry_id);
+			}
+		}
+	}
+
+	#[test]
+	fn includes_registries_needed_for_login() {
+		// The client disconnects during configuration if one of these is missing.
+		let ids: HashSet<String> = registries().into_iter().map(|r| r.registry_id).collect();
+		for needed in [
+			"minecraft:dimension_type",
+			"minecraft:worldgen/biome",
+			"minecraft:damage_type",
+			"minecraft:painting_variant",
+			"minecraft:wolf_variant",
+			"minecraft:wolf_sound_variant",
+			"minecraft:cat_variant",
+			"minecraft:chicken_variant",
+			"minecraft:cow_variant",
+			"minecraft:frog_variant",
+			"minecraft:pig_variant",
+			"minecraft:zombie_nautilus_variant",
+		] {
+			assert!(ids.contains(needed), "missing {needed}");
+		}
+	}
+
+	#[test]
+	fn every_registry_round_trips() {
+		// Decoding uses the registry id to pick the entry type, so this also checks that the id
+		// matches the type of data we put in it.
+		for r in registries() {
+			let mut s = McSerializer::new();
+			r.mc_serialize(&mut s).unwrap();
+			let mut d = McDeserializer::new(s.as_bytes());
+			let back = RegistryDataPacketInternal::mc_deserialize(&mut d).unwrap_or_else(|e| panic!("{}: {e:?}", r.registry_id));
+			assert_eq!(back, r);
+			assert!(d.is_at_end(), "{}", r.registry_id);
+		}
+	}
+}

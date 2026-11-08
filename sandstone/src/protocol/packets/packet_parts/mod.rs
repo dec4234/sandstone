@@ -387,3 +387,55 @@ pub enum ChatTypeParemeter {
 	Target = 1,
 	Content = 2,
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn empty_slot() -> SlotData {
+		SlotData { item_count: VarInt(0), item_id: None, components_to_add: vec![], components_to_remove: vec![] }
+	}
+
+	#[test]
+	fn equipment_sets_top_bit_on_all_but_last() {
+		// Wiki (Set Equipment): bit 0x80 means another entry follows. If the last entry has it,
+		// the client reads past the end of the packet.
+		let list = EquipmentList {
+			entries: vec![
+				EquipmentEntry { slot: EquipmentSlot::MainHand, item: empty_slot() },
+				EquipmentEntry { slot: EquipmentSlot::Helmet, item: empty_slot() },
+			],
+		};
+		assert_eq!(ser(&list), vec![0x80, 0, 5, 0]);
+		let mut d = McDeserializer::new(&[0x80, 0, 5, 0]);
+		assert_eq!(EquipmentList::mc_deserialize(&mut d).unwrap(), list);
+		assert!(d.is_at_end());
+	}
+
+	#[test]
+	fn equipment_stops_after_entry_without_top_bit() {
+		let mut d = McDeserializer::new(&[1, 0, 0xEE]);
+		let list = EquipmentList::mc_deserialize(&mut d).unwrap();
+		assert_eq!(list.entries.len(), 1);
+		assert_eq!(list.entries[0].slot, EquipmentSlot::OffHand);
+		assert_eq!(d.collect_remaining(), &[0xEE]);
+	}
+
+	#[test]
+	fn server_link_sends_exactly_one_label() {
+		let built_in = ServerLink { is_built_in: true, built_in_label: Some(ServerLinkStandardLabel::Support), custom_label: None, url: "u".into() };
+		assert_eq!(ser(&built_in), vec![1, 2, 1, b'u']);
+		assert_eq!(ServerLink::mc_deserialize(&mut McDeserializer::new(&ser(&built_in))).unwrap(), built_in);
+
+		let custom = ServerLink { is_built_in: false, built_in_label: None, custom_label: Some(TextComponent::new("Docs")), url: "u".into() };
+		let bytes = ser(&custom);
+		assert_eq!(bytes[0], 0);
+		assert_eq!(ServerLink::mc_deserialize(&mut McDeserializer::new(&bytes)).unwrap(), custom);
+	}
+}

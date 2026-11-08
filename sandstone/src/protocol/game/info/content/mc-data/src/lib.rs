@@ -117,4 +117,45 @@ mod tests {
 		// The headline ergonomic the namespace exists for.
 		assert_eq!(block_by_name("bedrock").unwrap().id, Block::Bedrock::get_id());
 	}
+
+	#[test]
+	fn item_lookups_agree() {
+		let by_name = item_by_name("stick").expect("stick item exists");
+		let by_id = item_by_id(by_name.id).expect("stick item id resolves");
+		assert_eq!(by_name, by_id);
+		assert_eq!(by_name.id, Item::Stick::get_id());
+	}
+
+	#[test]
+	fn unknown_lookups_return_none() {
+		// A wrong name or id from the network must not panic or return some other entry.
+		assert!(block_by_name("not_a_block").is_none());
+		assert!(item_by_name("not_an_item").is_none());
+		assert!(block_by_id(-1).is_none());
+		assert!(item_by_id(i32::MAX).is_none());
+	}
+
+	#[test]
+	fn tables_are_in_id_order() {
+		// blocks() and items() are documented as "in id order". Callers can index by id only if
+		// the ids are 0, 1, 2, ... with no gaps.
+		for (i, b) in blocks().iter().enumerate() {
+			assert_eq!(b.id as usize, i, "block {}", b.name);
+		}
+		for (i, it) in items().iter().enumerate() {
+			assert_eq!(it.id as usize, i, "item {}", it.name);
+		}
+	}
+
+	#[test]
+	fn block_state_ranges_do_not_overlap() {
+		// Each block state id maps to exactly one block. Chunk data sends state ids, so an overlap
+		// would make one block show as another.
+		let mut next_free: u32 = 0;
+		for b in blocks() {
+			assert!(b.minStateId <= b.maxStateId, "block {}", b.name);
+			assert_eq!(b.minStateId, next_free, "block {} does not start after the previous block", b.name);
+			next_free = b.maxStateId + 1;
+		}
+	}
 }

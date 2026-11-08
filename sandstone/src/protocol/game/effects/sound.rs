@@ -1,7 +1,8 @@
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
-use sandstone_derive::{McDefault, McDeserialize, McSerialize};
+use crate::protocol_types::datatypes::var_types::VarInt;
+use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
 /// [Doc link](https://minecraft.wiki/w/Java_Edition_protocol/Packets#Sound_Event)
 #[derive(McDefault, McSerialize, McDeserialize, Debug, PartialOrd, PartialEq, Clone)]
@@ -12,56 +13,77 @@ pub struct SoundEvent {
 	pub fixed_range: Option<f32>,
 }
 
-#[derive(McDefault, Debug, PartialOrd, PartialEq, Clone)]
+/// [Doc link](https://minecraft.wiki/w/Java_Edition_protocol/Packets#Sound_Effect)
+#[derive(VarIntEnum, McDefault, Debug, PartialOrd, PartialEq, Clone)]
+#[repr(i32)]
 pub enum SoundCategory {
-	Master,
-	Music,
-	Records,
-	Weather,
-	Blocks,
-	Hostile,
-	Neutral,
-	Player,
-	Ambient,
-	Voice,
+	Master = 0,
+	Music = 1,
+	Records = 2,
+	Weather = 3,
+	Blocks = 4,
+	Hostile = 5,
+	Neutral = 6,
+	Player = 7,
+	Ambient = 8,
+	Voice = 9,
 }
 
-impl McSerialize for SoundCategory {
-	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		let value = match self {
-			SoundCategory::Master => 0,
-			SoundCategory::Music => 1,
-			SoundCategory::Records => 2,
-			SoundCategory::Weather => 3,
-			SoundCategory::Blocks => 4,
-			SoundCategory::Hostile => 5,
-			SoundCategory::Neutral => 6,
-			SoundCategory::Player => 7,
-			SoundCategory::Ambient => 8,
-			SoundCategory::Voice => 9,
-		};
-		value.mc_serialize(serializer)
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
 	}
-}
 
-impl McDeserialize for SoundCategory {
-	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
-	where
-		Self: Sized,
-	{
-		let id = u8::mc_deserialize(deserializer)?;
-		match id {
-			0 => Ok(SoundCategory::Master),
-			1 => Ok(SoundCategory::Music),
-			2 => Ok(SoundCategory::Records),
-			3 => Ok(SoundCategory::Weather),
-			4 => Ok(SoundCategory::Blocks),
-			5 => Ok(SoundCategory::Hostile),
-			6 => Ok(SoundCategory::Neutral),
-			7 => Ok(SoundCategory::Player),
-			8 => Ok(SoundCategory::Ambient),
-			9 => Ok(SoundCategory::Voice),
-			_ => Err(SerializingErr::InvalidEnumValue(id as i8)),
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn sound_event_range_only_when_flag_set() {
+		// Wiki (Sound Event): Fixed Range is only present if Has Fixed Range is true.
+		let without = SoundEvent { name: "a".into(), has_fixed_range: false, fixed_range: None };
+		assert_eq!(ser(&without), vec![1, b'a', 0]);
+		round_trip(without);
+
+		let with = SoundEvent { name: "a".into(), has_fixed_range: true, fixed_range: Some(32.0) };
+		let mut expected = vec![1, b'a', 1];
+		expected.extend_from_slice(&32.0f32.to_be_bytes());
+		assert_eq!(ser(&with), expected);
+		round_trip(with);
+	}
+
+	#[test]
+	fn sound_category_is_one_varint() {
+		// Wiki (Sound Effect / Entity Sound Effect): Sound Category is a VarInt Enum. Values 0..=9
+		// fit in one VarInt byte. The deserializer reads one byte, so the serializer must write one.
+		let all = [
+			SoundCategory::Master,
+			SoundCategory::Music,
+			SoundCategory::Records,
+			SoundCategory::Weather,
+			SoundCategory::Blocks,
+			SoundCategory::Hostile,
+			SoundCategory::Neutral,
+			SoundCategory::Player,
+			SoundCategory::Ambient,
+			SoundCategory::Voice,
+		];
+		for (id, c) in all.into_iter().enumerate() {
+			assert_eq!(ser(&c), vec![id as u8], "{c:?}");
+			round_trip(c);
 		}
+	}
+
+	#[test]
+	fn unknown_sound_category_is_rejected() {
+		assert!(SoundCategory::mc_deserialize(&mut McDeserializer::new(&[10])).is_err());
 	}
 }

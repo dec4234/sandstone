@@ -561,3 +561,82 @@ impl McDefault for StructuredComponent {
 		StructuredComponent::MaxStackSize(VarInt(64))
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn component_ids_are_pinned() {
+		// The client finds the component type from this ID. If a variant moves, every later
+		// component in the slot is read with the wrong layout. These IDs are the current values in
+		// the enum; update them only after you check the wiki Slot data page.
+		assert_eq!(ser(&StructuredComponent::MaxStackSize(VarInt(64))), vec![1, 64]);
+		assert_eq!(ser(&StructuredComponent::Unbreakable), vec![4]);
+		assert_eq!(ser(&StructuredComponent::CreativeSlotLock), vec![17]);
+		assert_eq!(ser(&StructuredComponent::Glider), vec![30]);
+		assert_eq!(ser(&StructuredComponent::DyedColor(1)), vec![35, 0, 0, 0, 1]);
+		assert_eq!(ser(&StructuredComponent::VillagerVariant(VarInt(2))), vec![72, 2]);
+		assert_eq!(ser(&StructuredComponent::ShulkerColor(DyeColor::mc_default()))[0], 95);
+	}
+
+	#[test]
+	fn components_with_bodies_round_trip() {
+		round_trip(StructuredComponent::Damage(VarInt(300)));
+		round_trip(StructuredComponent::Enchantments(EnchantmentList { entries: PrefixedArray::new(vec![EnchantmentEntry { type_id: VarInt(3), level: VarInt(5) }]) }));
+		round_trip(StructuredComponent::Lore(PrefixedArray::new(vec![TextComponent::new("line")])));
+		round_trip(StructuredComponent::UseRemainder(Box::new(SlotData::mc_default())));
+		round_trip(StructuredComponent::BundleContents(PrefixedArray::new(vec![SlotData::mc_default(), SlotData::mc_default()])));
+	}
+
+	#[test]
+	fn lodestone_without_target_skips_position() {
+		// Without a global position, only the two bools go on the wire.
+		let c = LodestoneTrackerComponent { has_global_pos: false, dimension: None, position: None, tracked: true };
+		assert_eq!(ser(&c), vec![0, 1]);
+		round_trip(c);
+	}
+
+	#[test]
+	fn lodestone_with_target_round_trips() {
+		round_trip(LodestoneTrackerComponent {
+			has_global_pos: true,
+			dimension: Some("minecraft:overworld".into()),
+			position: Some(Position::new(10, 64, -10)),
+			tracked: false,
+		});
+	}
+
+	#[test]
+	fn provides_trim_material_modes() {
+		// Mode 0 is a registry name and mode 1 is an ID or inline material.
+		assert_eq!(ser(&ProvidesTrimMaterialComponent::ByName("x".into())), vec![0, 1, b'x']);
+		round_trip(ProvidesTrimMaterialComponent::ByName("minecraft:gold".into()));
+		round_trip(ProvidesTrimMaterialComponent::Inline(Box::new(IdOrTrimMaterial::Registry(VarInt(2)))));
+	}
+
+	#[test]
+	fn unknown_mode_byte_is_an_error() {
+		// A bad mode must fail. If it does not fail, we read garbage for the rest of the packet.
+		assert!(ProvidesTrimMaterialComponent::mc_deserialize(&mut McDeserializer::new(&[2])).is_err());
+		assert!(JukeboxPlayableComponent::mc_deserialize(&mut McDeserializer::new(&[2])).is_err());
+	}
+
+	#[test]
+	fn jukebox_by_name_round_trips() {
+		round_trip(JukeboxPlayableComponent::ByName("minecraft:cat".into()));
+	}
+}

@@ -138,3 +138,61 @@ impl McDefault for Particle {
 		Self::Cloud
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn particle_id_comes_first() {
+		// Wiki (Particle): the VarInt particle type ID, then the fields for that type.
+		assert_eq!(ser(&Particle::AngryVillager), vec![0]);
+		assert_eq!(ser(&Particle::Cloud), vec![4]);
+		assert_eq!(ser(&Particle::Firefly), vec![114]);
+		assert_eq!(ser(&Particle::Block(VarInt(1))), vec![1, 1]);
+	}
+
+	#[test]
+	fn dust_is_int_color_then_float_scale() {
+		let mut expected = vec![14];
+		expected.extend_from_slice(&0x00FF00i32.to_be_bytes());
+		expected.extend_from_slice(&2.0f32.to_be_bytes());
+		assert_eq!(ser(&Particle::Dust(0x00FF00, 2.0)), expected);
+	}
+
+	#[test]
+	fn particles_with_data_round_trip() {
+		let empty_slot = SlotData { item_count: VarInt(0), item_id: None, components_to_add: vec![], components_to_remove: vec![] };
+		for p in [
+			Particle::DustColorTransition(1, 2, 0.5),
+			Particle::Effect(3, 1.0),
+			Particle::TintedLeaves(0x123456),
+			Particle::Item(empty_slot),
+			Particle::Vibration(VibrationSource::Block(Position::new(1, 2, 3)), VarInt(40)),
+			Particle::Vibration(VibrationSource::Entity(VarInt(12), 1.5), VarInt(40)),
+			Particle::Trail(1.0, 2.0, 3.0, 0xFFFFFF, VarInt(20)),
+			Particle::Shriek(VarInt(5)),
+			Particle::BlockCrumble(VarInt(9)),
+		] {
+			round_trip(p);
+		}
+	}
+
+	#[test]
+	fn unknown_particle_id_is_rejected() {
+		assert!(Particle::mc_deserialize(&mut McDeserializer::new(&[115])).is_err());
+	}
+}

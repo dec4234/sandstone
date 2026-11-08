@@ -106,3 +106,108 @@ fn lit_light_data() -> LightData {
 		block_light: PrefixedArray::new(vec![]),
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	use crate::protocol::game::world::chunk::PalleteFormat;
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+
+	/// Look up the block state at a YZX index in a section.
+	fn block_at(section: &ChunkSection, y: usize, z: usize, x: usize) -> i32 {
+		let c = &section.block_states;
+		match &c.palette {
+			PalleteFormat::SingleValued(v) => v.0,
+			PalleteFormat::Indirect(f) => {
+				let i = (y << 8) | (z << 4) | x;
+				let per_long = 64 / c.bits_per_entry as usize;
+				let palette_index = c.data[i / per_long].get_entry((i % per_long) as u8);
+				f.palette.vec[palette_index as usize].0
+			}
+			PalleteFormat::Direct => panic!("superflat does not use the direct format"),
+		}
+	}
+
+	#[test]
+	fn one_section_per_16_blocks_of_overworld_height() {
+		// The client reads exactly height / 16 sections. 384 / 16 = 24.
+		let (chunk, _) = superflat_chunk();
+		assert_eq!(chunk.data.data.len(), 24);
+	}
+
+	#[test]
+	fn bottom_layers_are_bedrock_dirt_dirt_grass() {
+		let (chunk, _) = superflat_chunk();
+		let bottom = &chunk.data.data[0];
+		for (x, z) in [(0, 0), (15, 15), (7, 3)] {
+			assert_eq!(block_at(bottom, 0, z, x), BEDROCK);
+			assert_eq!(block_at(bottom, 1, z, x), DIRT);
+			assert_eq!(block_at(bottom, 2, z, x), DIRT);
+			assert_eq!(block_at(bottom, 3, z, x), GRASS_BLOCK);
+			assert_eq!(block_at(bottom, 4, z, x), AIR);
+			assert_eq!(block_at(bottom, 15, z, x), AIR);
+		}
+		for section in &chunk.data.data[1..] {
+			assert_eq!(block_at(section, 0, 0, 0), AIR);
+		}
+	}
+
+	#[test]
+	fn block_count_matches_non_air_blocks() {
+		// The client uses Block Count to skip rendering empty sections, so it must be the real count.
+		let (chunk, _) = superflat_chunk();
+		for section in &chunk.data.data {
+			let mut non_air = 0;
+			for y in 0..16 {
+				for z in 0..16 {
+					for x in 0..16 {
+						if block_at(section, y, z, x) != AIR {
+							non_air += 1;
+						}
+					}
+				}
+			}
+			assert_eq!(section.block_count as i32, non_air);
+		}
+	}
+
+	#[test]
+	fn light_arrays_match_masks() {
+		// Wiki (Light Data): one 2048-byte array per bit set in each mask, in order. The overworld
+		// has 24 sections plus one above and one below.
+		let (_, light) = superflat_chunk();
+		let sky_bits = (0..LIGHT_SECTION_COUNT).filter(|&i| light.sky_light_mask.get_bit(i)).count();
+		let block_bits = (0..LIGHT_SECTION_COUNT).filter(|&i| light.block_light_mask.get_bit(i)).count();
+		assert_eq!(sky_bits, 26);
+		assert_eq!(light.sky_light.vec.len(), sky_bits);
+		assert_eq!(light.block_light.vec.len(), block_bits);
+		for arr in &light.sky_light.vec {
+			assert_eq!(arr.data.vec.len(), 2048);
+			assert_eq!(arr.get(0).unwrap(), 15);
+			assert_eq!(arr.get(4095).unwrap(), 15);
+		}
+		// A section can not be both "has light data" and "empty".
+		for i in 0..LIGHT_SECTION_COUNT {
+			assert!(!(light.sky_light_mask.get_bit(i) && light.empty_light_mask.get_bit(i)));
+		}
+	}
+
+	#[test]
+	fn chunk_and_light_round_trip() {
+		// A full encode then decode proves that the client can parse the sections with the
+		// palette sizes we picked.
+		let (chunk, light) = superflat_chunk();
+
+		let mut s = McSerializer::new();
+		chunk.mc_serialize(&mut s).unwrap();
+		let mut d = McDeserializer::new(s.as_bytes());
+		assert_eq!(ChunkData::mc_deserialize(&mut d).unwrap(), chunk);
+		assert!(d.is_at_end());
+
+		let mut s = McSerializer::new();
+		light.mc_serialize(&mut s).unwrap();
+		let mut d = McDeserializer::new(s.as_bytes());
+		assert_eq!(LightData::mc_deserialize(&mut d).unwrap(), light);
+		assert!(d.is_at_end());
+	}
+}

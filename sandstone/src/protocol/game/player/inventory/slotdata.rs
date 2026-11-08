@@ -79,3 +79,43 @@ impl McDeserialize for SlotData {
 		})
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::SlotData;
+	use crate::protocol::game::player::inventory::components::StructuredComponent;
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use crate::protocol_types::datatypes::var_types::VarInt;
+
+	fn ser(slot: &SlotData) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		slot.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	#[test]
+	fn empty_slot_is_only_the_count() {
+		// The wiki says an empty slot is a count of 0 and nothing else. If we write more bytes,
+		// the client reads the next field of the packet as item data.
+		let slot = SlotData { item_count: VarInt(0), item_id: Some(VarInt(9)), components_to_add: vec![StructuredComponent::Unbreakable], components_to_remove: vec![] };
+		assert_eq!(ser(&slot), vec![0]);
+	}
+
+	#[test]
+	fn empty_slot_reads_without_item_id() {
+		let mut d = McDeserializer::new(&[0, 0xFF]);
+		let slot = SlotData::mc_deserialize(&mut d).unwrap();
+		assert_eq!(slot.item_id, None);
+		// The byte after the count belongs to the next field, so it must stay unread.
+		assert_eq!(d.collect_remaining(), &[0xFF]);
+	}
+
+	#[test]
+	fn both_counts_come_before_both_lists() {
+		// Wire order: count, id, add count, remove count, add list, remove list.
+		let slot = SlotData { item_count: VarInt(1), item_id: Some(VarInt(5)), components_to_add: vec![StructuredComponent::MaxStackSize(VarInt(16))], components_to_remove: vec![VarInt(4)] };
+		let bytes = ser(&slot);
+		assert_eq!(bytes, vec![1, 5, 1, 1, 1, 16, 4]);
+		assert_eq!(SlotData::mc_deserialize(&mut McDeserializer::new(&bytes)).unwrap(), slot);
+	}
+}

@@ -1,9 +1,9 @@
-use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::internal_types::Angle;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
@@ -248,4 +248,24 @@ pub struct MinecartMoveStep {
 	pub yaw: Angle,
 	pub pitch: Angle,
 	pub weight: f32
+}
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn entity_status_is_one_signed_byte() {
+		// Entity Event sends the status as a Byte, not a VarInt.
+		for (status, byte) in [(EntityStatusEnum::Arrow0, 0u8), (EntityStatusEnum::Player9, 9), (EntityStatusEnum::Warden62, 62), (EntityStatusEnum::Sniffer63, 63)] {
+			let mut s = McSerializer::new();
+			status.mc_serialize(&mut s).unwrap();
+			assert_eq!(s.as_bytes(), &[byte]);
+			assert_eq!(EntityStatusEnum::mc_deserialize(&mut McDeserializer::new(&[byte])).unwrap(), status);
+		}
+	}
+
+	#[test]
+	fn unknown_entity_status_is_an_error() {
+		assert!(EntityStatusEnum::mc_deserialize(&mut McDeserializer::new(&[100])).is_err());
+	}
 }

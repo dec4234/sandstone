@@ -1,9 +1,9 @@
-use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
@@ -110,4 +110,37 @@ pub enum StatID {
 	InteractWithGrindstone = 73,
 	TargetHit = 74,
 	InteractWithSmithingTable = 75,
+}
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn award_is_three_varints() {
+		// Wiki (Award Statistics): Category ID, Statistic ID, Value, each a VarInt.
+		let a = StatisticAward { category: StatCategory::Custom, stat_id: StatID::Jump, value: VarInt(300) };
+		assert_eq!(ser(&a), vec![8, 22, 0xAC, 0x02]);
+		round_trip(a);
+	}
+
+	#[test]
+	fn custom_stat_ids_match_registry_order() {
+		assert_eq!(ser(&StatID::LeaveGame), vec![0]);
+		assert_eq!(ser(&StatID::Deaths), vec![31]);
+		assert_eq!(ser(&StatID::InteractWithSmithingTable), vec![75]);
+		assert_eq!(ser(&StatCategory::KilledBy), vec![7]);
+	}
 }

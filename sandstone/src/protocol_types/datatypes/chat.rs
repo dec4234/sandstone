@@ -19,7 +19,7 @@ use std::fmt;
 /// representing the text to be displayed. Everything else is an optional modifier.
 ///
 /// See https://minecraft.wiki/w/Text_component_format for more information.
-#[derive(McDefault, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 pub struct TextComponent {
 	/// The content of this component, determining how the displayed text is produced
@@ -50,6 +50,25 @@ pub struct TextComponent {
 
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub insertion: Option<String>,
+}
+
+/// Hand-written because a derived default fills `extra` with more default components,
+/// and each of those does the same, so the derive recurses without end.
+impl McDefault for TextComponent {
+	fn mc_default() -> Self {
+		Self {
+			content: ComponentType::mc_default(),
+			extra: None,
+			color: Option::mc_default(),
+			bold: Option::mc_default(),
+			italic: Option::mc_default(),
+			underlined: Option::mc_default(),
+			strikethrough: Option::mc_default(),
+			obfuscated: Option::mc_default(),
+			font: Option::mc_default(),
+			insertion: Option::mc_default(),
+		}
+	}
 }
 
 impl TextComponent {

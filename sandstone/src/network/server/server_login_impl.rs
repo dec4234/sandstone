@@ -51,7 +51,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 				packet.username
 			}
 			_ => {
-				panic!("Expected login start packet, got {login_start:?}");
+				return Err(NetworkError::ExpectedDifferentPacket(format!("Expected login start packet, got {login_start:?}")));
 			}
 		};
 

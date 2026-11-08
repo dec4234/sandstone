@@ -1,10 +1,10 @@
 use crate::bitflag;
-use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
@@ -79,4 +79,65 @@ pub enum SeenAdvancementsAction {
 pub enum UseItemHand {
 	MainHand = 0,
 	OffHand = 1
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn teleport_flag_bits_match_wiki() {
+		// Wiki (Teleport Flags): an Int where bit 0 is X, 1 Y, 2 Z, 3 yaw, 4 pitch, 5..7 velocity
+		// X/Y/Z and 8 rotate velocity. A wrong bit makes the client move the player wrongly.
+		let only = |i: usize| {
+			let mut b = [false; 9];
+			b[i] = true;
+			TeleportFlags::new(b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8])
+		};
+		for i in 0..9 {
+			assert_eq!(ser(&only(i)), (1i32 << i).to_be_bytes().to_vec(), "flag index {i}");
+		}
+		let f = TeleportFlags::mc_deserialize(&mut McDeserializer::new(&0x0108i32.to_be_bytes())).unwrap();
+		assert!(f.relative_yaw() && f.rotate_velocity() && !f.relative_x());
+	}
+
+	#[test]
+	fn waypoint_data_ids_and_layout() {
+		let vec3 = WaypointData::Vec3I(PositionVarInt { x: VarInt(1), y: VarInt(2), z: VarInt(3) });
+		assert_eq!(ser(&vec3), vec![1, 1, 2, 3]);
+		round_trip(vec3);
+		let chunk = WaypointData::Chunk(ChunkPositionVarInt { x: VarInt(-1), z: VarInt(4) });
+		assert_eq!(ser(&chunk)[0], 2);
+		round_trip(chunk);
+		round_trip(WaypointData::Azimuth(1.25));
+		assert_eq!(ser(&WaypointData::Empty), vec![0]);
+	}
+
+	#[test]
+	fn action_enum_ids_match_wiki() {
+		assert_eq!(ser(&PlayerActionStatus::StartedDigging), vec![0]);
+		assert_eq!(ser(&PlayerActionStatus::SwapItemInHand), vec![6]);
+		assert_eq!(ser(&WaypointOperation::Update), vec![2]);
+		assert_eq!(ser(&SeenAdvancementsAction::ClosedScreen), vec![1]);
+		assert_eq!(ser(&UseItemHand::OffHand), vec![1]);
+		round_trip(PlayerActionStatus::ShootArrowOrFinishEating);
+	}
+
+	#[test]
+	fn unknown_action_status_is_rejected() {
+		assert!(PlayerActionStatus::mc_deserialize(&mut McDeserializer::new(&[7])).is_err());
+	}
 }

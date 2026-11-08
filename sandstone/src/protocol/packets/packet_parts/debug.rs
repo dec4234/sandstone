@@ -1,13 +1,13 @@
 //! Debug subscription types. Used in certain packets to help with debugging the game.
 //! https://minecraft.wiki/w/Java_Edition_protocol
 
-use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::game_types::Position;
 use crate::protocol_types::datatypes::var_types::VarInt;
@@ -214,4 +214,104 @@ pub enum DebugSampleType {
 pub struct CustomReportDetail {
 	pub title: String,
 	pub description: String,
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn subscription_tag_is_first_varint() {
+		// The type tag selects the data layout, so it must come before the data.
+		assert_eq!(ser(&DebugSubscriptionData::DedicatedServerTickTime), vec![0]);
+		assert_eq!(ser(&DebugSubscriptionData::VillageSection), vec![10]);
+		assert_eq!(ser(&DebugSubscriptionData::RedstoneWireOrientation(VarInt(3))), vec![9, 3]);
+
+		let pos = Position::new(1, 2, 3);
+		let mut expected = vec![14];
+		expected.extend_from_slice(&ser(&pos));
+		assert_eq!(ser(&DebugSubscriptionData::NeighborUpdate(pos)), expected);
+	}
+
+	#[test]
+	fn every_subscription_variant_round_trips() {
+		let node = DebugPathNode { x: -1, y: 64, z: 2, walked_distance: 1.5, cost_malus: 0.0, closed: true, typ: DebugPathNodeType::DangerTrapdoor, f: 2.0 };
+		let variants = vec![
+			DebugSubscriptionData::DedicatedServerTickTime,
+			DebugSubscriptionData::Bee(BeeDebugData {
+				hive_position: PrefixedOptional::new(Some(Position::new(1, 2, 3))),
+				flower_position: PrefixedOptional::new(None),
+				travel_ticks: VarInt(20),
+				blacklisted_hives: PrefixedArray::new(vec![Position::new(-4, -5, -6)]),
+			}),
+			DebugSubscriptionData::VillagerBrain(VillagerBrainDebugData::mc_default()),
+			DebugSubscriptionData::Breeze(BreezeDebugData { attack_target: PrefixedOptional::new(Some(VarInt(9))), jump_target: PrefixedOptional::new(None) }),
+			DebugSubscriptionData::GoalSelector(GoalSelectorDebugData { priority: VarInt(2), is_running: true, name: "goal".into() }),
+			DebugSubscriptionData::EntityPath(EntityPathDebugData {
+				reached: false,
+				next_block_index: 1,
+				block_position: Position::new(0, 0, 0),
+				nodes: PrefixedArray::new(vec![node.clone()]),
+				target_nodes: PrefixedArray::new(vec![]),
+				open_set: PrefixedArray::new(vec![node.clone()]),
+				closed_set: PrefixedArray::new(vec![node]),
+				max_node_distance: 3.0,
+			}),
+			DebugSubscriptionData::EntityBlockIntersection(EntityBlockIntersectionType::InFluid),
+			DebugSubscriptionData::BeeHive(BeeHiveDebugData { typ: VarInt(300), occupant_count: VarInt(2), honey_level: VarInt(5), sedated: true }),
+			DebugSubscriptionData::Poi(PoiDebugData { position: Position::new(5, 6, 7), typ: VarInt(1), free_ticket_count: VarInt(0) }),
+			DebugSubscriptionData::RedstoneWireOrientation(VarInt(4)),
+			DebugSubscriptionData::VillageSection,
+			DebugSubscriptionData::Raid(RaidDebugData { positions: PrefixedArray::new(vec![Position::new(1, 1, 1)]) }),
+			DebugSubscriptionData::Structure(StructureDebugData {
+				structures: PrefixedArray::new(vec![DebugStructureInfo {
+					bounding_box_min: Position::new(0, 0, 0),
+					bounding_box_max: Position::new(8, 8, 8),
+					pieces: PrefixedArray::new(vec![DebugStructurePiece { bounding_box_min: Position::new(0, 0, 0), bounding_box_max: Position::new(1, 1, 1), is_start: true }]),
+				}]),
+			}),
+			DebugSubscriptionData::GameEventListener(VarInt(16)),
+			DebugSubscriptionData::NeighborUpdate(Position::new(-1, -64, 1)),
+			DebugSubscriptionData::GameEvent(GameEventDebugData { event: VarInt(3), x: 0.5, y: 64.0, z: -0.5 }),
+		];
+		for v in variants {
+			round_trip(v);
+		}
+	}
+
+	#[test]
+	fn update_with_no_data_is_one_absent_byte() {
+		assert_eq!(ser(&DebugSubscriptionUpdate { data: PrefixedOptional::new(None) }), vec![0]);
+		let present = DebugSubscriptionUpdate { data: PrefixedOptional::new(Some(DebugSubscriptionData::VillageSection)) };
+		assert_eq!(ser(&present), vec![1, 10]);
+		round_trip(present);
+		round_trip(DebugSubscriptionEvent { data: DebugSubscriptionData::GameEventListener(VarInt(1)) });
+	}
+
+	#[test]
+	fn unknown_subscription_tag_is_rejected() {
+		let mut d = McDeserializer::new(&[16]);
+		assert!(DebugSubscriptionData::mc_deserialize(&mut d).is_err());
+	}
+
+	#[test]
+	fn small_enums_round_trip() {
+		assert_eq!(ser(&DebugPathNodeType::DangerTrapdoor), vec![25]);
+		assert_eq!(ser(&EntityBlockIntersectionType::InAir), vec![2]);
+		assert_eq!(ser(&DebugSampleType::TickTime), vec![0]);
+		round_trip(CustomReportDetail { title: "t".into(), description: "d".into() });
+	}
 }

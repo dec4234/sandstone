@@ -1,13 +1,13 @@
 use crate::protocol::game::effects::sound::SoundEvent;
 use crate::protocol::game::player::inventory::components::StructuredComponent;
 use crate::protocol::game::player::inventory::slotdata::SlotData;
-use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::internal_types::IDorX;
@@ -66,13 +66,13 @@ pub struct MapIcons {
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct MapColorPatch {
 	pub columns: u8,
-	#[mc(deserialize_if = columns == 0)]
+	#[mc(deserialize_if = columns > 0)]
 	pub rows: Option<u8>,
-	#[mc(deserialize_if = columns == 0)]
+	#[mc(deserialize_if = columns > 0)]
 	pub color_x: Option<u8>,
-	#[mc(deserialize_if = columns == 0)]
+	#[mc(deserialize_if = columns > 0)]
 	pub color_z: Option<u8>,
-	#[mc(deserialize_if = columns == 0)]
+	#[mc(deserialize_if = columns > 0)]
 	pub data: Option<PrefixedArray<u8>>
 }
 
@@ -328,5 +328,87 @@ impl McDeserialize for IdOrPaintingVariant {
 impl McDefault for IdOrPaintingVariant {
 	fn mc_default() -> Self {
 		IdOrPaintingVariant::Registry(VarInt(0))
+	}
+}
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn id_or_x_registry_ids_are_offset_by_one() {
+		// "ID or X": 0 means inline data follows, and N means registry ID N - 1.
+		// If the offset is lost, the client uses the wrong registry entry.
+		assert_eq!(ser(&IdOrTrimMaterial::Registry(VarInt(3))), vec![4]);
+		assert_eq!(ser(&IdOrTrimPattern::Registry(VarInt(0))), vec![1]);
+		assert_eq!(ser(&IdOrInstrument::Registry(VarInt(9))), vec![10]);
+		assert_eq!(ser(&IdOrBannerPattern::Registry(VarInt(1))), vec![2]);
+		assert_eq!(ser(&IdOrPaintingVariant::Registry(VarInt(4))), vec![5]);
+		round_trip(IdOrTrimMaterial::Registry(VarInt(3)));
+		round_trip(IdOrTrimPattern::Registry(VarInt(0)));
+		round_trip(IdOrInstrument::Registry(VarInt(9)));
+		round_trip(IdOrBannerPattern::Registry(VarInt(1)));
+		round_trip(IdOrPaintingVariant::Registry(VarInt(4)));
+	}
+
+	#[test]
+	fn id_or_x_inline_starts_with_zero() {
+		let inline = IdOrTrimMaterial::Inline(Box::new(TrimMaterial {
+			suffix: "gold".into(),
+			overrides: PrefixedArray::new(vec![TrimMaterialOverride { armor_material: "a".into(), asset_name: "b".into() }]),
+			description: TextComponent::new("Gold"),
+		}));
+		assert_eq!(ser(&inline)[0], 0);
+		round_trip(inline);
+		round_trip(IdOrTrimPattern::Inline(Box::new(TrimPattern { asset_name: "coast".into(), template_item: VarInt(3), description: TextComponent::new("Coast"), decal: false })));
+	}
+
+	#[test]
+	fn map_color_patch_reads_rows_only_when_columns_above_zero() {
+		// Wiki (Map Data): Rows, X, Z and Data are present "only if Columns is more than 0".
+		let patch = MapColorPatch { columns: 2, rows: Some(1), color_x: Some(0), color_z: Some(0), data: Some(PrefixedArray::new(vec![7, 8])) };
+		round_trip(patch);
+		// With zero columns, the next byte belongs to the next packet field.
+		let mut d = McDeserializer::new(&[0, 0xAA]);
+		let empty = MapColorPatch::mc_deserialize(&mut d).unwrap();
+		assert_eq!(empty.rows, None);
+		assert_eq!(d.collect_remaining(), &[0xAA]);
+	}
+
+	#[test]
+	fn trade_round_trips() {
+		let item = TradeItem { item_id: VarInt(1), item_count: VarInt(2), structured_components: PrefixedArray::new(vec![]) };
+		round_trip(Trade {
+			input_item_1: item.clone(),
+			output_item: SlotData { item_count: VarInt(1), item_id: Some(VarInt(3)), components_to_add: vec![], components_to_remove: vec![] },
+			input_item_2: PrefixedOptional::new(Some(item)),
+			trade_disabled: false,
+			number_of_trade_uses: 0,
+			xp: 1,
+			special_price: -2,
+			price_multiplier: 0.05,
+			demand: 0,
+		});
+	}
+
+	#[test]
+	fn default_values_with_text_components_round_trip() {
+		// These defaults hold a TextComponent. Its default used to recurse without end and overflow the stack.
+		round_trip(TrimMaterial::mc_default());
+		round_trip(IdOrTrimMaterial::Inline(Box::new(TrimMaterial::mc_default())));
+		round_trip(MapIcons::mc_default());
+		round_trip(Trade::mc_default());
 	}
 }

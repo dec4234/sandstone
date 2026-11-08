@@ -1,11 +1,11 @@
 use crate::bitflag;
 use crate::protocol::game::effects::sound::SoundEvent;
-use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::internal_types::IDorX;
@@ -128,5 +128,74 @@ impl McDeserialize for IdOrJukeboxSong {
 impl McDefault for IdOrJukeboxSong {
 	fn mc_default() -> Self {
 		IdOrJukeboxSong::Registry(VarInt(0))
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn stop_sound_flags_match_present_fields() {
+		// Wiki (Stop Sound): 0x01 means Source is present, 0x02 means Sound is present. A field is
+		// only written when its flag is set, else the client reads the wrong bytes.
+		assert_eq!(ser(&StopSoundDetails { source: None, sound: None }), vec![0x00]);
+		assert_eq!(ser(&StopSoundDetails { source: Some(SoundSource::Block), sound: None }), vec![0x01, 4]);
+		assert_eq!(ser(&StopSoundDetails { source: None, sound: Some("a".into()) }), vec![0x02, 1, b'a']);
+		assert_eq!(ser(&StopSoundDetails { source: Some(SoundSource::Voice), sound: Some("a".into()) }), vec![0x03, 9, 1, b'a']);
+	}
+
+	#[test]
+	fn stop_sound_round_trips_each_combination() {
+		round_trip(StopSoundDetails { source: None, sound: None });
+		round_trip(StopSoundDetails { source: Some(SoundSource::Master), sound: None });
+		round_trip(StopSoundDetails { source: None, sound: Some("minecraft:ambient.cave".into()) });
+		round_trip(StopSoundDetails { source: Some(SoundSource::Ambient), sound: Some("minecraft:ambient.cave".into()) });
+	}
+
+	#[test]
+	fn inline_sound_event_range_only_when_flag_set() {
+		let without = InlineSoundEvent { name: "a".into(), has_fixed_range: false, fixed_range: None };
+		assert_eq!(ser(&without), vec![1, b'a', 0]);
+		round_trip(without);
+
+		let with = InlineSoundEvent { name: "a".into(), has_fixed_range: true, fixed_range: Some(16.0) };
+		let mut expected = vec![1, b'a', 1];
+		expected.extend_from_slice(&16.0f32.to_be_bytes());
+		assert_eq!(ser(&with), expected);
+		round_trip(with);
+	}
+
+	#[test]
+	fn jukebox_song_registry_id_is_offset_by_one() {
+		// Wiki (ID or X): 0 means an inline value follows, else the registry ID is the value - 1.
+		assert_eq!(ser(&IdOrJukeboxSong::Registry(VarInt(0))), vec![1]);
+		assert_eq!(ser(&IdOrJukeboxSong::Registry(VarInt(5))), vec![6]);
+		round_trip(IdOrJukeboxSong::Registry(VarInt(5)));
+	}
+
+	#[test]
+	fn jukebox_song_inline_starts_with_zero() {
+		let song = IdOrJukeboxSong::Inline(Box::new(JukeboxSong {
+			sound_event: IDorX::Registry(VarInt(3)),
+			description: TextComponent::new("Song"),
+			duration: 120.0,
+			output: VarInt(7),
+		}));
+		assert_eq!(ser(&song)[0], 0);
+		round_trip(song);
 	}
 }

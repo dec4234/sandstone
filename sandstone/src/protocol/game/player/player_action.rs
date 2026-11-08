@@ -245,3 +245,78 @@ impl McDefault for PlayerInfoUpdateData {
 		}
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn empty_action() -> PlayerAction {
+		PlayerAction::mc_default()
+	}
+
+	#[test]
+	fn enum_set_raw_keeps_every_bit() {
+		// The mask tells the client which action fields follow. One lost bit shifts every field after it.
+		for raw in [0x00u8, 0x01, 0x09, 0xA5, 0xFF] {
+			assert_eq!(EnumSet::from_raw(raw).raw(), raw);
+			assert_eq!(ser(&EnumSet::from_raw(raw)), vec![raw]);
+		}
+	}
+
+	#[test]
+	fn mask_controls_which_fields_are_written() {
+		// Fields that are Some but not in the mask must not go on the wire.
+		let mut action = empty_action();
+		action.update_listed = Some(true);
+		action.update_latency = Some(VarInt(50));
+		let mut s = McSerializer::new();
+		action.serialize_with_mask(0x08, &mut s).unwrap();
+		assert_eq!(s.as_bytes(), &[1]);
+	}
+
+	#[test]
+	fn fields_are_written_in_bit_order() {
+		// Wire order follows the bit order, low bit first.
+		let mut action = empty_action();
+		action.update_game_mode = Some(VarInt(3)); // 0x04
+		action.update_latency = Some(VarInt(7)); // 0x10
+		action.update_hat = Some(false); // 0x80
+		let mut s = McSerializer::new();
+		action.serialize_with_mask(0x94, &mut s).unwrap();
+		assert_eq!(s.as_bytes(), &[3, 7, 0]);
+	}
+
+	#[test]
+	fn player_info_update_round_trips() {
+		let mut action = empty_action();
+		action.add_player = Some(AddPlayerData { name: "Steve".into(), properties: PrefixedArray::new(vec![]) });
+		action.update_listed = Some(true);
+		action.update_list_priority = Some(VarInt(2));
+		let data = PlayerInfoUpdateData {
+			actions: EnumSet::from_raw(0x01 | 0x08 | 0x40),
+			entries: vec![PlayerInfoEntry { uuid: Uuid::from_u128(1), actions: action }],
+		};
+		let bytes = ser(&data);
+		// mask, entry count, then the 16 byte UUID.
+		assert_eq!(&bytes[..2], &[0x49, 1]);
+		assert_eq!(&bytes[2..18], Uuid::from_u128(1).as_bytes());
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(PlayerInfoUpdateData::mc_deserialize(&mut d).unwrap(), data);
+		assert!(d.is_at_end());
+	}
+
+	#[test]
+	fn empty_mask_sends_only_uuids() {
+		let data = PlayerInfoUpdateData {
+			actions: EnumSet::new(),
+			entries: vec![PlayerInfoEntry { uuid: Uuid::nil(), actions: empty_action() }],
+		};
+		assert_eq!(ser(&data).len(), 1 + 1 + 16);
+	}
+}

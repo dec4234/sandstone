@@ -49,3 +49,46 @@ impl McDeserialize for RespawnKeptData {
 		})
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn respawn_kept_data_bits_match_wiki() {
+		// Wiki (Respawn): 0x01 keep attributes, 0x02 keep metadata.
+		assert_eq!(ser(&RespawnKeptData { keep_attributes: false, keep_metadata: false }), vec![0x00]);
+		assert_eq!(ser(&RespawnKeptData { keep_attributes: true, keep_metadata: false }), vec![0x01]);
+		assert_eq!(ser(&RespawnKeptData { keep_attributes: false, keep_metadata: true }), vec![0x02]);
+		assert_eq!(ser(&RespawnKeptData { keep_attributes: true, keep_metadata: true }), vec![0x03]);
+	}
+
+	#[test]
+	fn respawn_kept_data_round_trips() {
+		for a in [false, true] {
+			for m in [false, true] {
+				round_trip(RespawnKeptData { keep_attributes: a, keep_metadata: m });
+			}
+		}
+	}
+
+	#[test]
+	fn client_status_ids_match_wiki() {
+		assert_eq!(ser(&ClientStatusAction::PerformRespawn), vec![0]);
+		assert_eq!(ser(&ClientStatusAction::RequestStats), vec![1]);
+		assert!(ClientStatusAction::mc_deserialize(&mut McDeserializer::new(&[2])).is_err());
+	}
+}

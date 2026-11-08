@@ -1,12 +1,12 @@
 use crate::protocol::game::player::inventory::components::StructuredComponent;
 use crate::protocol::game::player::inventory::slotdata::SlotData;
-use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
@@ -145,4 +145,70 @@ pub enum InventoryOperationMode {
 	Drop = 4,
 	Drag = 5,
 	PickupAll = 6
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+		let mut s = McSerializer::new();
+		v.mc_serialize(&mut s).unwrap();
+		s.as_bytes().to_vec()
+	}
+
+	fn round_trip<T: McSerialize + McDeserialize + PartialEq + std::fmt::Debug>(v: T) {
+		let bytes = ser(&v);
+		let mut d = McDeserializer::new(&bytes);
+		assert_eq!(T::mc_deserialize(&mut d).unwrap(), v);
+		assert!(d.is_at_end(), "all bytes must be used");
+	}
+
+	#[test]
+	fn slot_display_ids_match_recipe_wiki() {
+		// The client picks the display type from this VarInt, so a wrong ID shows the wrong ingredient.
+		assert_eq!(ser(&SlotDisplay::Empty), vec![0]);
+		assert_eq!(ser(&SlotDisplay::AnyFuel), vec![1]);
+		assert_eq!(ser(&SlotDisplay::Item(VarInt(7))), vec![2, 7]);
+		assert_eq!(ser(&SlotDisplay::Tag("a".into())), vec![4, 1, b'a']);
+	}
+
+	#[test]
+	fn nested_slot_display_round_trips() {
+		round_trip(SlotDisplay::Composite(Box::new(CompositeSlotData {
+			options: PrefixedArray::new(vec![
+				SlotDisplay::Item(VarInt(1)),
+				SlotDisplay::WithRemainder(Box::new(WithRemainderSlotData { ingredient: SlotDisplay::AnyFuel, remainder: SlotDisplay::Empty })),
+			]),
+		})));
+	}
+
+	#[test]
+	fn empty_hashed_slot_is_one_byte() {
+		// A slot with no item sends only `has_item = false`. Extra bytes break the click packet.
+		let slot = HashedSlot { has_item: false, item_id: None, item_count: None, components: None, components_to_remove: None };
+		assert_eq!(ser(&slot), vec![0]);
+		round_trip(slot);
+	}
+
+	#[test]
+	fn full_hashed_slot_round_trips() {
+		round_trip(ChangedSlot {
+			slot: 36,
+			slot_data: HashedSlot {
+				has_item: true,
+				item_id: Some(VarInt(1)),
+				item_count: Some(VarInt(64)),
+				components: Some(PrefixedArray::new(vec![ComponentHashed { component_type: StructuredComponent::Unbreakable, data_hash: -5 }])),
+				components_to_remove: Some(PrefixedArray::new(vec![])),
+			},
+		});
+	}
+
+	#[test]
+	fn inventory_mode_ids() {
+		assert_eq!(ser(&InventoryOperationMode::Pickup), vec![0]);
+		assert_eq!(ser(&InventoryOperationMode::Drag), vec![5]);
+		assert_eq!(ser(&InventoryOperationMode::PickupAll), vec![6]);
+	}
 }
