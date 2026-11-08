@@ -1,13 +1,74 @@
 //! Testing Mojang API endpoints and processing.
 //!
-//! TODO: Rate limiting issues - can these be fixed to overcome ignoring these tests?
+//! Offline tests parse saved real responses from `tests/fixtures/` and run with a plain
+//! `cargo test`. The `#[ignore]` tests call the live Mojang API, which is rate limited.
+//! Run them only when needed, one at a time:
+//! `cargo test -p mojang-api -- --ignored --test-threads=1`
+
+/// Tests against saved Mojang responses. These need no network and cannot be rate limited.
+/// Each checks that a real response shape still deserializes into our public types.
+#[cfg(test)]
+mod offline {
+	use mojang_api::{MojangPublicKeysResponse, PlayerDetailsResponse, UuidRequestResponse};
+
+	#[test]
+	fn uuid_from_username_fixture() {
+		let resp: UuidRequestResponse = serde_json::from_str(include_str!("fixtures/uuid_notch.json")).unwrap();
+
+		assert_eq!(resp.id, "069a79f444e94726a5befca90e38aaf5");
+		assert_eq!(resp.name, "Notch");
+		assert_eq!(resp.legacy, None);
+		assert_eq!(resp.demo, None);
+	}
+
+	/// Mojang returns the bulk lookup in an unspecified order, so match by name, not index.
+	#[test]
+	fn bulk_usernames_fixture() {
+		let resp: Vec<UuidRequestResponse> = serde_json::from_str(include_str!("fixtures/uuid_bulk.json")).unwrap();
+
+		assert_eq!(resp.len(), 4);
+		let id_of = |name: &str| resp.iter().find(|r| r.name == name).map(|r| r.id.as_str());
+		assert_eq!(id_of("Notch"), Some("069a79f444e94726a5befca90e38aaf5"));
+		assert_eq!(id_of("jeb_"), Some("853c80ef3c3749fdaa49938b674adae6"));
+		assert_eq!(id_of("dec4234"), Some("ef39c1973c3d4776a22622096378a966"));
+		// Mojang returns the canonical capitalisation, not the requested "dinnerbone".
+		assert_eq!(id_of("Dinnerbone"), Some("61699b2ed3274a019f1e0ea8c3f06bc6"));
+	}
+
+	/// The textures property is base64 JSON inside JSON. Decoding it must yield the skin
+	/// URL, because that is what a server sends to clients to render the player.
+	#[test]
+	fn player_details_fixture() {
+		let resp: PlayerDetailsResponse = serde_json::from_str(include_str!("fixtures/profile_dec4234.json")).unwrap();
+
+		assert_eq!(resp.id, "ef39c1973c3d4776a22622096378a966");
+		assert_eq!(resp.name, "dec4234");
+		assert_eq!(resp.profileActions.len(), 0);
+		assert_eq!(resp.properties.len(), 1);
+		assert_eq!(resp.properties[0].name, "textures");
+
+		let skin = resp.properties[0].get_skin_details().unwrap();
+		assert_eq!(skin.profileId, resp.id);
+		assert_eq!(skin.profileName, resp.name);
+		assert!(skin.textures.SKIN.expect("textures should contain a skin").url.starts_with("http"));
+	}
+
+	#[test]
+	fn public_keys_fixture() {
+		let resp: MojangPublicKeysResponse = serde_json::from_str(include_str!("fixtures/public_keys.json")).unwrap();
+
+		assert!(!resp.profilePropertyKeys.is_empty());
+		assert!(!resp.playerCertificateKeys.is_empty());
+		assert!(!resp.authenticationKeys.is_empty());
+	}
+}
 
 #[cfg(test)]
 mod test {
 	use mojang_api::{generate_server_id, get_blocked_servers, get_mojang_public_keys, get_player_details, get_uuid_from_username, get_uuids_from_usernames, has_joined, join_server};
 	use rand_chacha::rand_core::SeedableRng;
 	use rsa::pkcs8::EncodePublicKey;
-	use rsa::{RsaPrivateKey, RsaPublicKey};
+	use rsa::{PrivateKey, PublicKey};
 	use uuid::Uuid;
 
 	/// Generates static, deterministic fake credentials for tests that need an RSA public key
@@ -19,8 +80,8 @@ mod test {
 	/// algorithm: the RSA public key as X.509 DER bytes and the raw 128-bit AES secret key.
 	fn fake_credentials() -> (Vec<u8>, Vec<u8>) {
 		let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(0);
-		let private = RsaPrivateKey::new(&mut rng, 1024).expect("failed to generate fake RSA key");
-		let public = RsaPublicKey::from(&private);
+		let private = PrivateKey::new(&mut rng, 1024).expect("failed to generate fake RSA key");
+		let public = PublicKey::from(&private);
 		let public_der = public.to_public_key_der().expect("failed to encode public key").as_bytes().to_vec();
 
 		let secret_key = vec![0x42u8; 16];

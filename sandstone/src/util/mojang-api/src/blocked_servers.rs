@@ -9,6 +9,11 @@ const BLOCKED_SERVERS_URL: &str = "https://sessionserver.mojang.com/blockedserve
 pub async fn get_blocked_servers() -> Result<HashSet<String>, HttpError> {
 	let response = crate::http::MojangServerQueryClient::get(BLOCKED_SERVERS_URL.to_string()).await?;
 
+	Ok(parse_blocked_servers(&response))
+}
+
+/// Parses the newline-separated hash list returned by the blocked servers endpoint.
+pub(crate) fn parse_blocked_servers(response: &str) -> HashSet<String> {
 	let mut vec = HashSet::new();
 
 	for line in response.lines() {
@@ -19,5 +24,21 @@ pub async fn get_blocked_servers() -> Result<HashSet<String>, HttpError> {
 		vec.insert(line.to_string());
 	}
 
-	Ok(vec)
+	vec
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	/// A server checks joins against this set, so blank or padded lines must not become
+	/// entries and real hashes must match exactly (no whitespace).
+	#[test]
+	fn parse_blocked_servers_fixture() {
+		let set = parse_blocked_servers(include_str!("../tests/fixtures/blocked_servers.txt"));
+
+		assert_eq!(set.len(), 3);
+		assert!(set.contains("dc2c735b3e6aba51ece294d7de21b947379aac4d"));
+		assert!(!set.contains(""));
+	}
 }

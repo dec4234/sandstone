@@ -30,10 +30,10 @@ pub enum EncryptionError {
 
 #[cfg(test)]
 mod tests {
-	use super::aes::{generate_shared_secret, CraftCipher, SHARED_SECRET_LEN};
-	use super::rsa::{decode_public_key, decrypt_with_private_key, encode_public_key, encrypt_with_public_key, generate_key_pair, generate_verify_token, RSA_KEY_BITS, VERIFY_TOKEN_LEN};
 	use super::EncryptionError;
-	use ::rsa::RsaPublicKey;
+	use super::aes::{CraftCipher, SHARED_SECRET_LEN, generate_shared_secret};
+	use super::rsa::{RSA_KEY_BITS, VERIFY_TOKEN_LEN, decode_public_key, decrypt_with_private_key, encode_public_key, encrypt_with_public_key, generate_key_pair, generate_verify_token};
+	use ::rsa::PublicKey;
 
 	/// The DER public key must survive a round trip, because the client decodes exactly
 	/// these bytes from the Encryption Request before it can encrypt anything. If encoding
@@ -41,7 +41,7 @@ mod tests {
 	#[test]
 	fn public_key_der_round_trip() {
 		let private = generate_key_pair().unwrap();
-		let public = RsaPublicKey::from(&private);
+		let public = PublicKey::from(&private);
 
 		let der = encode_public_key(&public).unwrap();
 		assert!(!der.is_empty(), "encoded SubjectPublicKeyInfo should not be empty");
@@ -56,7 +56,7 @@ mod tests {
 	#[test]
 	fn shared_secret_and_token_exchange() {
 		let private = generate_key_pair().unwrap();
-		let server_public_der = encode_public_key(&RsaPublicKey::from(&private)).unwrap();
+		let server_public_der = encode_public_key(&PublicKey::from(&private)).unwrap();
 
 		// Client side: decode the server's key, then encrypt the secret and token.
 		let client_view = decode_public_key(&server_public_der).unwrap();

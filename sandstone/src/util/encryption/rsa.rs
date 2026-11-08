@@ -2,9 +2,9 @@
 //!
 //! Reference: <https://minecraft.wiki/w/Java_Edition_protocol/Encryption>
 
-use rand::{rng, Rng};
+use rand::{Rng, rng};
 use rsa::pkcs8::{DecodePublicKey, EncodePublicKey};
-use rsa::{Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey};
+use rsa::{Pkcs1v15Encrypt, PrivateKey, PublicKey};
 
 use crate::util::encryption::EncryptionError;
 
@@ -19,19 +19,19 @@ pub const VERIFY_TOKEN_LEN: usize = 4;
 ///
 /// The returned private key is kept by the server; its public half (see
 /// [`encode_public_key`]) is what gets sent in the Encryption Request packet.
-pub fn generate_key_pair() -> Result<RsaPrivateKey, EncryptionError> {
-	Ok(RsaPrivateKey::new(&mut rng(), RSA_KEY_BITS)?)
+pub fn generate_key_pair() -> Result<PrivateKey, EncryptionError> {
+	Ok(PrivateKey::new(&mut rng(), RSA_KEY_BITS)?)
 }
 
 /// Encodes a public key as X.509 `SubjectPublicKeyInfo` DER bytes
-pub fn encode_public_key(public_key: &RsaPublicKey) -> Result<Vec<u8>, EncryptionError> {
+pub fn encode_public_key(public_key: &PublicKey) -> Result<Vec<u8>, EncryptionError> {
 	Ok(public_key.to_public_key_der()?.as_bytes().to_vec())
 }
 
 /// Decodes an X.509 `SubjectPublicKeyInfo` DER public key (as received in an Encryption
-/// Request) back into an [`RsaPublicKey`].
-pub fn decode_public_key(der: &[u8]) -> Result<RsaPublicKey, EncryptionError> {
-	Ok(RsaPublicKey::from_public_key_der(der)?)
+/// Request) back into an [`PublicKey`].
+pub fn decode_public_key(der: &[u8]) -> Result<PublicKey, EncryptionError> {
+	Ok(PublicKey::from_public_key_der(der)?)
 }
 
 /// Generates a random verify token for the Encryption Request packet.
@@ -48,13 +48,13 @@ pub fn generate_verify_token() -> [u8; VERIFY_TOKEN_LEN] {
 ///
 /// The client uses this to encrypt the shared secret and verify token before sending
 /// them in the Encryption Response packet. For a 1024-bit key the output is 128 bytes.
-pub fn encrypt_with_public_key(public_key: &RsaPublicKey, data: &[u8]) -> Result<Vec<u8>, EncryptionError> {
+pub fn encrypt_with_public_key(public_key: &PublicKey, data: &[u8]) -> Result<Vec<u8>, EncryptionError> {
 	Ok(public_key.encrypt(&mut rng(), Pkcs1v15Encrypt, data)?)
 }
 
 /// Decrypts `ciphertext` produced by [`encrypt_with_public_key`], using the server's private key.
 ///
 /// The server uses this to recover the shared secret and verify token from the Encryption Response packet.
-pub fn decrypt_with_private_key(private_key: &RsaPrivateKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError> {
+pub fn decrypt_with_private_key(private_key: &PrivateKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError> {
 	Ok(private_key.decrypt(Pkcs1v15Encrypt, ciphertext)?)
 }

@@ -117,11 +117,16 @@ pub async fn has_joined(username: String, server_id: String, ip: Option<String>)
 
 	let text = MojangServerQueryClient::get_params("https://sessionserver.mojang.com/session/minecraft/hasJoined".to_string(), map).await?;
 
+	parse_has_joined(&text)
+}
+
+/// Parses a `hasJoined` response body. An empty body (HTTP 204) means the player is not authenticated.
+pub(crate) fn parse_has_joined(text: &str) -> Result<HasJoinedResponse, HttpError> {
 	if text.trim().is_empty() {
 		return Err(HttpError::NotAuthenticated);
 	}
 
-	Ok(serde_json::from_str::<HasJoinedResponse>(&text)?)
+	Ok(serde_json::from_str::<HasJoinedResponse>(text)?)
 }
 
 /// A single Base64-encoded DER public key returned by the `publickeys` endpoint.
@@ -147,4 +152,30 @@ pub struct MojangPublicKeysResponse {
 /// player properties, player certificates and authentication tokens.
 pub async fn get_mojang_public_keys() -> Result<MojangPublicKeysResponse, HttpError> {
 	MojangServerQueryClient::get_parse("https://api.minecraftservices.com/publickeys".to_string(), false).await
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	/// Mojang answers a failed session check with HTTP 204 and no body. This must be an
+	/// explicit `NotAuthenticated` error so a server rejects the player instead of
+	/// treating a parse failure (or worse, success) as the result.
+	#[test]
+	fn parse_has_joined_empty_body_is_not_authenticated() {
+		assert!(matches!(parse_has_joined(""), Err(HttpError::NotAuthenticated)));
+		assert!(matches!(parse_has_joined("  \n"), Err(HttpError::NotAuthenticated)));
+	}
+
+	/// A successful check returns the same profile shape as the session profile endpoint.
+	/// The server needs the id, name and signed textures property to spawn the player.
+	#[test]
+	fn parse_has_joined_profile_fixture() {
+		let resp = parse_has_joined(include_str!("../tests/fixtures/profile_dec4234.json")).unwrap();
+
+		assert_eq!(resp.id, "ef39c1973c3d4776a22622096378a966");
+		assert_eq!(resp.name, "dec4234");
+		assert_eq!(resp.properties[0].name, "textures");
+		assert!(resp.properties[0].signature.is_some());
+	}
 }
