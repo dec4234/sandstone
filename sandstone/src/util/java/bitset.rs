@@ -173,7 +173,7 @@ impl From<&[u8]> for BitSet {
 	fn from(bytes: &[u8]) -> Self {
 		let mut bits = vec![0; bytes.len().div_ceil(8)];
 		for (i, byte) in bytes.iter().enumerate() {
-			bits[i / 8] |= (*byte as u64) << (i % 8);
+			bits[i / 8] |= (*byte as u64) << ((i % 8) * 8);
 		}
 		Self {
 			bits,
@@ -183,9 +183,10 @@ impl From<&[u8]> for BitSet {
 
 impl From<BitSet> for Vec<u8> {
 	fn from(bitset: BitSet) -> Self {
-		let mut bytes = vec![0; bitset.size().div_ceil(8)];
-		for (i, byte) in bitset.bits.iter().enumerate() {
-			bytes[i] = (*byte & 0xFF) as u8;
+		// Same as Java's `BitSet.toByteArray`: little-endian, with trailing zero bytes removed.
+		let mut bytes: Vec<u8> = bitset.bits.iter().flat_map(|long| long.to_le_bytes()).collect();
+		while bytes.last() == Some(&0) {
+			bytes.pop();
 		}
 		bytes
 	}
@@ -307,5 +308,52 @@ mod test {
 		assert!(bitset1.get_bit(63));
 		assert!(bitset1.get_bit(61));
 		assert!(bitset1.get_bit(127));
+	}
+
+	/// Byte `i` holds bits `8*i .. 8*i+8`, the same little-endian layout as Java's `BitSet.valueOf(byte[])`.
+	/// If the shift is wrong, a bit set from bytes reads back at the wrong index.
+	#[test]
+	fn from_bytes_places_each_byte_at_its_own_offset() {
+		let bitset = BitSet::from(&[0x01u8, 0x01, 0, 0, 0, 0, 0, 0x80, 0x02][..]);
+		assert!(bitset.get_bit(0));
+		assert!(!bitset.get_bit(1));
+		assert!(bitset.get_bit(8));
+		assert!(bitset.get_bit(63));
+		assert!(bitset.get_bit(65));
+		assert!(!bitset.get_bit(64));
+	}
+
+	/// Converting to bytes must keep all 8 bytes of each u64, or high bits are lost.
+	#[test]
+	fn to_bytes_keeps_every_byte() {
+		let mut bitset = BitSet::new(128);
+		bitset.set_bit(0, true);
+		bitset.set_bit(15, true);
+		bitset.set_bit(63, true);
+		bitset.set_bit(64, true);
+		bitset.set_bit(127, true);
+
+		let bytes: Vec<u8> = bitset.clone().into();
+		assert_eq!(bytes.len(), 16);
+		assert_eq!(bytes[0], 0x01);
+		assert_eq!(bytes[1], 0x80);
+		assert_eq!(bytes[7], 0x80);
+		assert_eq!(bytes[8], 0x01);
+		assert_eq!(bytes[15], 0x80);
+		assert_eq!(BitSet::from(bytes.as_slice()), bitset);
+	}
+
+	/// Java's `toByteArray` gives `(length() + 7) / 8` bytes, where `length()` is the highest set bit + 1.
+	/// Trailing zero bytes are removed, so a peer that compares byte arrays gets the same result.
+	#[test]
+	fn to_bytes_removes_trailing_zero_bytes_like_java() {
+		let mut bitset = BitSet::new(128);
+		assert_eq!(Vec::<u8>::from(bitset.clone()), Vec::<u8>::new());
+
+		bitset.set_bit(9, true);
+		assert_eq!(Vec::<u8>::from(bitset.clone()), vec![0x00, 0x02]);
+
+		bitset.set_bit(64, true);
+		assert_eq!(Vec::<u8>::from(bitset), vec![0x00, 0x02, 0, 0, 0, 0, 0, 0, 0x01]);
 	}
 }

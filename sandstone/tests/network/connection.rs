@@ -12,6 +12,7 @@ mod test {
 	use sandstone::protocol::packets::packet_definer::PacketState;
 	use sandstone::protocol::packets::{HandshakingPacket, Packet, PingRequestPacket, PingResponsePacket};
 	use sandstone::protocol_types::datatypes::var_types::VarInt;
+	use std::io::ErrorKind;
 	use std::time::Duration;
 	use tokio::io::{AsyncReadExt, AsyncWriteExt};
 	use tokio::net::{TcpListener, TcpStream};
@@ -340,5 +341,110 @@ mod test {
 		let mut buf = [0u8; 1];
 		let n = tokio::time::timeout(Duration::from_secs(5), server.tcp_stream.read(&mut buf)).await.unwrap().unwrap();
 		assert_eq!(n, 0);
+	}
+
+	/// Wait until the socket has data, then give the rest of a small write time to arrive.
+	async fn wait_for_data(conn: &CraftConnection) {
+		tokio::time::timeout(Duration::from_secs(5), conn.tcp_stream.readable()).await.expect("timed out").unwrap();
+		tokio::time::sleep(Duration::from_millis(50)).await;
+	}
+
+	fn assert_would_block(result: Result<Packet, NetworkError>) {
+		match result {
+			Err(NetworkError::IOError(e)) if e.kind() == ErrorKind::WouldBlock => {}
+			other => panic!("expected WouldBlock, got {other:?}"),
+		}
+	}
+
+	#[tokio::test]
+	async fn try_receive_on_client_uses_clientbound_packets() {
+		// Status 0x01 is PingRequest to the server but PingResponse to the client.
+		// A client must decode with the clientbound table, or it gets the wrong packet type.
+		let (mut client, mut server) = pair().await;
+		client.packet_state = PacketState::STATUS;
+		server.packet_state = PacketState::STATUS;
+
+		server.send_packet(Packet::PingResponse(PingResponsePacket { payload: 42 })).await.unwrap();
+		wait_for_data(&client).await;
+		assert_eq!(client.try_receive_packet().unwrap(), Packet::PingResponse(PingResponsePacket { payload: 42 }));
+	}
+
+	#[tokio::test]
+	async fn try_receive_with_no_data_would_block() {
+		// The example server loop sleeps on WouldBlock and treats other errors as a closed connection.
+		let (_raw, mut server) = server_with_raw_peer().await;
+		assert_would_block(server.try_receive_packet());
+	}
+
+	#[tokio::test]
+	async fn try_receive_continues_a_partly_received_frame() {
+		// TCP can split a frame. A partial frame must not be decoded, and the stream must stay in
+		// sync so the next frame after it also decodes.
+		let (mut raw, mut server) = server_with_raw_peer().await;
+		server.packet_state = PacketState::STATUS;
+
+		let first: [u8; 10] = [9, 0x01, 0, 0, 0, 0, 0, 0, 0, 7];
+		let second: [u8; 10] = [9, 0x01, 0, 0, 0, 0, 0, 0, 0, 8];
+
+		raw.write_all(&first[..4]).await.unwrap();
+		wait_for_data(&server).await;
+		assert_would_block(server.try_receive_packet());
+
+		raw.write_all(&first[4..]).await.unwrap();
+		raw.write_all(&second[..1]).await.unwrap();
+		wait_for_data(&server).await;
+		assert_eq!(server.try_receive_packet().unwrap(), ping(7));
+		assert_would_block(server.try_receive_packet());
+
+		raw.write_all(&second[1..]).await.unwrap();
+		wait_for_data(&server).await;
+		assert_eq!(server.try_receive_packet().unwrap(), ping(8));
+	}
+
+	#[tokio::test]
+	async fn try_receive_reports_peer_close_as_no_data() {
+		let (raw, mut server) = server_with_raw_peer().await;
+		drop(raw);
+		wait_for_data(&server).await;
+		match server.try_receive_packet() {
+			Err(NetworkError::NoDataReceived) => {}
+			other => panic!("expected NoDataReceived, got {other:?}"),
+		}
+	}
+
+	#[tokio::test]
+	async fn receive_packet_continues_a_frame_that_try_receive_started() {
+		// try_receive keeps the start of a split frame. receive_packet must finish that frame,
+		// not read its last bytes as a new length prefix.
+		let (mut raw, mut server) = server_with_raw_peer().await;
+		server.packet_state = PacketState::STATUS;
+
+		let first: [u8; 10] = [9, 0x01, 0, 0, 0, 0, 0, 0, 0, 7];
+		raw.write_all(&first[..4]).await.unwrap();
+		wait_for_data(&server).await;
+		assert_would_block(server.try_receive_packet());
+
+		raw.write_all(&first[4..]).await.unwrap();
+		raw.write_all(&[9, 0x01, 0, 0, 0, 0, 0, 0, 0, 8]).await.unwrap();
+		for payload in [7, 8] {
+			let packet = tokio::time::timeout(Duration::from_secs(5), server.receive_packet()).await.expect("timed out");
+			assert_eq!(packet.unwrap(), ping(payload));
+		}
+	}
+
+	#[tokio::test]
+	async fn receive_packet_reports_close_during_a_started_frame() {
+		let (mut raw, mut server) = server_with_raw_peer().await;
+		server.packet_state = PacketState::STATUS;
+
+		raw.write_all(&[9, 0x01, 0]).await.unwrap();
+		wait_for_data(&server).await;
+		assert_would_block(server.try_receive_packet());
+
+		drop(raw);
+		match tokio::time::timeout(Duration::from_secs(5), server.receive_packet()).await.expect("timed out") {
+			Err(NetworkError::NoDataReceived) => {}
+			other => panic!("expected NoDataReceived, got {other:?}"),
+		}
 	}
 }

@@ -133,19 +133,9 @@ impl Display for VarInt {
 impl FromStr for VarInt {
 	type Err = Error;
 
+	/// Parse the decimal text form of the value (the same form that `Display` writes), e.g. `"300"`.
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let bytes = s.as_bytes();
-
-		if bytes.is_empty() || bytes.len() > 5 {
-			return Err(Error);
-		}
-
-		let var_int = VarInt::from_slice(bytes);
-
-		match var_int {
-			Ok(var) => Ok(var),
-			Err(_e) => Err(Error),
-		}
+		s.parse::<i32>().map(VarInt).map_err(|_| Error)
 	}
 }
 
@@ -305,19 +295,9 @@ impl Display for VarLong {
 impl FromStr for VarLong {
 	type Err = Error;
 
+	/// Parse the decimal text form of the value (the same form that `Display` writes), e.g. `"300"`.
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let bytes = s.as_bytes();
-
-		if bytes.is_empty() || bytes.len() > 5 {
-			return Err(Error);
-		}
-
-		let var_int = VarLong::from_slice(bytes);
-
-		match var_int {
-			Ok(var) => Ok(var),
-			Err(_) => Err(Error),
-		}
+		s.parse::<i64>().map(VarLong).map_err(|_| Error)
 	}
 }
 
@@ -585,5 +565,26 @@ mod tests {
 		assert_eq!(VarInt(0).to_string(), "0");
 		assert_eq!(VarLong(9223372036854775807).to_string(), "9223372036854775807");
 		assert_eq!(VarLong(-1).to_string(), "-1");
+	}
+
+	/// `FromStr` must read the decimal text form that `Display` writes, not treat the text as wire bytes.
+	#[test]
+	fn from_str_parses_decimal_text() {
+		assert_eq!("300".parse::<VarInt>(), Ok(VarInt(300)));
+		assert_eq!("-1".parse::<VarInt>(), Ok(VarInt(-1)));
+		assert_eq!(VarInt(i32::MIN).to_string().parse::<VarInt>(), Ok(VarInt(i32::MIN)));
+		assert!("".parse::<VarInt>().is_err());
+		assert!("abc".parse::<VarInt>().is_err());
+		assert!("2147483648".parse::<VarInt>().is_err());
+	}
+
+	/// A VarLong holds an i64, so text longer than 5 characters must also parse.
+	#[test]
+	fn varlong_from_str_parses_full_i64_range() {
+		assert_eq!("300".parse::<VarLong>(), Ok(VarLong(300)));
+		assert_eq!("9223372036854775807".parse::<VarLong>(), Ok(VarLong(i64::MAX)));
+		assert_eq!("-9223372036854775808".parse::<VarLong>(), Ok(VarLong(i64::MIN)));
+		assert!("".parse::<VarLong>().is_err());
+		assert!("1.5".parse::<VarLong>().is_err());
 	}
 }

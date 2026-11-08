@@ -57,6 +57,8 @@ pub struct CraftConnection {
 	craft_cipher: Option<CraftCipher>,
 	/// Reusable buffer for packet reads, avoids allocating per packet
 	read_buffer: Vec<u8>,
+	/// Bytes of a frame that [CraftConnection::try_receive_packet] has received but not yet decoded
+	pending_frame: Vec<u8>,
 }
 
 impl CraftConnection {
@@ -121,6 +123,7 @@ impl CraftConnection {
 			client_type,
 			craft_cipher: None,
 			read_buffer: Vec::with_capacity(1024),
+			pending_frame: Vec::new(),
 		})
 	}
 
@@ -213,6 +216,18 @@ impl CraftConnection {
 
 	/// Receive a minecraft packet from the client. This will block until a packet is received. This removes data from the TCP buffer
 	pub async fn receive_packet(&mut self) -> Result<Packet, NetworkError> {
+		// Finish a frame that try_receive_packet started, or its bytes are lost and the stream goes out of sync.
+		while !self.pending_frame.is_empty() {
+			match self.try_receive_packet() {
+				Err(NetworkError::IOError(e)) if e.kind() == std::io::ErrorKind::WouldBlock => self.tcp_stream.readable().await?,
+				Err(NetworkError::NoDataReceived) => {
+					self.close().await;
+					return Err(NetworkError::NoDataReceived);
+				}
+				result => return result,
+			}
+		}
+
 		// Read VarInt length prefix using a stack array (no heap allocation)
 		let mut varint_buf = [0u8; 3];
 		let mut varint_len = 0usize;
@@ -277,61 +292,70 @@ impl CraftConnection {
 		Ok(packet)
 	}
 
-	/// Try to receive a packet from the buffer without blocking. This will return 'NoDataReceived'
-	/// if no data is available.
+	/// Try to receive a packet from the buffer without blocking.
+	///
+	/// If the full frame is not available yet, this returns `NetworkError::IOError` with kind
+	/// `WouldBlock`. The bytes received so far are kept, and the next call continues the same frame.
+	/// Returns `NoDataReceived` if the peer closed the connection.
+	///
+	/// [CraftConnection::receive_packet] also continues a frame that this function started.
 	pub fn try_receive_packet(&mut self) -> Result<Packet, NetworkError> {
-		let mut varint_buf = [0u8; 3];
-		let mut var_len = 0usize;
-
-		loop {
-			let mut one = [0u8; 1];
-			if self.tcp_stream.try_read(&mut one)? == 0 {
-				return Err(NetworkError::NoDataReceived);
-			}
-
-			if let Some(cipher) = &mut self.craft_cipher {
-				cipher.decrypt(&mut one);
-			}
-
-			varint_buf[var_len] = one[0];
-			var_len += 1;
-
-			if one[0] & CONTINUE_BIT == 0 {
-				break;
-			} else if var_len >= 3 {
+		// Read the length prefix one byte at a time, so no byte of the next frame is consumed.
+		let (var_len, total_len) = loop {
+			if let Some(end) = self.pending_frame.iter().position(|b| b & CONTINUE_BIT == 0) {
+				let packet_len = VarInt::from_slice(&self.pending_frame[..=end])?.0 as usize;
+				if packet_len > PACKET_MAX_SIZE {
+					self.pending_frame.clear();
+					return Err(NetworkError::PacketTooLarge);
+				}
+				break (end + 1, end + 1 + packet_len);
+			} else if self.pending_frame.len() >= 3 {
+				self.pending_frame.clear();
 				return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
 			}
+
+			self.try_read_pending(1)?;
+		};
+
+		while self.pending_frame.len() < total_len {
+			self.try_read_pending(total_len - self.pending_frame.len())?;
 		}
 
-		let packet_len = VarInt::from_slice(&varint_buf[..var_len])?.0 as usize;
+		let frame = std::mem::take(&mut self.pending_frame);
 
-		if packet_len > PACKET_MAX_SIZE {
-			return Err(NetworkError::PacketTooLarge);
-		}
+		trace!("Received from {} : {:?}", self, &frame);
 
-		let total_len = var_len + packet_len;
-		let mut buffer = vec![0u8; total_len];
-		buffer[..var_len].copy_from_slice(&varint_buf[..var_len]);
+		let deser_buf = self.build_deserializer_buffer(&frame[var_len..])?;
+		let mut deserializer = McDeserializer::new(&deser_buf);
+		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, self.client_type)?;
 
-		let length = self.tcp_stream.try_read(&mut buffer[var_len..])?;
+		Ok(packet)
+	}
 
-		trace!("Received from {} : {:?}", self, &buffer);
+	/// Read up to `n` more bytes of the current frame into `pending_frame` without blocking, and
+	/// decrypt them if encryption is enabled.
+	fn try_read_pending(&mut self, n: usize) -> Result<(), NetworkError> {
+		let start = self.pending_frame.len();
+		self.pending_frame.resize(start + n, 0);
 
-		if length == 0 {
+		let read = match self.tcp_stream.try_read(&mut self.pending_frame[start..]) {
+			Ok(read) => read,
+			Err(e) => {
+				self.pending_frame.truncate(start);
+				return Err(e.into());
+			}
+		};
+		self.pending_frame.truncate(start + read);
+
+		if read == 0 {
 			return Err(NetworkError::NoDataReceived);
-		} else if length == PACKET_MAX_SIZE {
-			return Err(NetworkError::PacketTooLarge);
 		}
 
 		if let Some(cipher) = &mut self.craft_cipher {
-			cipher.decrypt(&mut buffer[var_len..]);
+			cipher.decrypt(&mut self.pending_frame[start..]);
 		}
 
-		let deser_buf = self.build_deserializer_buffer(&buffer[var_len..])?;
-		let mut deserializer = McDeserializer::new(&deser_buf);
-		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, PacketDirection::SERVER)?;
-
-		Ok(packet)
+		Ok(())
 	}
 
 	pub async fn receive_direct<T: McSerialize + McDeserialize>(&mut self) -> Result<T, NetworkError> {

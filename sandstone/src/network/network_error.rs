@@ -10,7 +10,8 @@ use thiserror::Error;
 /// Any sort of error that could occur while performing or processing a network request.
 #[derive(Error, Debug)]
 pub enum NetworkError {
-	/// Like when using try_receive and it returns None.
+	/// The peer closed the connection: a read returned 0 bytes, or the stream ended before a full
+	/// packet was received.
 	#[error("No data received from stream")]
 	NoDataReceived,
 	#[error("Connection aborted locally")]

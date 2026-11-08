@@ -1,6 +1,7 @@
 //! Status Protocol Components
 
 use crate::protocol::packets::StatusResponsePacket;
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
@@ -120,7 +121,8 @@ impl McDeserialize for StatusResponseSpec {
 	where
 		Self: Sized,
 	{
-		let raw = serde_json::from_str(&String::mc_deserialize(deserializer)?).unwrap(); // TODO: test
+		let raw = serde_json::from_str(&String::mc_deserialize(deserializer)?)
+			.map_err(|e| SerializingErr::DeserializationError(format!("Failed to deserialize JSON: {}", e)))?;
 
 		Ok(raw)
 	}
@@ -300,5 +302,16 @@ mod test {
 		let decoded = StatusResponseSpec::mc_deserialize(&mut deserializer).unwrap();
 
 		assert_eq!(spec, decoded);
+	}
+
+	/// The status JSON comes from a remote server. Bad JSON must give an error, not a panic.
+	#[test]
+	fn malformed_status_json_is_an_error() {
+		for json in ["not json", "{}", "{\"version\": 5}"] {
+			let mut serializer = McSerializer::new();
+			json.to_string().mc_serialize(&mut serializer).unwrap();
+			let mut deserializer = McDeserializer::new(&serializer.output);
+			assert!(StatusResponseSpec::mc_deserialize(&mut deserializer).is_err(), "accepted {json}");
+		}
 	}
 }
