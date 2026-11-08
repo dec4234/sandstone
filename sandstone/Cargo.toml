@@ -13,21 +13,21 @@ categories = ["network-programming", "game-development", "game-engines"]
 exclude = ["src/sandstone-derive"]
 
 [dependencies]
-tokio = { version = "1.53.1", features = ["net", "io-util"] }
+tokio = { version = "1.54.1", features = ["net", "io-util"] }
 cfb8 = { version = "0.9.1" }
-serde_json = "1.0.151"
+serde_json = "1.0.154"
 serde = { version = "1.0.229", features = ["derive"] }
-uuid = { version = "1.24.0", features = ["v4"] }
-base64 = "0.23.0"
-log = "0.4.33"
+uuid = { version = "1.29.1", features = ["v4"] }
+base64 = "0.23.1"
+log = "0.4.35"
 image = { version = "0.25.10", features = ["default", "png"] }
-flate2 = "1.1.9"
+flate2 = "1.1.11"
 regex = "1.13.1"
-thiserror = "2.0.19"
-aes = "0.9.1"
-rsa = { version = "0.10.0-rc.18", features = ["std"] }
-rand = "0.10.2"
-hickory-resolver = "0.26.1"
+thiserror = "2.0.21"
+aes = "0.9.4"
+rsa = { version = "0.10.0-rc.22", features = ["std", "pkcs1v15"] }
+rand = "0.10.3"
+hickory-resolver = "0.26.3"
 paste = "1.0"
 cesu8 = "1.1.0"
 smart-default = "0.7.1"
@@ -37,8 +37,8 @@ mc-data = { path = "src/protocol/game/info/content/mc-data" }
 mojang-api = { path = "src/util/mojang-api" }
 
 [build-dependencies]
-serde_json = "1.0.151"
-ureq = "3.3.0"
+serde_json = "1.0.154"
+ureq = "3.5.1"
 
 [features]
 vendored = ["mc-data/vendored"] # Pull block and item data from static JSON

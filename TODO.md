@@ -20,3 +20,4 @@
 - [ ] Change #[mc(deserialize_if)] to a more applicable "include_if" that applies for serialization and deserialization?
 - [ ] Chat message signatures
 - [ ] Investigate no-std support
+- [ ] Serde wrapper?
