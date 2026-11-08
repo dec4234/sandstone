@@ -3,13 +3,13 @@
 //! https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format
 
 use crate::protocol::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
-use crate::protocol::serialization::serializer_error::SerializingErr;
-use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
+use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::internal_types::PackedEntries;
 use crate::protocol_types::datatypes::nbt::NbtCompound;
@@ -17,7 +17,7 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
-/// Chunk Data field as defined in https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data
+/// Chunk Data field as defined in https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ChunkData {
 	pub heightmaps: PrefixedArray<Heightmap>,
@@ -25,6 +25,7 @@ pub struct ChunkData {
 	pub block_entities: PrefixedArray<BlockEntity>,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Light_Data>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct LightData {
 	pub sky_light_mask: BitSet,
@@ -135,6 +136,7 @@ impl McDeserialize for ChunkByteData {
 	}
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Chunk_Section_structure>
 #[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
 pub struct ChunkSection {
 	/// Number of non-air blocks present in the chunk section. "Non-air" is defined as any fluid and block other than air, cave air, and void air
@@ -220,6 +222,7 @@ impl McDeserialize for BiomeByteData {
 	}
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Paletted_Container_structure>
 #[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
 pub struct PalletedContainer {
 	pub bits_per_entry: u8,
@@ -306,6 +309,8 @@ impl PalletedContainer {
 }
 
 /// Used to determine which palette format to use based on the Bits Per Entry
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Palette_formats>
 #[derive(McDefault, Debug, Clone, Hash, PartialEq)]
 pub enum PaletteFormatType {
 	BLOCKS,
@@ -370,6 +375,7 @@ pub struct IndirectFormat {
 	pub palette: PrefixedArray<VarInt>,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Heightmap_structure>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Hash, PartialEq)]
 pub struct Heightmap {
 	typ: VarInt,

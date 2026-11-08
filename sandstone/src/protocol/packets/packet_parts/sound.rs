@@ -85,6 +85,7 @@ pub struct InlineSoundEvent {
 	pub fixed_range: Option<f32>,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Jukebox_Song>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct JukeboxSong {
 	pub sound_event: IDorX<SoundEvent>,

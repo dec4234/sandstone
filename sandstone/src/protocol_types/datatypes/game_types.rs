@@ -1,16 +1,18 @@
 //! Types found in game such as position, etc.
 
-use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarLong;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum};
 
 /// A Minecraft position, internally represented as a 64-bit integer.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Position>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Copy, Clone)]
 pub struct Position {
 	data: u64,

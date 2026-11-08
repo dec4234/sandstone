@@ -97,6 +97,7 @@ pub struct TradeItem {
 	pub structured_components: PrefixedArray<StructuredComponent>
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Trim_Material>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct TrimMaterial {
 	pub suffix: String,
@@ -110,6 +111,7 @@ pub struct TrimMaterialOverride {
 	pub asset_name: String,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Trim_Pattern>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct TrimPattern {
 	pub asset_name: String,
@@ -194,6 +196,7 @@ impl McDefault for IdOrTrimPattern {
 	}
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Instrument>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct Instrument {
 	pub sound_event: IDorX<SoundEvent>,
@@ -240,6 +243,7 @@ impl McDefault for IdOrInstrument {
 	}
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Banner_Pattern>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct BannerPatternDef {
 	pub asset_id: String,

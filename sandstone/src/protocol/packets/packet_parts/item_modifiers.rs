@@ -8,6 +8,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, VarIntEnum};
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Dye_Color>
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum DyeColor {

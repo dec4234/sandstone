@@ -221,6 +221,8 @@ impl<const N: usize> McDeserialize for [u8; N] {
 
 /// # PrefixedArray (Protocol Type)
 /// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Prefixed_Array>
 #[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
 pub struct PrefixedArray<T: McSerialize + McDeserialize> {
 	pub(crate) vec: Vec<T>,

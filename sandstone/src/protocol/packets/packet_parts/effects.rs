@@ -7,6 +7,7 @@ use crate::protocol_types::datatypes::internal_types::{IDSet, IDorX};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Firework_Explosion>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct FireworkExplosion {
 	pub shape: VarInt,
@@ -64,12 +65,14 @@ impl McDefault for PotionEffectDetail {
 	}
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Potion_Effect>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct PotionEffect {
 	pub type_id: VarInt,
 	pub detail: PotionEffectDetail,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Consume_Effect>
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum ConsumeEffect {

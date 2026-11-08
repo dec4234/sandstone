@@ -6,6 +6,8 @@ use sandstone_derive::{McDefault, McSerialize};
 use std::hash::{Hash, Hasher};
 
 /// A Node used for representing graphs
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Node_Format>
 #[derive(McSerialize, McDefault, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Node {
 	pub flags: NodeFlags,
@@ -14,6 +16,7 @@ pub struct Node {
 	pub redirect_node: Option<VarInt>,
 	pub name: Option<String>,
 	pub parser: Option<Parser>,
+	/// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Suggestions_Types>
 	pub suggestions: Option<String>,
 }
 
@@ -67,6 +70,8 @@ impl McDeserialize for Node {
 }
 
 /// Internal node flags represented as a byte with masking
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Flags>
 #[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct NodeFlags {
 	pub typ: NodeType,
@@ -139,6 +144,7 @@ pub enum NodeType {
 	Argument = 2,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Parsers>
 #[derive(Debug, Clone)]
 pub enum Parser {
 	BrigadierBool,

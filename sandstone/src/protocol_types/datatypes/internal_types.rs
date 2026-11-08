@@ -58,6 +58,8 @@ impl McSerialize for PackedEntries {
 }
 
 /// ID set used for representing a set of ids in a registry either directly enumerated or indirectly via tag name
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#ID_Set>
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IDSet {
 	pub typ: VarInt,
@@ -236,6 +238,8 @@ pub struct Angle {
 
 /// Compressed / low-precision 3-component vector (1.21.9+). Used for entity velocity and other
 /// small motion vectors. Wire format is 1 byte for zero vectors, 6-7+ bytes otherwise.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#LpVec3>
 #[derive(Debug, Clone, PartialEq)]
 pub struct LpVec3 {
 	pub x: f64,

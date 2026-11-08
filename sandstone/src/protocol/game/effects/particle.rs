@@ -13,6 +13,7 @@ pub enum VibrationSource {
 	Entity(VarInt, f32) = 1,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Particles>
 #[derive(VarIntEnum, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum Particle {

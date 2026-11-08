@@ -15,6 +15,8 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
 /// A debug subscription event: a debug subscription type followed by its data. The type tag and
 /// the data are carried together by the tagged [DebugSubscriptionData] enum.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Debug_Subscription_Event>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct DebugSubscriptionEvent {
 	pub data: DebugSubscriptionData,
@@ -23,6 +25,8 @@ pub struct DebugSubscriptionEvent {
 /// A debug subscription update: a debug subscription type followed by its optional data. The type
 /// tag travels with the data inside [DebugSubscriptionData]; when absent the subscription carries
 /// no value.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Debug_Subscription_Update>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct DebugSubscriptionUpdate {
 	pub data: PrefixedOptional<DebugSubscriptionData>,
@@ -30,6 +34,8 @@ pub struct DebugSubscriptionUpdate {
 
 /// The value of a debug subscription. The VarInt discriminant identifies the subscription type and
 /// selects the associated data.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Debug_Subscription_Data>
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum DebugSubscriptionData {
@@ -145,6 +151,7 @@ pub struct GameEventDebugData {
 	pub z: f64,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Debug_Path_Node>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct DebugPathNode {
 	pub x: i32,
@@ -187,6 +194,7 @@ pub enum DebugPathNodeType {
 	DangerTrapdoor = 25,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Debug_Structure_Info>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct DebugStructureInfo {
 	pub bounding_box_min: Position,

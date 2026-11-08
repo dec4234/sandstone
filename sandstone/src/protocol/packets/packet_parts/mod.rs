@@ -368,6 +368,8 @@ pub struct TooltipMatch {
 }
 
 /// Network representation of chat type.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Chat_Type>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ChatTypeNetwork {
 	pub chat: ChatTypeEntry,

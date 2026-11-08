@@ -10,6 +10,8 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 use std::ops::Range;
 
 /// A BitSet is a bitmask datatype of infinite size. It is stored as a Vec of u64
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#BitSet>
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BitSet {
 	bits: Vec<u64>,

@@ -9,6 +9,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
+// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags>
 bitflag!(TeleportFlags: i32 {
 	relative_x, relative_y, relative_z, relative_yaw, relative_pitch, relative_velocity_x, relative_velocity_y, relative_velocity_z, rotate_velocity
 });

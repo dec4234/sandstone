@@ -83,6 +83,7 @@ impl McDefault for EntityMetadataEntry {
 	}
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_metadata#Entity_Metadata_Format>
 #[derive(McDefault, Debug, Clone, PartialEq)]
 pub struct EntityMetadata {
 	pub entries: Vec<EntityMetadataEntry>,
@@ -129,6 +130,7 @@ pub struct ProfileProperty {
 	pub signature: PrefixedOptional<String>,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Resolvable_Profile>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ResolvableProfile {
 	pub name: PrefixedOptional<String>,

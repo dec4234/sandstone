@@ -30,6 +30,7 @@ pub struct BlockParticleAlternative {
 	pub weight: VarInt,
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Block_Predicate>
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockPredicate {
 	pub blocks: PrefixedOptional<IDSet>,
@@ -69,6 +70,7 @@ impl McDefault for BlockPredicate {
 	}
 }
 
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Property>
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockProperty {
 	pub name: String,

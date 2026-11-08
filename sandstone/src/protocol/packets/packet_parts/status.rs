@@ -5,8 +5,8 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use image::{DynamicImage, ImageFormat};
 use sandstone_derive::McDefault;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,8 @@ use uuid::Uuid;
 /// # Status Response Spec (Packet Part)
 /// A prepared response to a status request from a client. This provides useful functions for building
 /// the complicated nested structure of the status response.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping#Status_Response>
 #[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 pub struct StatusResponseSpec {

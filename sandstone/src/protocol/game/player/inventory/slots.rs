@@ -45,7 +45,7 @@ pub struct CompositeSlotData {
 	pub options: PrefixedArray<SlotDisplay>,
 }
 
-/// https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Recipe_Display
+/// https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Recipe_Display_structure
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum RecipeDisplay {
@@ -110,7 +110,7 @@ pub struct ChangedSlot {
 /// # Hashed Slot (Packet Part)
 /// Used to communicate slot changes in an inventory.
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Hashed_Format
+/// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Hashed_format
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct HashedSlot {
 	pub has_item: bool,
