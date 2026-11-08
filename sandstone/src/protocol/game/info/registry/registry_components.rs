@@ -242,9 +242,12 @@ pub struct WolfVariantAssets {
 
 #[cfg(test)]
 mod tests {
-	use crate::protocol::game::info::registry::registry_components::{MonsterSpawnLightLevel, MonsterSpawnLightLevelRange};
+	use crate::nbt_compound;
+	use crate::protocol::game::info::registry::registry_components::*;
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::nbt::NbtCompound;
+	use crate::protocol::testing::McDefault;
+	use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+	use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 
 	/// Test that MonsterSpawnLightLevel can either be a struct or an integer
 	#[test]
@@ -276,5 +279,122 @@ mod tests {
 		let deserialized_compound = NbtCompound::mc_deserialize(&mut deserializer).unwrap();
 
 		assert_eq!(compound, deserialized_compound);
+	}
+
+	/// Registry components travel as NBT. Each one built from `mc_default` must survive
+	/// `as_nbt` -> NBT wire bytes -> `TryFrom<NbtCompound>` with no change.
+	macro_rules! assert_nbt_round_trip {
+		($($t:ty),* $(,)?) => {
+			$(
+				let original = <$t as McDefault>::mc_default();
+				let mut serializer = McSerializer::new();
+				original.as_nbt().mc_serialize(&mut serializer).unwrap();
+				let mut deserializer = McDeserializer::new(serializer.as_bytes());
+				let nbt = NbtCompound::mc_deserialize(&mut deserializer).unwrap();
+				let back = <$t>::try_from(nbt).unwrap_or_else(|e| panic!("{}: {:?}", stringify!($t), e));
+				assert_eq!(original, back, "{} changed after an NBT round trip", stringify!($t));
+			)*
+		};
+	}
+
+	#[test]
+	fn components_nbt_round_trip() {
+		assert_nbt_round_trip!(
+			PigSounds,
+			CatSounds,
+			ChickenSounds,
+			NbtTranslateColor,
+			BiomeEffects,
+			BiomeMood,
+			BiomeMusicData,
+			BiomeMusic,
+			ChatTypePart,
+			ExitAction,
+			EnchantmentCost,
+			Effects,
+			EnchantmentAttribute,
+			AttributeModifierValue,
+			AttributeModifier,
+			EffectsAttribute,
+			EffectRequirements,
+			EffectPredicate,
+			DamageTag,
+			MonsterSpawnLightLevelRange,
+			WolfVariantAssets,
+		);
+	}
+
+	/// Vanilla uses namespaced and reserved-word keys. The `#[nbt(rename)]` keys must be on the wire,
+	/// not the Rust field names, or the client cannot read the registry.
+	#[test]
+	fn renamed_keys_are_used() {
+		let effects = Effects::mc_default().as_nbt();
+		assert!(effects.get("minecraft:attributes").is_some());
+		assert!(effects.get("minecraft:damage").is_some());
+		assert!(effects.get("minecraft:post_attack").is_some());
+		assert!(effects.get("attributes").is_none());
+
+		let range = MonsterSpawnLightLevelRange::mc_default().as_nbt();
+		assert!(range.get("type").is_some());
+		assert!(range.get("typ").is_none());
+	}
+
+	/// A required field that is absent must be an error, so bad registry data is not silently accepted.
+	#[test]
+	fn missing_required_field_errors() {
+		let mut nbt = WolfVariantAssets::mc_default().as_nbt();
+		nbt.remove("tame");
+		assert!(matches!(WolfVariantAssets::try_from(nbt), Err(NbtError::MissingField(_))));
+	}
+
+	/// An absent optional field is `None`, not an error. Vanilla leaves out `color` on many entries.
+	#[test]
+	fn missing_optional_field_is_none() {
+		let nbt = nbt_compound! { "translate" => "painting.minecraft.alban.title" };
+		let color = NbtTranslateColor::try_from(nbt).unwrap();
+		assert_eq!(color.color, None);
+		assert_eq!(color.translate, "painting.minecraft.alban.title");
+	}
+
+	#[test]
+	fn optional_translate_color_from_tag() {
+		let good: NbtTag = NbtTranslateColor::mc_default().into();
+		assert_eq!(Option::<NbtTranslateColor>::from(good), Some(NbtTranslateColor::mc_default()));
+		assert_eq!(Option::<NbtTranslateColor>::from(NbtTag::Int(1)), None);
+	}
+
+	/// The vanilla value is either a plain int light level or a range compound.
+	#[test]
+	fn monster_light_level_tag_conversions() {
+		let single = MonsterSpawnLightLevel::try_from(NbtTag::Int(7)).unwrap();
+		assert!(!single.isRange);
+		assert_eq!(single.level, Some(7));
+		assert_eq!(NbtTag::from(single), NbtTag::Int(7));
+
+		let range = MonsterSpawnLightLevelRange::mc_default();
+		let ranged = MonsterSpawnLightLevel::try_from(NbtTag::Compound(range.as_nbt())).unwrap();
+		assert!(ranged.isRange);
+		assert_eq!(ranged.range, Some(range.clone()));
+		assert_eq!(NbtTag::from(ranged.clone()), NbtTag::Compound(range.as_nbt()));
+		assert_eq!(NbtCompound::from(ranged), range.as_nbt());
+
+		assert!(matches!(MonsterSpawnLightLevel::try_from(NbtTag::String("7".into())), Err(NbtError::InvalidType)));
+	}
+
+	#[test]
+	fn monster_light_level_without_level_writes_zero() {
+		let level = MonsterSpawnLightLevel {
+			isRange: false,
+			level: None,
+			range: None,
+		};
+		assert_eq!(NbtTag::from(level), NbtTag::Int(0));
+	}
+
+	/// A single level has no compound form. The conversion panics on purpose.
+	#[test]
+	#[should_panic(expected = "without range")]
+	fn monster_light_level_single_to_compound_panics() {
+		let _ = NbtCompound::from(MonsterSpawnLightLevel::try_from(NbtTag::Int(7)).unwrap());
 	}
 }

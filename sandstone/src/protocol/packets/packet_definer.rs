@@ -259,3 +259,123 @@ mod macros {
         };
     }
 }
+
+#[cfg(test)]
+mod tests {
+	use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
+	use crate::protocol::packets::{Packet, PingRequestPacket, PingResponsePacket, StatusRequestPacket};
+	use crate::protocol::serialization::serializer_error::SerializingErr;
+	use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
+	use crate::protocol_types::datatypes::var_types::VarInt;
+
+	/// The handshake `next_state` field uses 1 = STATUS, 2 = LOGIN, 3 = TRANSFER.
+	#[test]
+	fn packet_state_handshake_ids() {
+		for (id, state) in [(1u8, PacketState::STATUS), (2, PacketState::LOGIN), (3, PacketState::TRANSFER)] {
+			assert_eq!(PacketState::from_id(id), Some(state));
+			assert_eq!(state.get_id(), Some(id));
+		}
+		assert_eq!(PacketState::from_id(0), None);
+		assert_eq!(PacketState::from_id(4), None);
+		for state in [PacketState::HANDSHAKING, PacketState::CONFIGURATION, PacketState::PLAY] {
+			assert_eq!(state.get_id(), None, "{state:?} is not a handshake intent");
+		}
+	}
+
+	fn to_bytes(packet: &Packet) -> Vec<u8> {
+		let mut serializer = McSerializer::new();
+		packet.mc_serialize(&mut serializer).unwrap();
+		serializer.output
+	}
+
+	/// Uncompressed frame: VarInt length of (id + body), VarInt packet id, then the body.
+	#[test]
+	fn packet_frame_format() {
+		let packet: Packet = PingRequestPacket::new(5).into();
+		assert_eq!(to_bytes(&packet), vec![9, 0x01, 0, 0, 0, 0, 0, 0, 0, 5]);
+
+		let empty: Packet = StatusRequestPacket::new().into();
+		assert_eq!(to_bytes(&empty), vec![1, 0x00]);
+	}
+
+	#[test]
+	fn packet_metadata() {
+		let packet: Packet = PingRequestPacket::new(5).into();
+		assert_eq!(packet.packet_id(), VarInt(0x01));
+		assert_eq!(packet.state(), PacketState::STATUS);
+		assert_eq!(packet.direction(), PacketDirection::SERVER);
+
+		let packet: Packet = PingResponsePacket::new(5).into();
+		assert_eq!(packet.direction(), PacketDirection::CLIENT);
+	}
+
+	#[test]
+	fn packet_enum_conversions() {
+		let body = PingRequestPacket::new(42);
+		let packet: Packet = body.clone().into();
+		assert_eq!(packet, Packet::PingRequest(body.clone()));
+		assert_eq!(PingRequestPacket::from(packet), body);
+	}
+
+	#[test]
+	#[should_panic(expected = "Invalid conversion")]
+	fn packet_enum_wrong_conversion_panics() {
+		let packet: Packet = StatusRequestPacket::new().into();
+		let _ = PingRequestPacket::from(packet);
+	}
+
+	/// The same id means different packets in different directions. Direction must pick the packet.
+	#[test]
+	fn deserialize_uses_direction() {
+		let bytes = to_bytes(&PingRequestPacket::new(5).into());
+
+		let mut de = McDeserializer::new(&bytes);
+		let server = Packet::deserialize_state(&mut de, PacketState::STATUS, PacketDirection::SERVER).unwrap();
+		assert_eq!(server, Packet::PingRequest(PingRequestPacket::new(5)));
+
+		let mut de = McDeserializer::new(&bytes);
+		let client = Packet::deserialize_state(&mut de, PacketState::STATUS, PacketDirection::CLIENT).unwrap();
+		assert_eq!(client, Packet::PingResponse(PingResponsePacket::new(5)));
+	}
+
+	/// Two frames in one buffer: the first read must stop at its length so the second one is intact.
+	#[test]
+	fn deserialize_back_to_back_frames() {
+		let mut bytes = to_bytes(&PingRequestPacket::new(1).into());
+		bytes.extend(to_bytes(&StatusRequestPacket::new().into()));
+
+		let mut de = McDeserializer::new(&bytes);
+		let first = Packet::deserialize_state(&mut de, PacketState::STATUS, PacketDirection::SERVER).unwrap();
+		let second = Packet::deserialize_state(&mut de, PacketState::STATUS, PacketDirection::SERVER).unwrap();
+		assert_eq!(first, Packet::PingRequest(PingRequestPacket::new(1)));
+		assert_eq!(second, Packet::StatusRequest(StatusRequestPacket::new()));
+		assert!(de.is_at_end());
+	}
+
+	#[test]
+	fn deserialize_unknown_id() {
+		let bytes = [1u8, 0x7F];
+		let mut de = McDeserializer::new(&bytes);
+		let err = Packet::deserialize_state(&mut de, PacketState::STATUS, PacketDirection::SERVER).unwrap_err();
+		assert!(matches!(err, SerializingErr::NoKnownPacket(_)), "{err:?}");
+	}
+
+	/// A known id with a body that is too short must give an error that names the packet.
+	#[test]
+	fn deserialize_bad_body_names_packet() {
+		let bytes = [3u8, 0x01, 0, 0];
+		let mut de = McDeserializer::new(&bytes);
+		match Packet::deserialize_state(&mut de, PacketState::STATUS, PacketDirection::SERVER) {
+			Err(SerializingErr::DeserializationError(msg)) => assert!(msg.contains("PingRequest"), "{msg}"),
+			other => panic!("expected DeserializationError, got {other:?}"),
+		}
+	}
+
+	/// A length prefix longer than the buffer means a partial frame. It must error, not read garbage.
+	#[test]
+	fn deserialize_truncated_frame() {
+		let bytes = [9u8, 0x01, 0, 0];
+		let mut de = McDeserializer::new(&bytes);
+		assert!(Packet::deserialize_state(&mut de, PacketState::STATUS, PacketDirection::SERVER).is_err());
+	}
+}

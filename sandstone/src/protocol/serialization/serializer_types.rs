@@ -19,6 +19,9 @@ impl McSerialize for String {
 impl McDeserialize for String {
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self> {
 		let var_output = VarInt::mc_deserialize(deserializer)?;
+		if var_output.0 < 0 {
+			return Err(SerializingErr::OutOfBounds(format!("String length prefix of {} is negative", var_output.0)));
+		}
 		let bounds: (usize, usize) = (deserializer.index, deserializer.index + var_output.0 as usize);
 
 		if bounds.1 > deserializer.data.len() {
@@ -258,6 +261,9 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 		T: McDeserialize,
 	{
 		let var_output = VarInt::mc_deserialize(deserializer)?;
+		if var_output.0 < 0 {
+			return Err(SerializingErr::OutOfBounds(format!("PrefixedArray length prefix of {} is negative", var_output.0)));
+		}
 		let mut vec = Vec::with_capacity(var_output.0 as usize);
 
 		for _ in 0..var_output.0 {
@@ -373,5 +379,240 @@ impl<T: McSerialize + McDeserialize> From<Option<T>> for PrefixedOptional<T> {
 impl<T: McSerialize + McDeserialize> From<PrefixedOptional<T>> for Option<T> {
 	fn from(prefixed_optional: PrefixedOptional<T>) -> Self {
 		prefixed_optional.value
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::protocol::serialization::serializer_error::SerializingErr;
+	use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use crate::protocol::testing::McDefault;
+	use crate::protocol_types::datatypes::var_types::VarInt;
+
+	fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
+		let mut serializer = McSerializer::new();
+		value.mc_serialize(&mut serializer).unwrap();
+		serializer.output
+	}
+
+	/// Protocol strings are a VarInt byte length followed by UTF-8 bytes.
+	#[test]
+	fn string_wire_format() {
+		assert_eq!(to_bytes(&"abc".to_string()), vec![3, b'a', b'b', b'c']);
+		assert_eq!(to_bytes(&"abc"), to_bytes(&"abc".to_string()), "&str must match String on the wire");
+
+		// The prefix counts bytes, not chars.
+		let s = "é".to_string();
+		assert_eq!(to_bytes(&s), vec![2, 0xC3, 0xA9]);
+		let bytes = to_bytes(&s);
+		let mut de = McDeserializer::new(&bytes);
+		assert_eq!(String::mc_deserialize(&mut de).unwrap(), s);
+		assert!(de.is_at_end());
+	}
+
+	/// A length prefix larger than the input must error, not panic or read past the buffer.
+	#[test]
+	fn string_length_exceeds_input() {
+		let data = [5u8, b'a', b'b'];
+		let mut de = McDeserializer::new(&data);
+		assert!(matches!(String::mc_deserialize(&mut de), Err(SerializingErr::OutOfBounds(_))));
+	}
+
+	/// Regression: a negative length prefix from a peer used to panic (add overflow). It must be an error.
+	#[test]
+	fn string_negative_length_errors() {
+		let bytes = to_bytes(&VarInt(-1));
+		let mut de = McDeserializer::new(&bytes);
+		assert!(matches!(String::mc_deserialize(&mut de), Err(SerializingErr::OutOfBounds(_))));
+
+		let bytes = to_bytes(&VarInt(i32::MIN));
+		let mut de = McDeserializer::new(&bytes);
+		assert!(matches!(String::mc_deserialize(&mut de), Err(SerializingErr::OutOfBounds(_))));
+	}
+
+	#[test]
+	fn string_invalid_utf8() {
+		let data = [2u8, 0xFF, 0xFE];
+		let mut de = McDeserializer::new(&data);
+		assert!(matches!(String::mc_deserialize(&mut de), Err(SerializingErr::CouldNotDeserializeString(_))));
+	}
+
+	/// The protocol only allows 0x00 and 0x01 for booleans.
+	#[test]
+	fn bool_wire_format_and_invalid_byte() {
+		assert_eq!(to_bytes(&true), vec![1]);
+		assert_eq!(to_bytes(&false), vec![0]);
+
+		let data = [0u8, 1, 2];
+		let mut de = McDeserializer::new(&data);
+		assert!(!bool::mc_deserialize(&mut de).unwrap());
+		assert!(bool::mc_deserialize(&mut de).unwrap());
+		assert!(matches!(bool::mc_deserialize(&mut de), Err(SerializingErr::UniqueFailure(_))));
+	}
+
+	/// All fixed-size numbers in the protocol are big-endian.
+	#[test]
+	fn primitives_are_big_endian() {
+		assert_eq!(to_bytes(&0x0102u16), vec![1, 2]);
+		assert_eq!(to_bytes(&-2i32), vec![0xFF, 0xFF, 0xFF, 0xFE]);
+		assert_eq!(to_bytes(&1.0f32), vec![0x3F, 0x80, 0, 0]);
+
+		let data = [0u8, 0, 0, 0, 0, 0, 0, 0x2A];
+		let mut de = McDeserializer::new(&data);
+		assert_eq!(i64::mc_deserialize(&mut de).unwrap(), 42);
+		assert!(de.is_at_end());
+	}
+
+	#[test]
+	fn primitives_short_input_errors() {
+		let empty: [u8; 0] = [];
+		let mut de = McDeserializer::new(&empty);
+		assert!(matches!(u8::mc_deserialize(&mut de), Err(SerializingErr::InputEnded)));
+
+		let data = [1u8, 2, 3];
+		let mut de = McDeserializer::new(&data);
+		assert!(matches!(u32::mc_deserialize(&mut de), Err(SerializingErr::InputEnded)));
+		assert_eq!(de.index, 0, "a failed read must not consume input");
+	}
+
+	/// A bare Vec<T> has no prefix and reads until the input ends. It must only be used as the last field.
+	#[test]
+	fn vec_has_no_prefix_and_reads_to_end() {
+		let v: Vec<u16> = vec![1, 2, 3];
+		let bytes = to_bytes(&v);
+		assert_eq!(bytes, vec![0, 1, 0, 2, 0, 3]);
+		let mut de = McDeserializer::new(&bytes);
+		assert_eq!(Vec::<u16>::mc_deserialize(&mut de).unwrap(), v);
+
+		// A trailing partial element is an error, not silently dropped.
+		let partial = [0u8, 1, 0];
+		let mut de = McDeserializer::new(&partial);
+		assert!(Vec::<u16>::mc_deserialize(&mut de).is_err());
+	}
+
+	/// A bare Option<T> writes nothing for None and reads None only at the end of input.
+	#[test]
+	fn option_has_no_prefix() {
+		assert!(to_bytes(&Option::<u8>::None).is_empty());
+		assert_eq!(to_bytes(&Some(7u8)), vec![7]);
+
+		let empty: [u8; 0] = [];
+		let mut de = McDeserializer::new(&empty);
+		assert_eq!(Option::<u8>::mc_deserialize(&mut de).unwrap(), None);
+
+		let data = [7u8];
+		let mut de = McDeserializer::new(&data);
+		assert_eq!(Option::<u8>::mc_deserialize(&mut de).unwrap(), Some(7));
+	}
+
+	#[test]
+	fn box_is_transparent() {
+		let boxed = Box::new(0x1234u16);
+		let bytes = to_bytes(&boxed);
+		assert_eq!(bytes, to_bytes(&0x1234u16));
+		let mut de = McDeserializer::new(&bytes);
+		assert_eq!(Box::<u16>::mc_deserialize(&mut de).unwrap(), boxed);
+	}
+
+	#[test]
+	fn fixed_byte_array() {
+		let arr = [1u8, 2, 3, 4];
+		assert_eq!(to_bytes(&arr), vec![1, 2, 3, 4]);
+
+		let data = [1u8, 2, 3, 4, 5];
+		let mut de = McDeserializer::new(&data);
+		assert_eq!(<[u8; 4]>::mc_deserialize(&mut de).unwrap(), arr);
+		assert_eq!(de.index, 4);
+		assert!(matches!(<[u8; 4]>::mc_deserialize(&mut de), Err(SerializingErr::InputEnded)));
+	}
+
+	/// PrefixedArray is a VarInt element count followed by the elements.
+	#[test]
+	fn prefixed_array_wire_format() {
+		let arr = PrefixedArray::new(vec![1u16, 2]);
+		let bytes = to_bytes(&arr);
+		assert_eq!(bytes, vec![2, 0, 1, 0, 2]);
+
+		// Trailing bytes after the counted elements belong to the next field and must not be consumed.
+		let mut with_trailing = bytes.clone();
+		with_trailing.push(0xEE);
+		let mut de = McDeserializer::new(&with_trailing);
+		assert_eq!(PrefixedArray::<u16>::mc_deserialize(&mut de).unwrap(), arr);
+		assert_eq!(de.collect_remaining(), &[0xEE]);
+
+		assert_eq!(to_bytes(&PrefixedArray::<u16>::new(vec![])), vec![0]);
+	}
+
+	#[test]
+	fn prefixed_array_count_exceeds_input() {
+		let data = [3u8, 0, 1];
+		let mut de = McDeserializer::new(&data);
+		assert!(PrefixedArray::<u16>::mc_deserialize(&mut de).is_err());
+	}
+
+	/// Regression: a negative count from a peer used to panic in Vec::with_capacity (capacity overflow),
+	/// also in release builds. It must be an error.
+	#[test]
+	fn prefixed_array_negative_count_errors() {
+		let bytes = to_bytes(&VarInt(-1));
+		let mut de = McDeserializer::new(&bytes);
+		assert!(matches!(PrefixedArray::<u8>::mc_deserialize(&mut de), Err(SerializingErr::OutOfBounds(_))));
+
+		let bytes = to_bytes(&VarInt(i32::MIN));
+		let mut de = McDeserializer::new(&bytes);
+		assert!(matches!(PrefixedArray::<u8>::mc_deserialize(&mut de), Err(SerializingErr::OutOfBounds(_))));
+	}
+
+	#[test]
+	fn prefixed_array_conversions() {
+		let arr: PrefixedArray<u8> = vec![1, 2].into();
+		assert_eq!(arr.slice(), &[1, 2]);
+		let boxed: Box<[u8]> = arr.clone().into();
+		assert_eq!(&*boxed, &[1, 2]);
+		let back: PrefixedArray<u8> = boxed.into();
+		assert_eq!(back, arr);
+		let v: Vec<u8> = back.into();
+		assert_eq!(v, vec![1, 2]);
+	}
+
+	/// PrefixedOptional is a bool presence byte, then the value only if present.
+	#[test]
+	fn prefixed_optional_wire_format() {
+		let some = PrefixedOptional::new(Some(9u8));
+		let none = PrefixedOptional::<u8>::new(None);
+		assert!(some.is_present());
+		assert!(!none.is_present());
+		assert_eq!(some.value(), Some(&9));
+		assert_eq!(none.value(), None);
+
+		assert_eq!(to_bytes(&some), vec![1, 9]);
+		assert_eq!(to_bytes(&none), vec![0]);
+
+		let data = [0u8, 1, 9];
+		let mut de = McDeserializer::new(&data);
+		assert_eq!(PrefixedOptional::<u8>::mc_deserialize(&mut de).unwrap(), none);
+		assert_eq!(PrefixedOptional::<u8>::mc_deserialize(&mut de).unwrap(), some);
+		assert!(de.is_at_end());
+	}
+
+	#[test]
+	fn prefixed_optional_present_but_missing_value() {
+		let data = [1u8];
+		let mut de = McDeserializer::new(&data);
+		assert!(PrefixedOptional::<u8>::mc_deserialize(&mut de).is_err());
+	}
+
+	/// mc_default must produce a present value so round-trip tests exercise the inner type.
+	#[test]
+	fn prefixed_optional_default_and_conversions() {
+		let def = PrefixedOptional::<u8>::mc_default();
+		assert!(def.is_present());
+		assert!(def.value().is_some());
+
+		let from: PrefixedOptional<u8> = Some(3u8).into();
+		assert_eq!(from, PrefixedOptional::new(Some(3)));
+		let back: Option<u8> = from.into();
+		assert_eq!(back, Some(3));
 	}
 }

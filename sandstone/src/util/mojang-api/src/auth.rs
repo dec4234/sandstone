@@ -11,6 +11,9 @@ use sha1::{Digest, Sha1};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+const SESSION_SERVER: &str = "https://sessionserver.mojang.com";
+const MINECRAFT_SERVICES: &str = "https://api.minecraftservices.com";
+
 /// Computes the server ID hash used during the login encryption handshake.
 ///
 /// This mirrors Mojang's `generateServerId` algorithm: a SHA-1 digest over the
@@ -78,6 +81,10 @@ pub struct JoinServerRequest {
 /// with HTTP 204 on success, so this returns `Ok(())` when authentication passes.
 /// This endpoint is rate limited to 6 joins per 30 seconds per account.
 pub async fn join_server(access_token: String, selected_profile: Uuid, server_id: String) -> Result<(), HttpError> {
+	join_server_at(SESSION_SERVER, access_token, selected_profile, server_id).await
+}
+
+pub(crate) async fn join_server_at(base_url: &str, access_token: String, selected_profile: Uuid, server_id: String) -> Result<(), HttpError> {
 	let body = JoinServerRequest {
 		accessToken: access_token,
 		selectedProfile: selected_profile.to_string().replace("-", ""),
@@ -86,7 +93,7 @@ pub async fn join_server(access_token: String, selected_profile: Uuid, server_id
 
 	let body = serde_json::to_string(&body)?;
 
-	MojangServerQueryClient::post("https://sessionserver.mojang.com/session/minecraft/join", body.as_str()).await?;
+	MojangServerQueryClient::post(format!("{}/session/minecraft/join", base_url), body).await?;
 
 	Ok(())
 }
@@ -108,6 +115,10 @@ pub struct HasJoinedResponse {
 /// is optional. On success Mojang returns the player's signed profile; if verification
 /// fails Mojang returns HTTP 204 with an empty body, which surfaces here as an error.
 pub async fn has_joined(username: String, server_id: String, ip: Option<String>) -> Result<HasJoinedResponse, HttpError> {
+	has_joined_at(SESSION_SERVER, username, server_id, ip).await
+}
+
+pub(crate) async fn has_joined_at(base_url: &str, username: String, server_id: String, ip: Option<String>) -> Result<HasJoinedResponse, HttpError> {
 	let mut map: HashMap<&str, &str> = HashMap::new();
 	map.insert("username", username.as_str());
 	map.insert("serverId", server_id.as_str());
@@ -115,7 +126,7 @@ pub async fn has_joined(username: String, server_id: String, ip: Option<String>)
 		map.insert("ip", ip.as_str());
 	}
 
-	let text = MojangServerQueryClient::get_params("https://sessionserver.mojang.com/session/minecraft/hasJoined".to_string(), map).await?;
+	let text = MojangServerQueryClient::get_params(format!("{}/session/minecraft/hasJoined", base_url), map).await?;
 
 	parse_has_joined(&text)
 }
@@ -151,12 +162,128 @@ pub struct MojangPublicKeysResponse {
 /// GETs `https://api.minecraftservices.com/publickeys`. These keys are used to verify
 /// player properties, player certificates and authentication tokens.
 pub async fn get_mojang_public_keys() -> Result<MojangPublicKeysResponse, HttpError> {
-	MojangServerQueryClient::get_parse("https://api.minecraftservices.com/publickeys".to_string(), false).await
+	get_mojang_public_keys_at(MINECRAFT_SERVICES).await
+}
+
+pub(crate) async fn get_mojang_public_keys_at(base_url: &str) -> Result<MojangPublicKeysResponse, HttpError> {
+	MojangServerQueryClient::get_parse(format!("{}/publickeys", base_url), false).await
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use mockito::Matcher;
+
+	const FIXTURE_PROFILE: &str = include_str!("../tests/fixtures/profile_dec4234.json");
+
+	/// The client join request must use the exact field names Mojang expects and send the
+	/// UUID without dashes. With any other shape Mojang rejects the join and the player
+	/// cannot log in to an online-mode server.
+	#[tokio::test]
+	async fn join_server_posts_expected_body() {
+		let mut server = mockito::Server::new_async().await;
+		let mock = server
+			.mock("POST", "/session/minecraft/join")
+			.match_header("content-type", "application/json")
+			.match_body(Matcher::Json(serde_json::json!({
+				"accessToken": "token123",
+				"selectedProfile": "ef39c1973c3d4776a22622096378a966",
+				"serverId": "-1428ae341e1f2602f07e3ef662ad847db5aaab1e",
+			})))
+			.with_status(204)
+			.create_async()
+			.await;
+
+		let uuid = Uuid::parse_str("ef39c197-3c3d-4776-a226-22096378a966").unwrap();
+		join_server_at(&server.url(), "token123".into(), uuid, "-1428ae341e1f2602f07e3ef662ad847db5aaab1e".into())
+			.await
+			.unwrap();
+
+		mock.assert_async().await;
+	}
+
+	/// Mojang answers a bad or expired access token with 403. This must be an error so the
+	/// client stops the login instead of sending the encryption response.
+	#[tokio::test]
+	async fn join_server_rejected_is_error() {
+		let mut server = mockito::Server::new_async().await;
+		server.mock("POST", "/session/minecraft/join").with_status(403).create_async().await;
+
+		let err = join_server_at(&server.url(), "bad".into(), Uuid::nil(), "id".into()).await.unwrap_err();
+
+		assert!(matches!(err, HttpError::StatusCode(_)));
+	}
+
+	/// Without an IP, only `username` and `serverId` may be sent. An empty `ip` parameter
+	/// would make Mojang compare against a wrong address.
+	#[tokio::test]
+	async fn has_joined_sends_username_and_server_id_only() {
+		let mut server = mockito::Server::new_async().await;
+		let mock = server
+			.mock("GET", "/session/minecraft/hasJoined")
+			.match_query(Matcher::Regex("^(username=dec4234&serverId=abc|serverId=abc&username=dec4234)$".into()))
+			.with_body(FIXTURE_PROFILE)
+			.create_async()
+			.await;
+
+		let resp = has_joined_at(&server.url(), "dec4234".into(), "abc".into(), None).await.unwrap();
+
+		assert_eq!(resp.name, "dec4234");
+		assert_eq!(resp.id, "ef39c1973c3d4776a22622096378a966");
+		mock.assert_async().await;
+	}
+
+	/// When the server gives the player's IP, Mojang must receive it, because it uses it to
+	/// block a stolen session that joins from a different address.
+	#[tokio::test]
+	async fn has_joined_sends_ip_when_given() {
+		let mut server = mockito::Server::new_async().await;
+		let mock = server
+			.mock("GET", "/session/minecraft/hasJoined")
+			.match_query(Matcher::AllOf(vec![
+				Matcher::UrlEncoded("username".into(), "dec4234".into()),
+				Matcher::UrlEncoded("serverId".into(), "abc".into()),
+				Matcher::UrlEncoded("ip".into(), "203.0.113.7".into()),
+			]))
+			.with_body(FIXTURE_PROFILE)
+			.create_async()
+			.await;
+
+		has_joined_at(&server.url(), "dec4234".into(), "abc".into(), Some("203.0.113.7".into())).await.unwrap();
+
+		mock.assert_async().await;
+	}
+
+	/// The full path: a real HTTP 204 from Mojang must become `NotAuthenticated` so the
+	/// server disconnects the player.
+	#[tokio::test]
+	async fn has_joined_no_content_is_not_authenticated() {
+		let mut server = mockito::Server::new_async().await;
+		server.mock("GET", "/session/minecraft/hasJoined").match_query(Matcher::Any).with_status(204).create_async().await;
+
+		let err = has_joined_at(&server.url(), "dec4234".into(), "abc".into(), None).await.unwrap_err();
+
+		assert!(matches!(err, HttpError::NotAuthenticated));
+	}
+
+	/// The server uses these keys to check signed player data, so the request must go to
+	/// `/publickeys` and every key group must reach the caller.
+	#[tokio::test]
+	async fn get_public_keys_requests_and_parses() {
+		let mut server = mockito::Server::new_async().await;
+		let mock = server
+			.mock("GET", "/publickeys")
+			.with_body(include_str!("../tests/fixtures/public_keys.json"))
+			.create_async()
+			.await;
+
+		let resp = get_mojang_public_keys_at(&server.url()).await.unwrap();
+
+		assert!(!resp.profilePropertyKeys.is_empty());
+		assert!(!resp.playerCertificateKeys.is_empty());
+		assert!(!resp.authenticationKeys.is_empty());
+		mock.assert_async().await;
+	}
 
 	/// Mojang answers a failed session check with HTTP 204 and no body. This must be an
 	/// explicit `NotAuthenticated` error so a server rejects the player instead of

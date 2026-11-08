@@ -145,3 +145,113 @@ pub enum HttpError {
 	#[error(transparent)]
 	UuidError(#[from] uuid::Error),
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use mockito::Matcher;
+	use serde::Deserialize;
+
+	/// Query values such as a username or server ID must arrive URL-encoded. If they are not,
+	/// a value with `&` or a space would split into wrong parameters and Mojang would check
+	/// the wrong player.
+	#[tokio::test]
+	async fn get_params_url_encodes_query_values() {
+		let mut server = mockito::Server::new_async().await;
+		let mock = server
+			.mock("GET", "/q")
+			.match_query(Matcher::AllOf(vec![Matcher::UrlEncoded("a".into(), "x y&z".into()), Matcher::UrlEncoded("b".into(), "1".into())]))
+			.with_body("ok")
+			.create_async()
+			.await;
+
+		let map = HashMap::from([("a", "x y&z"), ("b", "1")]);
+		let text = MojangServerQueryClient::get_params(format!("{}/q", server.url()), map).await.unwrap();
+
+		assert_eq!(text, "ok");
+		mock.assert_async().await;
+	}
+
+	/// A non-2xx answer (rate limit, unknown player, outage) must be an error. If the error
+	/// page body were returned as `Ok`, callers would try to use it as real data.
+	#[tokio::test]
+	async fn get_non_success_status_is_error() {
+		let mut server = mockito::Server::new_async().await;
+		server.mock("GET", "/q").with_status(429).with_body(r#"{"error":"TooManyRequests"}"#).create_async().await;
+
+		let err = MojangServerQueryClient::get(format!("{}/q", server.url())).await.unwrap_err();
+
+		match err {
+			HttpError::StatusCode(msg) => assert!(msg.contains("429"), "message should name the status: {msg}"),
+			other => panic!("expected StatusCode, got {other:?}"),
+		}
+	}
+
+	/// HTTP 204 is a success code. `get` must return the empty body so that callers such as
+	/// `has_joined` can tell "not authenticated" apart from a failed request.
+	#[tokio::test]
+	async fn get_no_content_is_ok_empty() {
+		let mut server = mockito::Server::new_async().await;
+		server.mock("GET", "/q").with_status(204).create_async().await;
+
+		let text = MojangServerQueryClient::get(format!("{}/q", server.url())).await.unwrap();
+
+		assert_eq!(text, "");
+	}
+
+	/// Mojang's JSON endpoints reject a POST that is not labelled as JSON. The body must also
+	/// arrive unchanged, because it carries the access token and server ID.
+	#[tokio::test]
+	async fn post_sends_json_content_type_and_body() {
+		let mut server = mockito::Server::new_async().await;
+		let mock = server
+			.mock("POST", "/p")
+			.match_header("content-type", "application/json")
+			.match_body(Matcher::Exact(r#"{"k":"v"}"#.into()))
+			.with_status(204)
+			.create_async()
+			.await;
+
+		MojangServerQueryClient::post(format!("{}/p", server.url()), r#"{"k":"v"}"#.to_string()).await.unwrap();
+
+		mock.assert_async().await;
+	}
+
+	/// The non-2xx check also applies to POST, so a rejected join cannot look like success.
+	#[tokio::test]
+	async fn post_non_success_status_is_error() {
+		let mut server = mockito::Server::new_async().await;
+		server.mock("POST", "/p").with_status(403).create_async().await;
+
+		let err = MojangServerQueryClient::post(format!("{}/p", server.url()), String::new()).await.unwrap_err();
+
+		assert!(matches!(err, HttpError::StatusCode(_)));
+	}
+
+	#[derive(Deserialize, Debug)]
+	struct Named {
+		name: String,
+	}
+
+	/// A 200 response with a body that is not the expected JSON must be a `SerdeError`, not
+	/// a panic or a default value.
+	#[tokio::test]
+	async fn get_parse_reports_malformed_json() {
+		let mut server = mockito::Server::new_async().await;
+		server.mock("GET", "/q").with_body("<html>maintenance</html>").create_async().await;
+
+		let err = MojangServerQueryClient::get_parse::<Named>(format!("{}/q", server.url()), false).await.unwrap_err();
+
+		assert!(matches!(err, HttpError::SerdeError(_)));
+	}
+
+	#[tokio::test]
+	async fn get_parse_decodes_json() {
+		let mut server = mockito::Server::new_async().await;
+		server.mock("GET", "/q").with_body(r#"{"name":"dec4234"}"#).create_async().await;
+
+		let named = MojangServerQueryClient::get_parse::<Named>(format!("{}/q", server.url()), false).await.unwrap();
+
+		assert_eq!(named.name, "dec4234");
+	}
+}

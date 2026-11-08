@@ -230,3 +230,93 @@ impl Default for ZombieNautilusVariant {
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use crate::protocol::game::info::registry::registry_components::MonsterSpawnLightLevel;
+	use crate::protocol::game::info::registry::{
+		BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
+		WolfVariant, ZombieNautilusVariant,
+	};
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+
+	/// A server can send these defaults as registry data. Each one must survive the real wire path
+	/// (NBT serialize, then deserialize) with no change.
+	macro_rules! assert_default_round_trip {
+		($($t:ty),* $(,)?) => {
+			$(
+				let original = <$t>::default();
+				let mut serializer = McSerializer::new();
+				original.mc_serialize(&mut serializer).unwrap();
+				let mut deserializer = McDeserializer::new(serializer.as_bytes());
+				let back = <$t>::mc_deserialize(&mut deserializer).unwrap_or_else(|e| panic!("{}: {:?}", stringify!($t), e));
+				assert_eq!(original, back, "{} default changed after a round trip", stringify!($t));
+				assert!(deserializer.is_at_end(), "{} left unread bytes", stringify!($t));
+			)*
+		};
+	}
+
+	#[test]
+	fn defaults_round_trip() {
+		assert_default_round_trip!(
+			BannerPattern,
+			Biome,
+			CatSoundVariant,
+			CatVariant,
+			ChickenSoundVariant,
+			ChickenVariant,
+			CowVariant,
+			DimensionType,
+			FrogVariant,
+			PaintingVariant,
+			PigSoundVariant,
+			PigVariant,
+			WolfSoundVariant,
+			WolfVariant,
+			ZombieNautilusVariant,
+		);
+	}
+
+	/// The client rejects a dimension type that breaks these rules
+	/// (https://minecraft.wiki/w/Dimension_type): height and min_y are multiples of 16,
+	/// the world fits in -2032..=2031, and logical_height is not more than height.
+	#[test]
+	fn default_dimension_type_is_valid() {
+		let dim = DimensionType::default();
+		assert_eq!(dim.height % 16, 0);
+		assert_eq!(dim.min_y % 16, 0);
+		assert!(dim.min_y >= -2032);
+		assert!(dim.min_y + dim.height <= 2032);
+		assert!(dim.logical_height <= dim.height);
+		assert!(dim.infiniburn.starts_with('#'), "infiniburn is a block tag");
+	}
+
+	/// The default monster spawn light level is a single value, so it must encode as an int.
+	#[test]
+	fn default_monster_spawn_light_level_is_single_value() {
+		let level = MonsterSpawnLightLevel::default();
+		assert!(!level.isRange);
+		assert!(level.range.is_none());
+		assert!(matches!(level.level, Some(0..=15)));
+	}
+
+	/// Baby and adult sounds must not be swapped or mixed.
+	#[test]
+	fn baby_and_adult_sounds_are_separate() {
+		let cat = CatSoundVariant::default();
+		for s in [&cat.baby_sounds.hurt_sound, &cat.baby_sounds.ambient_sound, &cat.baby_sounds.death_sound] {
+			assert!(s.starts_with("minecraft:entity.baby_cat."), "{s}");
+		}
+		for s in [&cat.adult_sounds.hurt_sound, &cat.adult_sounds.ambient_sound, &cat.adult_sounds.death_sound] {
+			assert!(s.starts_with("minecraft:entity.cat."), "{s}");
+		}
+
+		let chicken = ChickenSoundVariant::default();
+		assert!(chicken.baby_sounds.step_sound.starts_with("minecraft:entity.baby_chicken."));
+		assert!(chicken.adult_sounds.step_sound.starts_with("minecraft:entity.chicken."));
+
+		let pig = PigSoundVariant::default();
+		assert!(pig.baby_sounds.hurt_sound.starts_with("minecraft:entity.baby_pig."));
+		assert!(!pig.adult_sounds.hurt_sound.contains("baby"));
+	}
+}
