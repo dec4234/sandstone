@@ -221,7 +221,7 @@ impl McDeserialize for PlayerInfoUpdateData {
 		let actions = EnumSet::mc_deserialize(deserializer)?;
 		let mask = actions.raw();
 		let count = VarInt::mc_deserialize(deserializer)?.0;
-		let mut entries = Vec::with_capacity(count as usize);
+		let mut entries = Vec::with_capacity(deserializer.prealloc_capacity(count)?);
 		for _ in 0..count {
 			let uuid = Uuid::mc_deserialize(deserializer)?;
 			let player_actions = PlayerAction::deserialize_with_mask(mask, deserializer)?;

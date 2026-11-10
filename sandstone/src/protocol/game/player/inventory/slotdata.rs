@@ -61,12 +61,12 @@ impl McDeserialize for SlotData {
 		let num_add = VarInt::mc_deserialize(deserializer)?;
 		let num_remove = VarInt::mc_deserialize(deserializer)?;
 
-		let mut components_to_add = Vec::with_capacity(num_add.0 as usize);
+		let mut components_to_add = Vec::with_capacity(deserializer.prealloc_capacity(num_add.0)?);
 		for _ in 0..num_add.0 {
 			components_to_add.push(StructuredComponent::mc_deserialize(deserializer)?);
 		}
 
-		let mut components_to_remove = Vec::with_capacity(num_remove.0 as usize);
+		let mut components_to_remove = Vec::with_capacity(deserializer.prealloc_capacity(num_remove.0)?);
 		for _ in 0..num_remove.0 {
 			components_to_remove.push(VarInt::mc_deserialize(deserializer)?);
 		}

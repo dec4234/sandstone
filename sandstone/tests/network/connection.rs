@@ -447,4 +447,71 @@ mod test {
 			other => panic!("expected NoDataReceived, got {other:?}"),
 		}
 	}
+
+	#[tokio::test]
+	async fn try_receive_decrypts_and_decompresses() {
+		// try_receive reads the frame in parts, so each part must go through the stream cipher in
+		// order. Then the compression header must be removed, the same as in receive_packet.
+		let secret = [9u8; 16];
+		let (mut client, mut server) = pair().await;
+		for conn in [&mut client, &mut server] {
+			conn.set_shared_secret(&secret).unwrap();
+			conn.enable_compression(Some(0));
+			conn.change_state(PacketState::STATUS);
+		}
+		for i in 0..3 {
+			client.send_packet(ping(i)).await.unwrap();
+			wait_for_data(&server).await;
+			assert_eq!(server.try_receive_packet().unwrap(), ping(i));
+		}
+	}
+
+	#[tokio::test]
+	async fn try_receive_rejects_long_length_prefix() {
+		// Wiki: the packet length VarInt is at most 3 bytes. The non-blocking path must refuse a
+		// longer prefix too, not wait for more bytes.
+		let (mut raw, mut server) = server_with_raw_peer().await;
+		raw.write_all(&[0x80, 0x80, 0x80, 0x01]).await.unwrap();
+		wait_for_data(&server).await;
+		match server.try_receive_packet() {
+			Err(NetworkError::SerializingErr(_)) => {}
+			other => panic!("expected SerializingErr, got {other:?}"),
+		}
+	}
+
+	#[tokio::test]
+	async fn compressed_data_length_over_max_is_rejected() {
+		// The Data Length in a compressed frame is the size after decompression. A peer can claim a
+		// huge size to make the reader allocate it. Over 2097151 bytes must be refused before that.
+		// A negative Data Length is also refused (as usize it is very large).
+		for data_length in [2_097_152i32, -1] {
+			let (mut raw, mut server) = server_with_raw_peer().await;
+			server.enable_compression(Some(0));
+			let mut frame = VarInt(data_length).to_bytes();
+			frame.extend_from_slice(&[0x78, 0x9C]); // the start of a zlib stream; it is not read
+			let mut bytes = VarInt(frame.len() as i32).to_bytes();
+			bytes.extend(frame);
+			raw.write_all(&bytes).await.unwrap();
+			match tokio::time::timeout(Duration::from_secs(5), server.receive_packet()).await.expect("timed out") {
+				Err(NetworkError::PacketTooLarge) => {}
+				other => panic!("data length {data_length}: expected PacketTooLarge, got {other:?}"),
+			}
+		}
+	}
+
+	#[tokio::test]
+	async fn receive_direct_reads_a_raw_value_with_no_frame() {
+		// receive_direct and receive_with_length read bytes with no length prefix. Each call must
+		// read only its own bytes, so two values sent back to back both decode.
+		let (mut raw, mut server) = server_with_raw_peer().await;
+		raw.write_all(&[0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 9]).await.unwrap();
+		assert_eq!(server.receive_direct::<u32>().await.unwrap(), 5);
+		assert_eq!(server.receive_with_length::<i64>(8).await.unwrap(), 9);
+
+		drop(raw);
+		match server.receive_direct::<u32>().await {
+			Err(NetworkError::IOError(e)) => assert_eq!(e.kind(), ErrorKind::UnexpectedEof),
+			other => panic!("expected UnexpectedEof, got {other:?}"),
+		}
+	}
 }

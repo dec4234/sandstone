@@ -6,8 +6,8 @@
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
-use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::protocol_types::datatypes::nbt::NbtTag::List;
+use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::{list_nbtvalue, primvalue_nbtvalue};
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -118,8 +118,17 @@ impl NbtTag {
 }
 
 impl McSerialize for NbtTag {
+	/// Writes the type id, then the payload. This is network NBT with no root name, and it is the
+	/// same format that `mc_deserialize` reads.
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		// do not include type id here - list and compound tags will include it themselves
+		serializer.serialize_u8(self.get_type_id());
+		self.serialize_payload(serializer)
+	}
+}
+
+impl NbtTag {
+	/// Writes only the payload, with no type id. Lists and compounds write the type id themselves.
+	pub(crate) fn serialize_payload(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		match self {
 			// stuff with special cases
 			NbtTag::End => {}
@@ -409,7 +418,7 @@ impl NbtCompound {
 			if *tag != NbtTag::End {
 				serializer.serialize_u8(tag.get_type_id());
 				serialize_nbt_string(serializer, name)?;
-				tag.mc_serialize(serializer)?;
+				tag.serialize_payload(serializer)?;
 			}
 		}
 		serializer.serialize_u8(0); // end tag
@@ -563,17 +572,18 @@ impl NbtList {
 
 	#[inline]
 	pub fn add<T: Into<NbtTag>>(&mut self, tag: T) -> Result<(), NbtError> {
-		let tag = tag.into();
+		self.add_tag(tag.into())
+	}
 
+	/// End (type 0) is only the element type of an empty list, never an element itself.
+	///
+	/// <https://minecraft.wiki/w/NBT_format>
+	#[inline]
+	pub fn add_tag(&mut self, tag: NbtTag) -> Result<(), NbtError> {
 		if tag.get_type_id() == 0 {
 			return Err(NbtError::EndTagNotAllowedInList);
 		}
 
-		self.add_tag(tag)
-	}
-
-	#[inline]
-	pub fn add_tag(&mut self, tag: NbtTag) -> Result<(), NbtError> {
 		if self.type_id == 0 {
 			self.type_id = tag.get_type_id();
 		} else if tag.get_type_id() != self.type_id {
@@ -609,7 +619,7 @@ impl McSerialize for NbtList {
 		self.type_id.mc_serialize(serializer)?;
 		(self.list.len() as i32).mc_serialize(serializer)?;
 		for tag in &self.list {
-			tag.mc_serialize(serializer)?;
+			tag.serialize_payload(serializer)?;
 		}
 		Ok(())
 	}
@@ -681,6 +691,95 @@ mod test {
 	use crate::protocol_types::datatypes::nbt::NbtError;
 	use crate::protocol_types::datatypes::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
 	use sandstone_derive::{AsNbt, FromNbt};
+
+	/// Regression: a bare `NbtTag` (Block Entity Data, Tag Query Response, the Lock component) is
+	/// network NBT, so it starts with a type id. Serialize used to write only the payload, while
+	/// deserialize read a type id. The two sides did not agree, and peers read the wrong bytes.
+	#[test]
+	fn bare_tag_writes_type_id_and_round_trips() {
+		let mut compound = NbtCompound::new_no_name();
+		compound.add("x", 1i32);
+		for tag in [NbtTag::End, NbtTag::String("hi".to_string()), NbtTag::Int(7), NbtTag::Compound(compound)] {
+			let mut serializer = McSerializer::new();
+			tag.mc_serialize(&mut serializer).unwrap();
+			assert_eq!(serializer.output[0], tag.get_type_id(), "{tag:?}");
+
+			let mut deserializer = McDeserializer::new(&serializer.output);
+			assert_eq!(NbtTag::mc_deserialize(&mut deserializer).unwrap(), tag);
+			assert!(deserializer.is_at_end());
+		}
+
+		// The string payload is a u16 length and the bytes, after the type id 8.
+		let mut serializer = McSerializer::new();
+		NbtTag::String("hi".to_string()).mc_serialize(&mut serializer).unwrap();
+		assert_eq!(serializer.output, vec![8, 0, 2, b'h', b'i']);
+	}
+
+	/// An NBT list has one element type for all items, and it is written once in the header. An item of
+	/// a different type would be written as if it had the list type, so the list must refuse it.
+	#[test]
+	fn nbt_list_type_checks() {
+		let mut list = NbtList::new();
+		assert_eq!(list.type_id, 0);
+		list.add(1i32).unwrap();
+		assert_eq!(list.type_id, 3, "the first item sets the list type");
+		list.add_tag(NbtTag::Int(2)).unwrap();
+
+		assert_eq!(list.add("x"), Err(NbtError::IncompatibleTypes));
+		assert_eq!(list.add_tag(NbtTag::Long(3)), Err(NbtError::IncompatibleTypes));
+		assert_eq!(list.add(NbtTag::End), Err(NbtError::EndTagNotAllowedInList));
+		assert_eq!(list.list, vec![NbtTag::Int(1), NbtTag::Int(2)], "a refused item must not be added");
+
+		assert_eq!(NbtList::from_vec(vec![NbtTag::Byte(1), NbtTag::Short(1)]), Err(NbtError::IncompatibleTypes));
+	}
+
+	/// End is only the type of an empty list. If add_tag took an End item, the list type would stay 0,
+	/// the next item would set a new type, and the list would hold mixed types. Both entry points must refuse it.
+	#[test]
+	fn nbt_list_refuses_end_on_every_path() {
+		let mut list = NbtList::new();
+		assert_eq!(list.add_tag(NbtTag::End), Err(NbtError::EndTagNotAllowedInList));
+		assert!(list.list.is_empty());
+		assert_eq!(list.type_id, 0);
+
+		assert_eq!(NbtList::from_vec(vec![NbtTag::End, NbtTag::Int(1)]), Err(NbtError::EndTagNotAllowedInList));
+
+		// An empty list of type End is still valid on the wire.
+		let bytes = [0u8, 0, 0, 0, 0];
+		let empty = NbtList::mc_deserialize(&mut McDeserializer::new(&bytes)).unwrap();
+		assert_eq!(empty, NbtList::new());
+	}
+
+	/// The three array tags and a list all convert to a Vec of the element type. The element type must
+	/// match exactly (an IntArray is not a Vec<i64>), and a non-list tag is an error.
+	#[test]
+	fn nbt_tag_to_vec_conversions() {
+		let bytes: Vec<i8> = NbtTag::ByteArray(NbtByteArray::new(vec![1, -2])).try_into().unwrap();
+		assert_eq!(bytes, vec![1, -2]);
+		let ints: Vec<i32> = NbtTag::IntArray(NbtIntArray::new(vec![3, 4])).try_into().unwrap();
+		assert_eq!(ints, vec![3, 4]);
+		let longs: Vec<i64> = NbtTag::LongArray(NbtLongArray::new(vec![5])).try_into().unwrap();
+		assert_eq!(longs, vec![5]);
+		let from_list: Vec<String> = NbtTag::List(NbtList::from_vec(vec![NbtTag::from("a"), NbtTag::from("b")]).unwrap()).try_into().unwrap();
+		assert_eq!(from_list, vec!["a".to_string(), "b".to_string()]);
+
+		let wrong_element: Result<Vec<i64>, _> = NbtTag::IntArray(NbtIntArray::new(vec![1])).try_into();
+		assert_eq!(wrong_element, Err(NbtError::InvalidType));
+		let not_a_list: Result<Vec<i32>, _> = NbtTag::Int(1).try_into();
+		assert_eq!(not_a_list, Err(NbtError::InvalidType));
+	}
+
+	/// A Vec of one type becomes a List tag of that type, in order.
+	#[test]
+	fn vec_into_nbt_list() {
+		match NbtTag::from(vec![1i32, 2, 3]) {
+			NbtTag::List(list) => {
+				assert_eq!(list.type_id, 3);
+				assert_eq!(list.list, vec![NbtTag::Int(1), NbtTag::Int(2), NbtTag::Int(3)]);
+			}
+			other => panic!("expected a list, got {other:?}"),
+		}
+	}
 
 	/// Test standard serialization of a NbtCompound.
 	#[test]

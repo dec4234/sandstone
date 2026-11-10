@@ -184,6 +184,18 @@ impl<'a> McDeserializer<'a> {
 		}
 	}
 
+	/// Returns a safe initial capacity for a list of `count` items read from a peer.
+	///
+	/// A negative count is an error. The result is capped at the number of bytes that remain,
+	/// because a peer can send a very large count, and `Vec::with_capacity` then aborts the
+	/// process. The list can still grow past this capacity if its items use less than one byte.
+	pub fn prealloc_capacity<'b>(&self, count: i32) -> SerializingResult<'b, usize> {
+		if count < 0 {
+			return Err(SerializingErr::OutOfBounds(format!("Length prefix of {count} is negative")));
+		}
+		Ok(min(count as usize, self.data.len().saturating_sub(self.index)))
+	}
+
 	/// Return true if the current index is at the end of the data buffer.
 	pub fn is_at_end(&self) -> bool {
 		self.index >= self.data.len()

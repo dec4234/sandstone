@@ -10,16 +10,16 @@
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
 use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfVariantAssets};
-use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
 use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
+use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::testing::McDefault;
-use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::protocol_types::datatypes::nbt::NbtCompound;
 use crate::protocol_types::datatypes::nbt::NbtTag;
+use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::AsNbt;
 use sandstone_derive::{FromNbt, McDefault, McSerialize};
@@ -28,7 +28,7 @@ pub mod registry_components;
 pub mod registry_default;
 pub mod registry_generator;
 
-#[derive(McDefault, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RegistryDataPacketInternal {
 	/// The registry type this data is for, e.g. "minecraft:dimension_type"
 	pub registry_id: String,
@@ -54,7 +54,7 @@ impl McDeserialize for RegistryDataPacketInternal {
 		let id = String::mc_deserialize(deserializer)?;
 		let num_entries = VarInt::mc_deserialize(deserializer)?;
 
-		let mut entries = Vec::with_capacity(num_entries.0 as usize);
+		let mut entries = Vec::with_capacity(deserializer.prealloc_capacity(num_entries.0)?);
 
 		for _ in 0..num_entries.0 {
 			// We need to deserialize each entry, but we don't know the type yet.
@@ -68,6 +68,20 @@ impl McDeserialize for RegistryDataPacketInternal {
 			num_entries,
 			entries,
 		})
+	}
+}
+
+/// The reader picks the entry type from `registry_id` and reads exactly `num_entries` entries, so a
+/// derived default (random id, count that does not match) cannot be read back.
+/// `RegistryType::mc_default()` is the first registry in `registry_entry!`, which is banner_pattern.
+impl McDefault for RegistryDataPacketInternal {
+	fn mc_default() -> Self {
+		let entries: Vec<RegistryEntry> = McDefault::mc_default();
+		Self {
+			registry_id: "minecraft:banner_pattern".to_string(),
+			num_entries: VarInt(entries.len() as i32),
+			entries,
+		}
 	}
 }
 
@@ -362,6 +376,20 @@ registry_entry!(
 mod test {
 	use crate::protocol::game::info::registry::{BannerPattern, DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType};
 	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+
+	/// Regression: the entry count comes from the peer. A large count used to go straight to
+	/// Vec::with_capacity and abort the process. A negative count used to panic. Both must be errors.
+	#[test]
+	fn registry_data_bad_entry_count_errors() {
+		use crate::protocol_types::datatypes::var_types::VarInt;
+		for count in [i32::MAX, -1] {
+			let mut serializer = McSerializer::new();
+			"minecraft:banner_pattern".to_string().mc_serialize(&mut serializer).unwrap();
+			VarInt(count).mc_serialize(&mut serializer).unwrap();
+			let mut deserializer = McDeserializer::new(&serializer.output);
+			assert!(RegistryDataPacketInternal::mc_deserialize(&mut deserializer).is_err(), "count {count}");
+		}
+	}
 
 	#[test]
 	fn dimensiontype_asnbt() {

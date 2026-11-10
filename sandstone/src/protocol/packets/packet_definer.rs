@@ -190,6 +190,32 @@ mod macros {
                     return Err(SerializingErr::NoKnownPacket(format!("Could not find matching packet for destination {:?} and state {:?} with packet id '0x{:X}'", packet_direction, state, packet_id.0)));
                 }
             }
+
+            /// One test per packet: build it from `McDefault`, write the full frame, read it back
+            /// through `deserialize_state` with the packet's own state and direction, and compare.
+            /// This catches field order or type mistakes, a wrong id, and a wrong state or direction.
+            #[cfg(test)]
+            mod generated_packet_round_trips {
+                use super::*;
+
+                $($($(
+                    #[test]
+                    fn [<round_trip_ $name:snake>]() {
+                        let packet = Packet::$name([<$name Packet>]::mc_default());
+                        assert_eq!(packet.state(), PacketState::$state);
+                        assert_eq!(packet.direction(), PacketDirection::$direction);
+
+                        let mut serializer = McSerializer::new();
+                        packet.mc_serialize(&mut serializer).expect("serialize failed");
+
+                        let mut deserializer = McDeserializer::new(&serializer.output);
+                        let decoded = Packet::deserialize_state(&mut deserializer, PacketState::$state, PacketDirection::$direction)
+                            .expect("deserialize failed");
+                        assert_eq!(packet, decoded);
+                        assert!(deserializer.is_at_end(), "bytes left over after the frame");
+                    }
+                )*)*)*
+            }
             } // end paste
         };
     }

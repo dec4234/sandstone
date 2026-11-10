@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 /// A Node used for representing graphs
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Node_Format>
-#[derive(McSerialize, McDefault, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(McSerialize, Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Node {
 	pub flags: NodeFlags,
 	pub children_count: VarInt,
@@ -66,6 +66,30 @@ impl McDeserialize for Node {
 			parser,
 			suggestions,
 		})
+	}
+}
+
+/// The flags decide which optional fields are on the wire, and `children_count` must match
+/// `children`. A derived default does not keep these in agreement, so this is written by hand.
+/// It is an argument node with every optional field present, so that each read path runs.
+impl McDefault for Node {
+	fn mc_default() -> Self {
+		let children: Vec<VarInt> = McDefault::mc_default();
+		Self {
+			flags: NodeFlags {
+				typ: NodeType::Argument,
+				is_executable: true,
+				has_redirect: true,
+				has_suggestions: true,
+				is_restricted: true,
+			},
+			children_count: VarInt(children.len() as i32),
+			children,
+			redirect_node: Some(VarInt::mc_default()),
+			name: Some(String::mc_default()),
+			parser: Some(Parser::mc_default()),
+			suggestions: Some(String::mc_default()),
+		}
 	}
 }
 
@@ -653,3 +677,64 @@ impl PartialEq for Parser {
 }
 
 impl Eq for Parser {}
+
+#[cfg(test)]
+mod tests {
+	use super::Parser;
+	use std::collections::hash_map::DefaultHasher;
+	use std::hash::{Hash, Hasher};
+
+	fn hash_of(p: &Parser) -> u64 {
+		let mut h = DefaultHasher::new();
+		p.hash(&mut h);
+		h.finish()
+	}
+
+	fn samples() -> Vec<Parser> {
+		vec![
+			Parser::BrigadierBool,
+			Parser::MinecraftBlockPos,
+			Parser::BrigadierFloat { flags: 3, min: Some(1.0), max: Some(2.0) },
+			Parser::BrigadierFloat { flags: 3, min: Some(1.0), max: Some(2.5) },
+			Parser::BrigadierFloat { flags: 1, min: Some(f32::NAN), max: None },
+			Parser::BrigadierFloat { flags: 1, min: Some(0.0), max: None },
+			Parser::BrigadierFloat { flags: 1, min: Some(-0.0), max: None },
+			Parser::BrigadierDouble { flags: 3, min: Some(1.0), max: Some(2.0) },
+			Parser::BrigadierDouble { flags: 1, min: Some(f64::NAN), max: None },
+			Parser::BrigadierInteger { flags: 3, min: Some(1), max: Some(2) },
+			Parser::BrigadierLong { flags: 3, min: Some(1), max: Some(2) },
+			Parser::MinecraftEntity(1),
+			Parser::MinecraftEntity(2),
+			Parser::MinecraftTime(5),
+			Parser::MinecraftResource("a".to_string()),
+			Parser::MinecraftResource("b".to_string()),
+		]
+	}
+
+	/// Parser implements Eq, so it can be a key in a HashMap or HashSet. Eq must be reflexive, even
+	/// for a NaN bound (derived f32 equality says NaN != NaN). Equal values must give equal hashes.
+	/// Equality compares the bits, so it matches the bytes on the wire: 0.0 and -0.0 are different.
+	#[test]
+	fn eq_is_bitwise_and_hash_agrees() {
+		let all = samples();
+		for (i, a) in all.iter().enumerate() {
+			assert_eq!(a, &a.clone(), "{a:?} must equal itself");
+			assert_eq!(hash_of(a), hash_of(&a.clone()));
+			for (j, b) in all.iter().enumerate() {
+				assert_eq!(a == b, i == j, "{a:?} vs {b:?}: every sample is distinct");
+				if a == b {
+					assert_eq!(hash_of(a), hash_of(b));
+				}
+			}
+		}
+	}
+
+	/// The same payload under different variants must not be equal. Float and Double with the same
+	/// bounds are different parsers on the wire.
+	#[test]
+	fn same_payload_different_variant_is_not_equal() {
+		assert_ne!(Parser::BrigadierInteger { flags: 0, min: None, max: None }, Parser::BrigadierLong { flags: 0, min: None, max: None });
+		assert_ne!(Parser::MinecraftResource("x".to_string()), Parser::MinecraftResourceKey("x".to_string()));
+		assert_ne!(Parser::BrigadierBool, Parser::MinecraftBlockPos);
+	}
+}

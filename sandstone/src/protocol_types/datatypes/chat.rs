@@ -267,7 +267,7 @@ impl McSerialize for TextComponent {
 			}
 			_ => {
 				nbt.get_type_id().mc_serialize(serializer)?;
-				nbt.mc_serialize(serializer)?;
+				nbt.serialize_payload(serializer)?;
 			}
 		}
 		Ok(())
@@ -845,6 +845,84 @@ mod tests {
 		component.mc_serialize(&mut serializer).unwrap();
 		let mut deserializer = McDeserializer::new(&serializer.output);
 		TextComponent::mc_deserialize(&mut deserializer).unwrap()
+	}
+
+	fn content_of(pairs: Vec<(&str, NbtTag)>) -> ComponentType {
+		let mut compound = NbtCompound::new_no_name();
+		for (k, v) in pairs {
+			compound.add(k, v);
+		}
+		TextComponent::from(NbtTag::Compound(compound)).content
+	}
+
+	/// The `type` field is optional on the wire. Without it, the reader must find the content type
+	/// from which field is present, so that a vanilla component with no `type` renders correctly.
+	#[test]
+	fn nbt_content_detected_without_type_field() {
+		assert_eq!(content_of(vec![("text", "a".into())]), ComponentType::Text { text: "a".to_string() });
+
+		let with = NbtTag::List(NbtList::from_vec(vec![NbtTag::from("x")]).unwrap());
+		assert_eq!(
+			content_of(vec![("translate", "k".into()), ("fallback", "f".into()), ("with", with)]),
+			ComponentType::Translatable(Box::new(TranslatableContent {
+				translate: "k".to_string(),
+				fallback: Some("f".to_string()),
+				with: Some(vec![TextComponent::new("x")]),
+			}))
+		);
+
+		let mut score = NbtCompound::new_no_name();
+		score.add("name", "@p");
+		score.add("objective", "kills");
+		assert_eq!(
+			content_of(vec![("score", NbtTag::Compound(score))]),
+			ComponentType::Score { score: ScoreContent { name: "@p".to_string(), objective: "kills".to_string() } }
+		);
+
+		assert_eq!(content_of(vec![("selector", "@a".into())]), ComponentType::Selector { selector: "@a".to_string(), separator: None });
+		assert_eq!(content_of(vec![("keybind", "key.jump".into())]), ComponentType::Keybind { keybind: "key.jump".to_string() });
+
+		match content_of(vec![("nbt", "Health".into()), ("entity", "@s".into())]) {
+			ComponentType::Nbt(n) => {
+				assert_eq!(n.nbt, "Health");
+				assert_eq!(n.entity.as_deref(), Some("@s"));
+				assert_eq!(n.block, None);
+			}
+			other => panic!("expected nbt content, got {other:?}"),
+		}
+	}
+
+	/// When more than one content field is present and there is no `type`, the wiki order decides:
+	/// text, translatable, score, selector, keybind, nbt.
+	#[test]
+	fn nbt_content_detection_priority() {
+		assert!(matches!(content_of(vec![("translate", "k".into()), ("text", "a".into())]), ComponentType::Text { .. }));
+		assert!(matches!(content_of(vec![("keybind", "k".into()), ("translate", "t".into())]), ComponentType::Translatable(_)));
+		assert!(matches!(content_of(vec![("nbt", "n".into()), ("keybind", "k".into())]), ComponentType::Keybind { .. }));
+	}
+
+	/// A compound with no content field, or a tag that is not a string or compound, gives empty
+	/// text instead of an error, so one bad component does not drop the whole packet.
+	#[test]
+	fn nbt_content_fallback_is_empty_text() {
+		assert_eq!(content_of(vec![("color", "red".into())]), ComponentType::Text { text: String::new() });
+		assert_eq!(TextComponent::from(NbtTag::Int(5)).content, ComponentType::Text { text: String::new() });
+	}
+
+	/// Each constructor must use the vanilla action id, or the client ignores the click.
+	#[test]
+	fn click_event_constructors_use_vanilla_action_ids() {
+		for (event, action, value) in [
+			(ClickEvent::open_url("https://a.b"), "open_url", "https://a.b"),
+			(ClickEvent::open_file("f.txt"), "open_file", "f.txt"),
+			(ClickEvent::run_command("/say hi"), "run_command", "/say hi"),
+			(ClickEvent::suggest_command("/tp"), "suggest_command", "/tp"),
+			(ClickEvent::change_page(3), "change_page", "3"),
+			(ClickEvent::copy_to_clipboard("x"), "copy_to_clipboard", "x"),
+		] {
+			assert_eq!(event.action, action);
+			assert_eq!(event.value, value);
+		}
 	}
 
 	#[test]

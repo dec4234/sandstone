@@ -263,10 +263,7 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedArray<T> {
 		T: McDeserialize,
 	{
 		let var_output = VarInt::mc_deserialize(deserializer)?;
-		if var_output.0 < 0 {
-			return Err(SerializingErr::OutOfBounds(format!("PrefixedArray length prefix of {} is negative", var_output.0)));
-		}
-		let mut vec = Vec::with_capacity(var_output.0 as usize);
+		let mut vec = Vec::with_capacity(deserializer.prealloc_capacity(var_output.0)?);
 
 		for _ in 0..var_output.0 {
 			vec.push(T::mc_deserialize(deserializer)?);
@@ -551,6 +548,16 @@ mod tests {
 		let data = [3u8, 0, 1];
 		let mut de = McDeserializer::new(&data);
 		assert!(PrefixedArray::<u16>::mc_deserialize(&mut de).is_err());
+	}
+
+	/// Regression: a very large count from a peer used to go straight to Vec::with_capacity. For a
+	/// large item type this asks for hundreds of GB, and the allocator aborts the whole process
+	/// (no panic, no error). A short buffer with a big count must give an error.
+	#[test]
+	fn prefixed_array_huge_count_errors_without_abort() {
+		let bytes = to_bytes(&VarInt(i32::MAX));
+		let mut de = McDeserializer::new(&bytes);
+		assert!(PrefixedArray::<[u8; 256]>::mc_deserialize(&mut de).is_err());
 	}
 
 	/// Regression: a negative count from a peer used to panic in Vec::with_capacity (capacity overflow),

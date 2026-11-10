@@ -65,7 +65,65 @@ impl PartialEq for SerializingErr {
 			(Self::InvalidPacketState, Self::InvalidPacketState) => true,
 			(Self::InconsistentField(a), Self::InconsistentField(b)) => a == b,
 			(Self::OutOfBounds(a), Self::OutOfBounds(b)) => a == b,
+			(Self::InvalidBitsPerEntry, Self::InvalidBitsPerEntry) => true,
+			(Self::InvalidEnumValue(a), Self::InvalidEnumValue(b)) => a == b,
+			(Self::MissingField(a), Self::MissingField(b)) => a == b,
+			(Self::NoKnownPacket(a), Self::NoKnownPacket(b)) => a == b,
+			(Self::DeserializationError(a), Self::DeserializationError(b)) => a == b,
+			(Self::NbtError(a), Self::NbtError(b)) => a == b,
+			(Self::FailedToSerializeJSON(a), Self::FailedToSerializeJSON(b)) => a == b,
 			_ => false,
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::SerializingErr;
+	use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+
+	fn all() -> Vec<SerializingErr> {
+		vec![
+			SerializingErr::InvalidEndOfVarInt,
+			SerializingErr::VarTypeTooLong("a".into()),
+			SerializingErr::CouldNotDeserializeString(String::from_utf8(vec![0xFF]).unwrap_err()),
+			SerializingErr::StringFromSliceError(<[u8; 2]>::try_from(&[0u8][..]).unwrap_err()),
+			SerializingErr::InputEnded,
+			SerializingErr::LeftoverInput,
+			SerializingErr::UnknownFailure,
+			SerializingErr::UniqueFailure("a".into()),
+			SerializingErr::InvalidPacketState,
+			SerializingErr::InvalidBitsPerEntry,
+			SerializingErr::InvalidEnumValue(3),
+			SerializingErr::MissingField("a".into()),
+			SerializingErr::NoKnownPacket("a".into()),
+			SerializingErr::DeserializationError("a".into()),
+			SerializingErr::NbtError(NbtError::InvalidType),
+			SerializingErr::InconsistentField("a".into()),
+			SerializingErr::OutOfBounds("a".into()),
+			SerializingErr::FailedToSerializeJSON("a".into()),
+		]
+	}
+
+	/// Regression: seven variants fell through to `_ => false`, so `e == e.clone()` was false and
+	/// `assert_eq!` on those errors could never pass. Every variant must equal itself and only itself.
+	#[test]
+	fn eq_is_reflexive_for_every_variant() {
+		let errors = all();
+		for (i, a) in errors.iter().enumerate() {
+			for (j, b) in errors.iter().enumerate() {
+				assert_eq!(a == b, i == j, "{a:?} vs {b:?}");
+			}
+		}
+		assert_ne!(SerializingErr::InvalidEnumValue(1), SerializingErr::InvalidEnumValue(2));
+	}
+
+	/// Messages carry their detail text, and wrapped errors show the inner message unchanged.
+	#[test]
+	fn display_includes_detail() {
+		assert_eq!(SerializingErr::OutOfBounds("x".into()).to_string(), "The deserialized data is not valid for the range of possible values: x");
+		assert_eq!(SerializingErr::InvalidEnumValue(-4).to_string(), "The input data is not a valid enum value: -4");
+		assert_eq!(SerializingErr::UniqueFailure("just this".into()).to_string(), "just this");
+		assert_eq!(SerializingErr::NbtError(NbtError::InvalidType).to_string(), NbtError::InvalidType.to_string());
 	}
 }

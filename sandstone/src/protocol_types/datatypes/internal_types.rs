@@ -100,7 +100,7 @@ impl McSerialize for IDSet {
 
 			ids.mc_serialize(serializer)?;
 		} else {
-			return Err(SerializingErr::MissingField("IDSet with type 0 must have an ID list".to_string()));
+			return Err(SerializingErr::MissingField(format!("IDSet with type {} must have an ID list", self.typ.0)));
 		}
 		Ok(())
 	}
@@ -119,6 +119,9 @@ impl McDeserialize for IDSet {
 				tag_name: Some(tag_name),
 				ids: None,
 			})
+		} else if typ.0 < 0 {
+			// The wiki gives size = Type - 1, so a negative Type has no valid size.
+			Err(SerializingErr::OutOfBounds(format!("IDSet type cannot be negative, got {}", typ.0)))
 		} else {
 			let size = typ.0 - 1;
 
@@ -410,6 +413,76 @@ mod test {
 	use crate::protocol_types::datatypes::command::{NodeFlags, NodeType};
 	use crate::protocol_types::datatypes::internal_types::{IDSet, PackedEntries};
 	use crate::protocol_types::datatypes::var_types::VarInt;
+
+	fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
+		let mut serializer = McSerializer::new();
+		value.mc_serialize(&mut serializer).unwrap();
+		serializer.output
+	}
+
+	/// Either is a bool then X (true) or Y (false). The Waypoint packet uses Either<Uuid, String>,
+	/// so the bool must pick the right type, or the reader reads 16 UUID bytes as a string.
+	#[test]
+	fn either_bool_selects_side() {
+		use crate::protocol_types::datatypes::internal_types::Either;
+		use uuid::Uuid;
+
+		let x: Either<Uuid, String> = Either::X(Uuid::from_u128(1));
+		let bytes = to_bytes(&x);
+		assert_eq!(bytes[0], 1);
+		assert_eq!(bytes.len(), 17);
+		assert_eq!(Either::<Uuid, String>::mc_deserialize(&mut McDeserializer::new(&bytes)).unwrap(), x);
+
+		let y: Either<Uuid, String> = Either::Y("ab".to_string());
+		let bytes = to_bytes(&y);
+		assert_eq!(bytes, vec![0, 2, b'a', b'b']);
+		assert_eq!(Either::<Uuid, String>::mc_deserialize(&mut McDeserializer::new(&bytes)).unwrap(), y);
+
+		// A first byte that is not 0 or 1 is not a bool, so it is not a valid Either.
+		assert!(Either::<Uuid, String>::mc_deserialize(&mut McDeserializer::new(&[2, 0])).is_err());
+	}
+
+	/// The serializer refuses an IDSet whose fields disagree with `typ`, because the reader trusts
+	/// `typ` alone. A wrong value on the wire would shift every field after it.
+	#[test]
+	fn idset_serialize_rejects_inconsistent_fields() {
+		use crate::protocol::serialization::serializer_error::SerializingErr;
+		let mut serializer = McSerializer::new();
+
+		let no_tag = IDSet { typ: VarInt(0), tag_name: None, ids: None };
+		assert!(matches!(no_tag.mc_serialize(&mut serializer), Err(SerializingErr::MissingField(_))));
+
+		let wrong_count = IDSet { typ: VarInt(3), tag_name: None, ids: Some(vec![VarInt(1)]) };
+		assert!(matches!(wrong_count.mc_serialize(&mut serializer), Err(SerializingErr::InconsistentField(_))));
+
+		let no_ids = IDSet { typ: VarInt(2), tag_name: None, ids: None };
+		match no_ids.mc_serialize(&mut serializer) {
+			Err(SerializingErr::MissingField(msg)) => assert!(msg.contains("type 2"), "{msg}"),
+			other => panic!("expected MissingField, got {other:?}"),
+		}
+	}
+
+	/// A negative type gives a negative size (type - 1). Before the fix the reader read zero IDs and
+	/// returned a set that the serializer then refused, so a decoded value could not be sent again.
+	#[test]
+	fn idset_negative_type_is_rejected() {
+		use crate::protocol::serialization::serializer_error::SerializingErr;
+		let mut serializer = McSerializer::new();
+		VarInt(-1).mc_serialize(&mut serializer).unwrap();
+		let bytes = serializer.output;
+
+		let result = IDSet::mc_deserialize(&mut McDeserializer::new(&bytes));
+		assert!(matches!(result, Err(SerializingErr::OutOfBounds(_))), "{result:?}");
+	}
+
+	/// Type 1 means an empty inline list (size = type - 1), not a tag.
+	#[test]
+	fn idset_type_one_is_empty_list() {
+		let bytes = [1u8];
+		let set = IDSet::mc_deserialize(&mut McDeserializer::new(&bytes)).unwrap();
+		assert_eq!(set.ids, Some(vec![]));
+		assert_eq!(set.tag_name, None);
+	}
 
 	#[test]
 	fn test_idset_tag_round_trip() {

@@ -63,3 +63,32 @@ impl PartialEq for NetworkError {
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::NetworkError;
+	use crate::protocol::serialization::serializer_error::SerializingErr;
+	use std::io;
+
+	/// Wrapped errors are `transparent`: the text a user sees is the inner error's text, with no
+	/// extra prefix. Variants with a payload show the payload.
+	#[test]
+	fn display_messages() {
+		assert_eq!(NetworkError::PacketTooLarge.to_string(), "Packet too large");
+		assert_eq!(NetworkError::InvalidNextState("7".into()).to_string(), "7");
+		assert_eq!(NetworkError::ExpectedDifferentPacket("Ping".into()).to_string(), "Expected different packet: Ping");
+		assert_eq!(NetworkError::from(SerializingErr::InputEnded).to_string(), SerializingErr::InputEnded.to_string());
+		let io_err = io::Error::other("boom");
+		assert_eq!(NetworkError::from(io_err).to_string(), "boom");
+	}
+
+	/// IO errors are not comparable, so equality uses the message. Different variants are never equal.
+	#[test]
+	fn eq_compares_payloads() {
+		assert_eq!(NetworkError::from(SerializingErr::InputEnded), NetworkError::from(SerializingErr::InputEnded));
+		assert_ne!(NetworkError::from(SerializingErr::InputEnded), NetworkError::from(SerializingErr::LeftoverInput));
+		assert_eq!(NetworkError::from(io::Error::other("a")), NetworkError::from(io::Error::other("a")));
+		assert_ne!(NetworkError::from(io::Error::other("a")), NetworkError::from(io::Error::other("b")));
+		assert_ne!(NetworkError::NoDataReceived, NetworkError::PacketTooLarge);
+	}
+}

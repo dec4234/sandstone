@@ -264,8 +264,31 @@ mod test {
 		}
 	}
 
+	/// The read table is written by hand, separate from the enum discriminants. One wrong arm would
+	/// decode a status as a different event. Each variant name ends with its code, so for every
+	/// code: the name suffix, the discriminant, and the re-serialized byte must all equal the code.
+	#[test]
+	fn entity_status_table_matches_discriminants_and_names() {
+		for code in 0i8..=63 {
+			let status = EntityStatusEnum::mc_deserialize(&mut McDeserializer::new(&[code as u8])).unwrap_or_else(|e| panic!("code {code}: {e:?}"));
+			assert_eq!(status.clone() as i8, code, "{status:?}");
+
+			let name = format!("{status:?}");
+			let suffix: String = name.chars().rev().take_while(|c| c.is_ascii_digit()).collect::<Vec<_>>().into_iter().rev().collect();
+			assert_eq!(suffix.parse::<i8>().ok(), Some(code), "variant {name} is decoded from code {code}");
+
+			let mut s = McSerializer::new();
+			status.mc_serialize(&mut s).unwrap();
+			assert_eq!(s.as_bytes(), &[code as u8]);
+		}
+	}
+
 	#[test]
 	fn unknown_entity_status_is_an_error() {
+		// 64 is the first code past the table, and a negative byte is never valid.
+		for byte in [64u8, 0xFF] {
+			assert!(EntityStatusEnum::mc_deserialize(&mut McDeserializer::new(&[byte])).is_err(), "byte {byte}");
+		}
 		assert!(EntityStatusEnum::mc_deserialize(&mut McDeserializer::new(&[100])).is_err());
 	}
 }

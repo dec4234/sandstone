@@ -33,7 +33,7 @@ impl McDeserialize for BitSet {
 		Self: Sized,
 	{
 		let len = VarInt::mc_deserialize(deserializer)?;
-		let mut bits = Vec::with_capacity(len.0 as usize);
+		let mut bits = Vec::with_capacity(deserializer.prealloc_capacity(len.0)?);
 		for _ in 0..len.0 {
 			bits.push(u64::mc_deserialize(deserializer)?);
 		}
@@ -97,19 +97,14 @@ impl BitSet {
 		}
 	}
 
-	/// Create a slice of some subset of the BitSet
+	/// Create a new BitSet from the bits in `range`, like Java's `BitSet.get(from, to)`.
+	/// Bit `range.start` becomes bit 0 of the result. Bits outside the range are not copied.
 	pub fn slice(&self, range: Range<usize>) -> BitSet {
-		let start = range.start / 64;
-		let end = range.end.div_ceil(64);
-		let mut bits = vec![0; end - start];
-		for i in start..end {
-			if i < self.bits.len() {
-				bits[i - start] = self.bits[i];
-			}
+		let mut slice = BitSet::new(range.len());
+		for (i, index) in range.enumerate() {
+			slice.set_bit(i, self.get_bit(index));
 		}
-		Self {
-			bits,
-		}
+		slice
 	}
 
 	/// Clear all bits in the BitSet (set all bits to false)
@@ -216,6 +211,59 @@ mod test {
 		assert!(!bitset.get_bit(126));
 	}
 
+	/// On the wire a BitSet is a VarInt count of longs, then each long big-endian. Light masks in
+	/// chunk packets use this, so a wrong layout puts light data in the wrong sections.
+	#[test]
+	fn wire_format_round_trip() {
+		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+		let mut bitset = BitSet::new(128);
+		bitset.set_bit(0, true);
+		bitset.set_bit(127, true);
+
+		let mut serializer = McSerializer::new();
+		bitset.mc_serialize(&mut serializer).unwrap();
+		assert_eq!(serializer.output, vec![2, 0, 0, 0, 0, 0, 0, 0, 1, 0x80, 0, 0, 0, 0, 0, 0, 0]);
+
+		let mut de = McDeserializer::new(&serializer.output);
+		assert_eq!(BitSet::mc_deserialize(&mut de).unwrap(), bitset);
+		assert!(de.is_at_end());
+	}
+
+	/// Regression: the count comes from the peer and went straight to Vec::with_capacity. A
+	/// negative count panicked and a very large count aborted the process.
+	#[test]
+	fn bad_count_errors() {
+		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+		use crate::protocol_types::datatypes::var_types::VarInt;
+		for count in [-1, i32::MAX] {
+			let mut serializer = McSerializer::new();
+			VarInt(count).mc_serialize(&mut serializer).unwrap();
+			assert!(BitSet::mc_deserialize(&mut McDeserializer::new(&serializer.output)).is_err(), "count {count}");
+		}
+	}
+
+	/// The size is fixed at creation. Writes past it are ignored, and reads past it are false, so
+	/// the set never grows by surprise.
+	#[test]
+	fn out_of_range_and_clear() {
+		let mut bitset = BitSet::new(64);
+		assert_eq!(bitset.size(), 64);
+		bitset.set_bit(64, true);
+		assert!(!bitset.get_bit(64));
+		assert_eq!(bitset.size(), 64);
+
+		bitset.set_bit(5, true);
+		bitset.set_bit(5, false);
+		assert!(!bitset.get_bit(5));
+
+		bitset.set_all();
+		assert!((0..64).all(|i| bitset.get_bit(i)));
+		bitset.clear(3);
+		assert!(!bitset.get_bit(3));
+		bitset.clear_all();
+		assert!((0..64).all(|i| !bitset.get_bit(i)));
+	}
+
 	#[test]
 	fn flip_test() {
 		let mut bitset = BitSet::new(128);
@@ -255,6 +303,30 @@ mod test {
 		assert!(slice.get_bit(0));
 		assert!(!slice.get_bit(62));
 		assert!(slice.get_bit(63));
+	}
+
+	/// Regression: slice copied whole u64 words, so a start that was not a multiple of 64 was
+	/// ignored and bits at or after the end were kept. Bit `start` must become bit 0 and only
+	/// the bits in the range may be copied, the same as Java's `BitSet.get(from, to)`.
+	#[test]
+	fn slicing_off_word_boundary() {
+		let mut bitset = BitSet::new(128);
+		bitset.set_bit(9, true);
+		bitset.set_bit(10, true);
+		bitset.set_bit(70, true);
+		bitset.set_bit(75, true);
+
+		let slice = bitset.slice(10..75);
+		assert_eq!(slice.size(), 128);
+		assert!(slice.get_bit(0), "bit 10 must move to bit 0");
+		assert!(slice.get_bit(60), "bit 70 must move to bit 60 across the word boundary");
+		assert!(!slice.get_bit(65), "bit 75 is at the end of the range and must not be copied");
+		let set: Vec<usize> = (0..slice.size()).filter(|&i| slice.get_bit(i)).collect();
+		assert_eq!(set, vec![0, 60], "bit 9 is before the range and must not be copied");
+
+		// Bits past the end of the source read as false.
+		let slice = bitset.slice(120..200);
+		assert!((0..slice.size()).all(|i| !slice.get_bit(i)));
 	}
 
 	#[test]

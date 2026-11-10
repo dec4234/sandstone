@@ -967,13 +967,25 @@ pub fn derive_mc_default(input: TokenStream) -> TokenStream {
 	let mc_default_impl = match &input.data {
 		Data::Struct(data) => match &data.fields {
 			Fields::Named(fields) => {
-				let default_fields = fields.named.iter().map(|field| {
+				// Bind each field in order, like the McDeserialize derive does. A field with
+				// `#[mc(deserialize_if = cond)]` is only `Some` when `cond` is true for the earlier
+				// defaults. Otherwise the default would not match what a reader decodes.
+				let mut lets = Vec::new();
+				let mut names = Vec::new();
+				for field in &fields.named {
 					let field_name = field.ident.as_ref().unwrap();
-					quote! { #field_name: McDefault::mc_default() }
-				});
+					let ty = &field.ty;
+					let lit = match deserialize_if_condition(field) {
+						Some(cond) => quote! { let #field_name: #ty = if #cond { McDefault::mc_default() } else { None }; },
+						None => quote! { let #field_name: #ty = McDefault::mc_default(); },
+					};
+					lets.push(lit);
+					names.push(field_name);
+				}
 				quote! {
+					#(#lets)*
 					Self {
-						#(#default_fields),*
+						#(#names),*
 					}
 				}
 			}
@@ -1028,6 +1040,7 @@ pub fn derive_mc_default(input: TokenStream) -> TokenStream {
 	};
 
 	let expanded = quote! {
+		#[allow(clippy::nonminimal_bool, unused_variables, non_snake_case)]
 		impl McDefault for #name {
 			fn mc_default() -> Self {
 				#mc_default_impl
@@ -1036,4 +1049,24 @@ pub fn derive_mc_default(input: TokenStream) -> TokenStream {
 	};
 
 	TokenStream::from(expanded)
+}
+
+/// Returns the expression in `#[mc(deserialize_if = ...)]` on a field, if there is one.
+fn deserialize_if_condition(field: &Field) -> Option<Expr> {
+	let mut condition = None;
+	for attr in &field.attrs {
+		if !attr.path().is_ident("mc") {
+			continue;
+		}
+		attr.parse_nested_meta(|meta| {
+			if meta.path.is_ident("deserialize_if") {
+				condition = Some(meta.value()?.parse()?);
+				Ok(())
+			} else {
+				Err(meta.error("unsupported mc attribute argument"))
+			}
+		})
+		.unwrap_or_else(|e| panic!("Error parsing mc attribute: {}", e));
+	}
+	condition
 }

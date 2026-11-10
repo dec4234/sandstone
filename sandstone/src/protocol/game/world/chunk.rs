@@ -223,7 +223,7 @@ impl McDeserialize for BiomeByteData {
 }
 
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Paletted_Container_structure>
-#[derive(McDefault, McSerialize, Debug, Clone, Hash, PartialEq)]
+#[derive(McSerialize, Debug, Clone, Hash, PartialEq)]
 pub struct PalletedContainer {
 	pub bits_per_entry: u8,
 	pub palette: PalleteFormat,
@@ -305,6 +305,14 @@ impl PalletedContainer {
 			palette,
 			data,
 		})
+	}
+}
+
+/// A derived default would give a bits per entry of `u8::mc_default()`, which no reader accepts.
+/// A single-valued container is valid for both block states and biomes.
+impl McDefault for PalletedContainer {
+	fn mc_default() -> Self {
+		Self::single_valued(VarInt::mc_default())
 	}
 }
 
@@ -485,6 +493,119 @@ mod test {
 
 		assert_eq!(section, result);
 		assert!(deserializer.is_at_end());
+	}
+
+	use crate::protocol::game::world::chunk::{BiomeByteData, BiomeSection, ChunkSection, PackedXZ, PaletteFormatType, PalleteFormat, PalletedContainer};
+	use crate::protocol::serialization::serializer_error::SerializingErr;
+	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+	use crate::protocol_types::datatypes::internal_types::PackedEntries;
+	use crate::protocol_types::datatypes::var_types::VarInt;
+
+	fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
+		let mut serializer = McSerializer::new();
+		value.mc_serialize(&mut serializer).unwrap();
+		serializer.output
+	}
+
+	/// The Chunk Biomes packet wraps biome-only sections in a length-prefixed byte array. The
+	/// reader must use the biome rules (64 entries, indirect 1-3 bpe) for each section.
+	#[test]
+	fn biome_byte_data_round_trip() {
+		let indices: Vec<u16> = (0..64).map(|i| (i % 3) as u16).collect();
+		let indirect = PalletedContainer::indirect(vec![VarInt(4), VarInt(5), VarInt(6)], &indices, PaletteFormatType::BIOMES).unwrap();
+		assert_eq!(indirect.bits_per_entry, 2);
+		assert_eq!(indirect.data.len(), 2, "64 entries at 32 per long");
+
+		let data = BiomeByteData {
+			data: vec![BiomeSection { biomes: PalletedContainer::single_valued(VarInt(1)) }, BiomeSection { biomes: indirect }],
+		};
+		let bytes = to_bytes(&data);
+		// Byte array length prefix, then section 1 (bpe 0, value 1), then section 2 (bpe 2, ...).
+		assert_eq!(bytes[0] as usize, bytes.len() - 1);
+		assert_eq!(&bytes[1..4], &[0, 1, 2]);
+
+		let mut de = McDeserializer::new(&bytes);
+		assert_eq!(BiomeByteData::mc_deserialize(&mut de).unwrap(), data);
+		assert!(de.is_at_end());
+	}
+
+	/// Direct format has no palette on the wire: bpe, then the packed longs. Blocks use 15 bpe and
+	/// biomes use 7 bpe in this implementation.
+	#[test]
+	fn direct_palette_round_trip() {
+		for (typ, bpe, entries) in [(PaletteFormatType::BLOCKS, 15u8, 4096u16), (PaletteFormatType::BIOMES, 7, 64)] {
+			let longs = (entries as usize).div_ceil((64 / bpe) as usize);
+			let container = PalletedContainer {
+				bits_per_entry: bpe,
+				palette: PalleteFormat::Direct,
+				data: vec![PackedEntries::new(bpe); longs],
+			};
+			let bytes = to_bytes(&container);
+			assert_eq!(bytes.len(), 1 + longs * 8, "{typ:?}: no palette bytes");
+
+			let mut de = McDeserializer::new(&bytes);
+			assert_eq!(PalletedContainer::mc_deserialize(&mut de, entries, typ).unwrap(), container);
+			assert!(de.is_at_end());
+		}
+	}
+
+	/// A bpe outside the valid ranges must be an error, not a guess. Biome ranges are smaller than
+	/// block ranges, so a value that is valid for blocks can be invalid for biomes.
+	#[test]
+	fn invalid_bits_per_entry_errors() {
+		for (typ, bpe) in [(PaletteFormatType::BLOCKS, 3u8), (PaletteFormatType::BLOCKS, 9), (PaletteFormatType::BLOCKS, 16), (PaletteFormatType::BIOMES, 4), (PaletteFormatType::BIOMES, 8)] {
+			let bytes = [bpe, 0, 0, 0];
+			let result = PalletedContainer::mc_deserialize(&mut McDeserializer::new(&bytes), 64, typ.clone());
+			assert!(matches!(result, Err(SerializingErr::InvalidBitsPerEntry)), "{typ:?} bpe {bpe}: {result:?}");
+		}
+	}
+
+	/// The indirect builder must refuse an empty palette and a palette too large for the indirect range.
+	#[test]
+	fn indirect_builder_errors() {
+		assert!(matches!(PalletedContainer::indirect(vec![], &[0; 64], PaletteFormatType::BIOMES), Err(SerializingErr::OutOfBounds(_))));
+
+		// 9 entries need 4 bits, but the biome indirect range stops at 3.
+		let palette: Vec<VarInt> = (0..9).map(VarInt).collect();
+		assert!(matches!(PalletedContainer::indirect(palette, &[0; 64], PaletteFormatType::BIOMES), Err(SerializingErr::InvalidBitsPerEntry)));
+
+		// A 2-entry block palette still uses the minimum of 4 bpe.
+		let small = PalletedContainer::indirect(vec![VarInt(0), VarInt(1)], &[0; 4096], PaletteFormatType::BLOCKS).unwrap();
+		assert_eq!(small.bits_per_entry, 4);
+	}
+
+	/// A ChunkSection reads blocks with 4096 entries and then biomes with 64 entries. Mixing up
+	/// the two counts would read the wrong number of longs.
+	#[test]
+	fn chunk_section_direct_blocks_then_biomes() {
+		let section = ChunkSection {
+			block_count: 1,
+			block_states: PalletedContainer {
+				bits_per_entry: 15,
+				palette: PalleteFormat::Direct,
+				data: vec![PackedEntries::new(15); 4096usize.div_ceil(4)],
+			},
+			biomes: PalletedContainer::single_valued(VarInt(2)),
+		};
+		let bytes = to_bytes(&section);
+		let mut de = McDeserializer::new(&bytes);
+		assert_eq!(ChunkSection::mc_deserialize(&mut de).unwrap(), section);
+		assert!(de.is_at_end());
+	}
+
+	/// PackedXZ is x in the high nibble and z in the low nibble. Values over 15 would overwrite
+	/// the other coordinate, so they must be refused.
+	#[test]
+	fn packed_xz() {
+		let xz = PackedXZ::new(3, 12).unwrap();
+		assert_eq!(to_bytes(&xz), vec![0x3C]);
+		assert_eq!((xz.x(), xz.z()), (3, 12));
+
+		let corner = PackedXZ::new(15, 15).unwrap();
+		assert_eq!((corner.x(), corner.z()), (15, 15));
+
+		assert!(PackedXZ::new(16, 0).is_err());
+		assert!(PackedXZ::new(0, 16).is_err());
 	}
 
 	#[test]
