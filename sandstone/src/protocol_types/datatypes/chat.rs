@@ -6,6 +6,7 @@
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtList, NbtTag};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
@@ -148,17 +149,38 @@ impl TextComponent {
 	}
 }
 
-impl From<NbtTag> for TextComponent {
-	fn from(tag: NbtTag) -> Self {
+/// Read a list tag as text components, one for each item.
+fn components_from_list(list: &NbtList) -> Result<Vec<TextComponent>, NbtError> {
+	list.list.iter().cloned().map(TextComponent::try_from).collect()
+}
+
+/// A text component is a string, a list that is not empty, or a compound. Any other tag is an error,
+/// as in vanilla, where the text codec does not decode it and the packet fails.
+///
+/// <https://minecraft.wiki/w/Text_component_format>
+impl TryFrom<NbtTag> for TextComponent {
+	type Error = NbtError;
+
+	fn try_from(tag: NbtTag) -> Result<Self, NbtError> {
 		match tag {
-			NbtTag::String(s) => Self::new(s),
+			NbtTag::String(s) => Ok(Self::new(s)),
+			// An item of a list with mixed types, wrapped by vanilla as `{"": item}`.
+			NbtTag::Compound(compound) if compound.is_list_wrapper() => Self::try_from(NbtTag::Compound(compound).unwrap_list_item()),
+			// A list is shorthand for its first item, with the other items added to its `extra`. This is
+			// the same rule as the JSON array form. Vanilla does not accept an empty list.
+			NbtTag::List(list) => {
+				let mut items = components_from_list(&list)?.into_iter();
+				let mut base = items.next().ok_or(NbtError::InvalidType)?;
+				let rest: Vec<TextComponent> = items.collect();
+				if !rest.is_empty() {
+					base.extra.get_or_insert_with(Vec::new).extend(rest);
+				}
+				Ok(base)
+			}
 			NbtTag::Compound(compound) => {
-				let content = ComponentType::from_compound(&compound);
+				let content = ComponentType::from_compound(&compound)?;
 				let extra = match compound.get("extra") {
-					Some(NbtTag::List(list)) => {
-						let components: Vec<TextComponent> = list.list.iter().map(|tag| TextComponent::from(tag.clone())).collect();
-						Some(components)
-					}
+					Some(NbtTag::List(list)) => Some(components_from_list(list)?),
 					_ => None,
 				};
 				let color = match compound.get("color") {
@@ -193,7 +215,7 @@ impl From<NbtTag> for TextComponent {
 					Some(NbtTag::String(s)) => Some(s.clone()),
 					_ => None,
 				};
-				Self {
+				Ok(Self {
 					content,
 					extra,
 					color,
@@ -204,9 +226,9 @@ impl From<NbtTag> for TextComponent {
 					obfuscated,
 					font,
 					insertion,
-				}
+				})
 			}
-			_ => Self::new(String::new()),
+			_ => Err(NbtError::InvalidType),
 		}
 	}
 }
@@ -226,7 +248,7 @@ impl From<TextComponent> for NbtTag {
 		component.content.write_to_compound(&mut compound);
 		if let Some(extra) = component.extra {
 			let tags: Vec<NbtTag> = extra.into_iter().map(NbtTag::from).collect();
-			if let Ok(list) = NbtList::from_vec(tags) {
+			if let Ok(list) = NbtList::from_vec_wrapping(tags) {
 				compound.add("extra", NbtTag::List(list));
 			}
 		}
@@ -278,7 +300,7 @@ impl McDeserialize for TextComponent {
 	fn mc_deserialize(deserializer: &mut McDeserializer) -> Result<Self, SerializingErr> {
 		let type_id = u8::mc_deserialize(deserializer)?;
 		let nbt = NbtTag::deserialize_specific(deserializer, type_id)?;
-		Ok(TextComponent::from(nbt))
+		Ok(TextComponent::try_from(nbt)?)
 	}
 }
 
@@ -467,12 +489,12 @@ pub struct NbtContent {
 impl ComponentType {
 	/// Extract the content type from an NBT compound, honoring an explicit `type` field if present
 	/// and otherwise inferring the type from the content fields in priority order.
-	fn from_compound(compound: &NbtCompound) -> Self {
+	fn from_compound(compound: &NbtCompound) -> Result<Self, NbtError> {
 		let get_components = |key: &str| match compound.get(key) {
-			Some(NbtTag::List(list)) => Some(list.list.iter().map(|t| TextComponent::from(t.clone())).collect()),
-			_ => None,
+			Some(NbtTag::List(list)) => components_from_list(list).map(Some),
+			_ => Ok(None),
 		};
-		let get_separator = |key: &str| compound.get(key).map(|t| Box::new(TextComponent::from(t.clone())));
+		let get_separator = |key: &str| compound.get(key).map(|t| TextComponent::try_from(t.clone()).map(Box::new)).transpose();
 
 		let typ = match compound.get("type") {
 			Some(NbtTag::String(s)) => Some(s.as_str()),
@@ -483,47 +505,47 @@ impl ComponentType {
 		// field is present, in the wiki's documented priority order.
 		match typ {
 			Some("translatable") => {
-				return ComponentType::Translatable(Box::new(TranslatableContent {
+				return Ok(ComponentType::Translatable(Box::new(TranslatableContent {
 					translate: compound.get_string("translate").unwrap_or_default(),
 					fallback: compound.get_string("fallback"),
-					with: get_components("with"),
-				}));
+					with: get_components("with")?,
+				})));
 			}
 			Some("score") => {
-				return ComponentType::Score {
+				return Ok(ComponentType::Score {
 					score: ScoreContent::from_compound(compound),
-				};
+				});
 			}
 			Some("selector") => {
-				return ComponentType::Selector {
+				return Ok(ComponentType::Selector {
 					selector: compound.get_string("selector").unwrap_or_default(),
-					separator: get_separator("separator"),
-				};
+					separator: get_separator("separator")?,
+				});
 			}
 			Some("keybind") => {
-				return ComponentType::Keybind {
+				return Ok(ComponentType::Keybind {
 					keybind: compound.get_string("keybind").unwrap_or_default(),
-				};
+				});
 			}
 			Some("nbt") => {
-				return ComponentType::Nbt(Box::new(NbtContent {
+				return Ok(ComponentType::Nbt(Box::new(NbtContent {
 					nbt: compound.get_string("nbt").unwrap_or_default(),
 					interpret: compound.get_bool("interpret"),
-					separator: get_separator("separator"),
+					separator: get_separator("separator")?,
 					block: compound.get_string("block"),
 					entity: compound.get_string("entity"),
 					storage: compound.get_string("storage"),
-				}));
+				})));
 			}
 			Some("text") => {
-				return ComponentType::Text {
+				return Ok(ComponentType::Text {
 					text: compound.get_string("text").unwrap_or_default(),
-				};
+				});
 			}
 			_ => {}
 		}
 
-		if let Some(text) = compound.get_string("text") {
+		Ok(if let Some(text) = compound.get_string("text") {
 			ComponentType::Text {
 				text,
 			}
@@ -531,7 +553,7 @@ impl ComponentType {
 			ComponentType::Translatable(Box::new(TranslatableContent {
 				translate,
 				fallback: compound.get_string("fallback"),
-				with: get_components("with"),
+				with: get_components("with")?,
 			}))
 		} else if compound.get("score").is_some() {
 			ComponentType::Score {
@@ -540,7 +562,7 @@ impl ComponentType {
 		} else if let Some(selector) = compound.get_string("selector") {
 			ComponentType::Selector {
 				selector,
-				separator: get_separator("separator"),
+				separator: get_separator("separator")?,
 			}
 		} else if let Some(keybind) = compound.get_string("keybind") {
 			ComponentType::Keybind {
@@ -550,7 +572,7 @@ impl ComponentType {
 			ComponentType::Nbt(Box::new(NbtContent {
 				nbt,
 				interpret: compound.get_bool("interpret"),
-				separator: get_separator("separator"),
+				separator: get_separator("separator")?,
 				block: compound.get_string("block"),
 				entity: compound.get_string("entity"),
 				storage: compound.get_string("storage"),
@@ -559,7 +581,7 @@ impl ComponentType {
 			ComponentType::Text {
 				text: String::new(),
 			}
-		}
+		})
 	}
 
 	/// Write this content type's fields (including an explicit `type` tag for non-text variants)
@@ -584,7 +606,7 @@ impl ComponentType {
 				}
 				if let Some(with) = with {
 					let tags: Vec<NbtTag> = with.into_iter().map(NbtTag::from).collect();
-					if let Ok(list) = NbtList::from_vec(tags) {
+					if let Ok(list) = NbtList::from_vec_wrapping(tags) {
 						compound.add("with", NbtTag::List(list));
 					}
 				}
@@ -852,7 +874,7 @@ mod tests {
 		for (k, v) in pairs {
 			compound.add(k, v);
 		}
-		TextComponent::from(NbtTag::Compound(compound)).content
+		TextComponent::try_from(NbtTag::Compound(compound)).unwrap().content
 	}
 
 	/// The `type` field is optional on the wire. Without it, the reader must find the content type
@@ -901,12 +923,30 @@ mod tests {
 		assert!(matches!(content_of(vec![("nbt", "n".into()), ("keybind", "k".into())]), ComponentType::Keybind { .. }));
 	}
 
-	/// A compound with no content field, or a tag that is not a string or compound, gives empty
-	/// text instead of an error, so one bad component does not drop the whole packet.
+	/// A compound with no content field gives empty text instead of an error.
 	#[test]
 	fn nbt_content_fallback_is_empty_text() {
 		assert_eq!(content_of(vec![("color", "red".into())]), ComponentType::Text { text: String::new() });
-		assert_eq!(TextComponent::from(NbtTag::Int(5)).content, ComponentType::Text { text: String::new() });
+	}
+
+	/// Vanilla accepts only a string, a list that is not empty, or a compound. Any other tag is an
+	/// error, as it is in vanilla and in the JSON reader of this crate. Before, it gave empty text
+	/// with no error, so the text was lost and the caller did not know.
+	#[test]
+	fn nbt_tag_that_is_not_a_component_is_an_error() {
+		for tag in [NbtTag::Int(5), NbtTag::Byte(1), NbtTag::Double(1.5), NbtTag::List(NbtList::new())] {
+			assert_eq!(TextComponent::try_from(tag.clone()), Err(NbtError::InvalidType), "{tag:?}");
+		}
+
+		// The error must also come from a nested part, and from the packet reader.
+		let mut root = NbtCompound::new_no_name();
+		root.add("text", "base");
+		root.add("extra", NbtList::from_vec(vec![NbtTag::Int(5)]).unwrap());
+		assert_eq!(TextComponent::try_from(NbtTag::Compound(root.clone())), Err(NbtError::InvalidType));
+
+		let mut serializer = McSerializer::new();
+		root.mc_serialize(&mut serializer).unwrap();
+		assert!(TextComponent::mc_deserialize(&mut McDeserializer::new(&serializer.output)).is_err());
 	}
 
 	/// Each constructor must use the vanilla action id, or the client ignores the click.
@@ -923,6 +963,67 @@ mod tests {
 			assert_eq!(event.action, action);
 			assert_eq!(event.value, value);
 		}
+	}
+
+	/// A plain part becomes a String tag and a styled part becomes a Compound tag. Before, the mixed
+	/// list failed and `extra` (and `with`) were dropped with no error, so the client lost text.
+	#[test]
+	fn mixed_plain_and_styled_parts_survive_nbt_round_trip() {
+		let mut styled = TextComponent::new("styled");
+		styled.bold = Some(true);
+		let parts = vec![TextComponent::new("plain"), styled];
+
+		let mut with_extra = TextComponent::new("base");
+		with_extra.color = Some("red".to_string());
+		with_extra.set_extra(parts.clone());
+		assert_eq!(nbt_round_trip(&with_extra), with_extra);
+
+		let mut translatable = TextComponent::translatable("chat.type.text");
+		translatable.content = ComponentType::Translatable(Box::new(TranslatableContent {
+			translate: "chat.type.text".to_string(),
+			fallback: None,
+			with: Some(parts),
+		}));
+		assert_eq!(nbt_round_trip(&translatable), translatable);
+	}
+
+	/// Vanilla sends a mixed `extra` as compounds, with each plain part as `{"": "text"}`. The reader
+	/// must remove the wrapper. If not, the part has no content field and its text is lost.
+	#[test]
+	fn vanilla_wrapped_list_items_are_unwrapped() {
+		let mut wrapper = NbtCompound::new_no_name();
+		wrapper.add("", "plain");
+		let mut styled = NbtCompound::new_no_name();
+		styled.add("text", "styled");
+		styled.add("bold", true);
+
+		let mut root = NbtCompound::new_no_name();
+		root.add("text", "base");
+		root.add("extra", NbtList::from_vec(vec![NbtTag::Compound(wrapper), NbtTag::Compound(styled)]).unwrap());
+
+		let parsed = TextComponent::try_from(NbtTag::Compound(root)).unwrap();
+		let mut expected_styled = TextComponent::new("styled");
+		expected_styled.bold = Some(true);
+		assert_eq!(parsed.extra, Some(vec![TextComponent::new("plain"), expected_styled]));
+	}
+
+	/// A text component in NBT can be a list, as in JSON. Before, an NBT list gave empty text and all
+	/// its text was lost. The first item is the base and the other items go into its `extra`.
+	#[test]
+	fn nbt_list_is_shorthand_for_first_with_extra() {
+		let mut first = NbtCompound::new_no_name();
+		first.add("text", "a");
+		first.add("extra", NbtList::from_vec(vec![NbtTag::from("b")]).unwrap());
+		let mut second = NbtCompound::new_no_name();
+		second.add("text", "c");
+		second.add("bold", true);
+		let list = NbtList::from_vec(vec![NbtTag::Compound(first), NbtTag::Compound(second)]).unwrap();
+
+		let parsed = TextComponent::try_from(NbtTag::List(list)).unwrap();
+		let mut c = TextComponent::new("c");
+		c.bold = Some(true);
+		assert_eq!(parsed.content, ComponentType::Text { text: "a".to_string() });
+		assert_eq!(parsed.extra, Some(vec![TextComponent::new("b"), c]), "the other items go after the existing extra");
 	}
 
 	#[test]

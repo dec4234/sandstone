@@ -80,6 +80,15 @@ impl NbtTag {
 		}
 	}
 
+	/// Remove the `{"": item}` wrapper that `NbtList::from_vec_wrapping` (and vanilla) puts on an
+	/// item of a list with mixed types. Any other tag is returned unchanged.
+	pub fn unwrap_list_item(self) -> NbtTag {
+		match self {
+			NbtTag::Compound(mut compound) if compound.is_list_wrapper() => compound.map.remove("").expect("a list wrapper has the empty key"),
+			other => other,
+		}
+	}
+
 	/// Given the type ID, deserialize the corresponding NbtTag.
 	pub fn deserialize_specific<'a>(deserializer: &mut McDeserializer, ty: u8) -> SerializingResult<'a, Self> {
 		match ty {
@@ -234,12 +243,10 @@ impl From<NbtTag> for Option<String> {
 
 impl<T: Into<NbtTag>> From<Vec<T>> for NbtTag {
 	fn from(value: Vec<T>) -> Self {
-		let tags: Vec<NbtTag> = value.into_iter().map(Into::into).collect();
-		match NbtList::from_vec(tags) {
-			Ok(list) => List(list),
-			// Fall back to an empty list if mixed types are in a list
-			Err(_) => List(NbtList::new()),
-		}
+		// End means "no value" in this crate: `NbtCompound::add` skips it and `TryFrom<NbtTag> for Vec<T>`
+		// skips it. A list cannot hold End, so the End items are skipped here too, and the other items stay.
+		let tags: Vec<NbtTag> = value.into_iter().map(Into::into).filter(|tag| *tag != NbtTag::End).collect();
+		List(NbtList::from_vec_wrapping(tags).expect("End items are removed, and mixed types are wrapped"))
 	}
 }
 
@@ -264,7 +271,7 @@ where
 					if tag == NbtTag::End {
 						continue;
 					}
-					vec.push(T::try_from(tag)?);
+					vec.push(T::try_from(tag.unwrap_list_item())?);
 				}
 				Ok(vec)
 			}
@@ -327,6 +334,12 @@ impl NbtCompound {
 		}
 
 		self.map.insert(name.into(), tag);
+	}
+
+	/// True if this compound has only the empty key `""`. Vanilla uses this shape to hold one item
+	/// of a list with mixed item types. See `NbtList::from_vec_wrapping`.
+	pub fn is_list_wrapper(&self) -> bool {
+		self.map.len() == 1 && self.map.contains_key("")
 	}
 
 	/// Move every entry of `other` into this compound, overwriting any existing entries with the
@@ -570,6 +583,40 @@ impl NbtList {
 		Ok(list)
 	}
 
+	/// Like `from_vec`, but a list with mixed item types does not fail. Vanilla puts each item into a
+	/// compound with one empty key (`"x"` becomes `{"": "x"}`), so the list holds only compounds.
+	/// A compound stays as it is, except one that already has the wrapper shape, which is wrapped
+	/// again so that a reader does not unwrap it by mistake. This is also done in a list of only
+	/// compounds. A list with one item type and no wrapper-shaped compound is not changed.
+	///
+	/// <https://minecraft.wiki/w/NBT_format>
+	pub fn from_vec_wrapping(vec: Vec<NbtTag>) -> Result<Self, NbtError> {
+		if vec.iter().any(|tag| tag.get_type_id() == 0) {
+			return Err(NbtError::EndTagNotAllowedInList);
+		}
+
+		let first = vec.first().map(NbtTag::get_type_id);
+		let mixed = !vec.iter().all(|tag| Some(tag.get_type_id()) == first);
+		let has_wrapper_shape = vec.iter().any(|tag| matches!(tag, NbtTag::Compound(compound) if compound.is_list_wrapper()));
+		if !mixed && !has_wrapper_shape {
+			return Self::from_vec(vec);
+		}
+
+		let wrapped = vec
+			.into_iter()
+			.map(|tag| match tag {
+				NbtTag::Compound(compound) if !compound.is_list_wrapper() => NbtTag::Compound(compound),
+				other => {
+					let mut wrapper = NbtCompound::new_no_name();
+					wrapper.add("", other);
+					NbtTag::Compound(wrapper)
+				}
+			})
+			.collect();
+
+		Self::from_vec(wrapped)
+	}
+
 	#[inline]
 	pub fn add<T: Into<NbtTag>>(&mut self, tag: T) -> Result<(), NbtError> {
 		self.add_tag(tag.into())
@@ -779,6 +826,76 @@ mod test {
 			}
 			other => panic!("expected a list, got {other:?}"),
 		}
+	}
+
+	/// A list with mixed item types must keep every item. Before, `From<Vec<T>>` gave an empty list
+	/// with no error, and data was lost. Vanilla wraps each non-compound item as `{"": item}`.
+	#[test]
+	fn mixed_vec_wraps_items_as_vanilla_does() {
+		let mut styled = NbtCompound::new_no_name();
+		styled.add("text", "b");
+		let mut looks_like_wrapper = NbtCompound::new_no_name();
+		looks_like_wrapper.add("", 5i32);
+
+		let wrap = |tag: NbtTag| {
+			let mut wrapper = NbtCompound::new_no_name();
+			wrapper.add("", tag);
+			NbtTag::Compound(wrapper)
+		};
+
+		match NbtTag::from(vec![NbtTag::from("a"), NbtTag::Compound(styled.clone()), NbtTag::Compound(looks_like_wrapper.clone())]) {
+			NbtTag::List(list) => {
+				assert_eq!(list.type_id, 10, "a mixed list must hold only compounds");
+				assert_eq!(
+					list.list,
+					vec![
+						wrap(NbtTag::from("a")),
+						NbtTag::Compound(styled),
+						// Not wrapped again, a reader would unwrap it and get the Int 5, not the compound.
+						wrap(NbtTag::Compound(looks_like_wrapper)),
+					]
+				);
+			}
+			other => panic!("expected a list, got {other:?}"),
+		}
+
+		// One item type: no wrapping, so the wire bytes are the same as before.
+		assert_eq!(NbtList::from_vec_wrapping(vec![NbtTag::from("a"), NbtTag::from("b")]), NbtList::from_vec(vec![NbtTag::from("a"), NbtTag::from("b")]));
+		// End is never a list item, also when the types are mixed.
+		assert_eq!(NbtList::from_vec_wrapping(vec![NbtTag::Int(1), NbtTag::End]), Err(NbtError::EndTagNotAllowedInList));
+		// The strict constructor still refuses mixed types.
+		assert_eq!(NbtList::from_vec(vec![NbtTag::from("a"), NbtTag::Int(1)]), Err(NbtError::IncompatibleTypes));
+	}
+
+	/// An End item means "no value". Before, one End item made `From<Vec<T>>` give an empty list, and
+	/// all the other items were lost. Now only the End item is skipped.
+	#[test]
+	fn vec_with_end_item_keeps_other_items() {
+		match NbtTag::from(vec![NbtTag::Int(1), NbtTag::End, NbtTag::Int(2)]) {
+			NbtTag::List(list) => assert_eq!(list.list, vec![NbtTag::Int(1), NbtTag::Int(2)]),
+			other => panic!("expected a list, got {other:?}"),
+		}
+	}
+
+	/// Write a mixed list and read it back as a Vec. The reader must remove the `{"": item}` wrapper,
+	/// or every wrapped item is read as a compound and is not the value that was written.
+	#[test]
+	fn vec_read_unwraps_mixed_list_items() {
+		let mut wrapped = NbtCompound::new_no_name();
+		wrapped.add("", "a");
+		let list = NbtTag::List(NbtList::from_vec(vec![NbtTag::Compound(wrapped)]).unwrap());
+		let read: Vec<String> = list.try_into().unwrap();
+		assert_eq!(read, vec!["a".to_string()], "the empty-key wrapper must be removed");
+
+		// A list of only compounds has one type, but a wrapper-shaped compound must still be wrapped.
+		// If not, the reader removes its `""` key and gets the Int 5, not the compound.
+		let mut plain = NbtCompound::new_no_name();
+		plain.add("k", 1i32);
+		let mut wrapper_shape = NbtCompound::new_no_name();
+		wrapper_shape.add("", 5i32);
+		let compounds = vec![plain, wrapper_shape];
+		let read: Vec<NbtCompound> = NbtTag::from(compounds.clone()).try_into().unwrap();
+		assert_eq!(read, compounds);
 	}
 
 	/// Test standard serialization of a NbtCompound.
