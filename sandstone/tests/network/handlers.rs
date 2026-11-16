@@ -285,11 +285,21 @@ mod test {
 		client.change_state(PacketState::PLAY);
 
 		assert!(matches!(recv(&mut client).await, Packet::LoginInfo(_)));
-		let teleport_id = match recv(&mut client).await {
-			Packet::SyncPlayerPosition(p) => p.teleport_id,
+		let sync = match recv(&mut client).await {
+			Packet::SyncPlayerPosition(p) => p,
 			other => panic!("expected sync player position, got {other:?}"),
 		};
-		client.send_packet(Packet::ConfirmTeleport(ConfirmTeleportPacket { teleport_id })).await.unwrap();
+		client
+			.send_packet(Packet::ConfirmTeleport(ConfirmTeleportPacket {
+				teleport_id: sync.teleport_id,
+				x: sync.x,
+				y: sync.y,
+				z: sync.z,
+				yaw: sync.yaw,
+				pitch: sync.pitch,
+			}))
+			.await
+			.unwrap();
 		client
 			.send_packet(Packet::SetPlayerPositionRotation(SetPlayerPositionRotationPacket {
 				x: 0.0,

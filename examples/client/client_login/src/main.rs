@@ -1,4 +1,4 @@
-use log::{debug, error, trace, LevelFilter};
+use log::{LevelFilter, debug, error, trace};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::player::ClientStatusAction;
 use sandstone::protocol::packets::packet_definer::PacketState;
@@ -25,7 +25,7 @@ async fn main() {
 	let mut client = CraftConnection::connect("127.0.0.1:25565").await.unwrap();
 
 	let handshake = Packet::Handshaking(HandshakingPacket {
-		protocol_version: VarInt(ProtocolVerison::V1_21.get_version_number() as i32),
+		protocol_version: VarInt(ProtocolVerison::latest().get_version_number() as i32),
 		server_address: "127.0.0.1".to_string(),
 		port: 25565,
 		next_state: VarInt(2),
@@ -178,11 +178,11 @@ async fn main() {
 		}
 	}
 
-	let teleport_id;
+	let sync;
 
 	match client.receive_packet().await.unwrap() {
 		Packet::SyncPlayerPosition(spp) => {
-			teleport_id = spp.teleport_id;
+			sync = spp.clone();
 			debug!("Received known packs: {spp:?}");
 		}
 		packet => {
@@ -190,7 +190,7 @@ async fn main() {
 		}
 	}
 
-	let confirm = Packet::ConfirmTeleport(ConfirmTeleportPacket::new(teleport_id));
+	let confirm = Packet::ConfirmTeleport(ConfirmTeleportPacket::new(sync.teleport_id, sync.x, sync.y, sync.z, sync.yaw, sync.pitch));
 	debug!("Sending confirm teleport packet: {confirm:?}");
 	client.send_packet(confirm).await.unwrap();
 

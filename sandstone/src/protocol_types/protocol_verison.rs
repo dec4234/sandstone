@@ -113,13 +113,15 @@ versions!(ProtocolVerison, i16 => {
     V1_19, 762, "1.19.4",
     V1_20, 766, "1.20.6",
     V1_21, 774, "1.21.11",
-    V26_1, 776, "26.2"
+    V26_1, 775, "26.1.2",
+    V26_2, 776, "26.2",
+    V26_3, 777, "26.3"
 });
 
 impl ProtocolVerison {
     /// Returns the most recent protocol version supported by the library.
     pub fn latest() -> ProtocolVerison {
-        ProtocolVerison::V1_21
+        ProtocolVerison::V26_3
     }
 }
 
@@ -132,6 +134,9 @@ mod tests {
         assert_eq!(ProtocolVerison::try_from(47).unwrap(), ProtocolVerison::V1_8);
         assert_eq!(ProtocolVerison::try_from(110).unwrap(), ProtocolVerison::V1_9);
         assert_eq!(ProtocolVerison::try_from(774).unwrap(), ProtocolVerison::V1_21);
+        assert_eq!(ProtocolVerison::try_from(775).unwrap(), ProtocolVerison::V26_1);
+        assert_eq!(ProtocolVerison::try_from(776).unwrap(), ProtocolVerison::V26_2);
+        assert_eq!(ProtocolVerison::try_from(777).unwrap(), ProtocolVerison::V26_3);
         assert!(ProtocolVerison::try_from(999).is_err());
     }
 
@@ -203,6 +208,6 @@ mod tests {
         use crate::protocol_types::protocol_verison::ProtocolVerison;
 
         assert_eq!(ProtocolVerison::mc_default(), ProtocolVerison::latest());
-        assert_eq!(ProtocolVerison::mc_default(), ProtocolVerison::V1_21);
+        assert_eq!(ProtocolVerison::mc_default(), ProtocolVerison::V26_3);
     }
 }

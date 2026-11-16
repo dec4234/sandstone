@@ -30,6 +30,16 @@ pub struct BlockParticleAlternative {
 	pub weight: VarInt,
 }
 
+/// # Sign Text Slot (Packet Part)
+/// The side of a sign, used by Open Sign Editor and Update Sign.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Open_Sign_Editor>
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum SignTextSlot {
+	Back = 0,
+	Front = 1,
+}
+
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Block_Predicate>
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockPredicate {

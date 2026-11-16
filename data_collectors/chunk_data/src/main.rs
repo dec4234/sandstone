@@ -1,7 +1,7 @@
 //! A client side utlity to collect chunk data from a server.
 //! Used to ensure vanilla compatibility and support development.
 
-use log::{debug, error, trace, LevelFilter};
+use log::{LevelFilter, debug, error, trace};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::player::ClientStatusAction;
 use sandstone::protocol::packets::packet_definer::PacketState;
@@ -176,11 +176,11 @@ async fn main() {
 		}
 	}
 
-	let teleport_id;
+	let sync;
 
 	match client.receive_packet().await.unwrap() {
 		Packet::SyncPlayerPosition(spp) => {
-			teleport_id = spp.teleport_id;
+			sync = spp.clone();
 			debug!("Received known packs: {spp:?}");
 		}
 		packet => {
@@ -188,7 +188,7 @@ async fn main() {
 		}
 	}
 
-	let confirm = Packet::ConfirmTeleport(ConfirmTeleportPacket::new(teleport_id));
+	let confirm = Packet::ConfirmTeleport(ConfirmTeleportPacket::new(sync.teleport_id, sync.x, sync.y, sync.z, sync.yaw, sync.pitch));
 	debug!("Sending confirm teleport packet: {confirm:?}");
 	client.send_packet(confirm).await.unwrap();
 

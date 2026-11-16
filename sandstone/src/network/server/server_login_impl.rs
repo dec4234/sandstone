@@ -1,4 +1,4 @@
-use crate::game::player::PlayerGamemode;
+use crate::game::player::{PlayerGamemode, PreviousGamemode};
 use crate::network::CraftConnection;
 use crate::network::network_error::NetworkError;
 use crate::network::server::server_handler_impl::DefaultServerEncryptionHandler;
@@ -64,7 +64,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 			debug!("Sent set compression to {connection} and enabled compression");
 		}
 
-		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), username, PrefixedArray::new(vec![])));
+		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), username, PrefixedArray::new(vec![]), Uuid::new_v4()));
 		connection.send_packet(login_success).await?;
 
 		let login_ack = connection.receive_packet().await?;
@@ -165,7 +165,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 			"minecraft:overworld".to_string(),
 			rand::rng().next_u64() as i64,
 			PlayerGamemode::SURVIVAL,
-			PlayerGamemode::UNDEFINED,
+			PreviousGamemode(PlayerGamemode::UNDEFINED),
 			false,
 			true,
 			false,
@@ -173,6 +173,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 			None,
 			VarInt(0),
 			VarInt(63),
+			self.should_authenticate_with_mojang,
 			false,
 		));
 

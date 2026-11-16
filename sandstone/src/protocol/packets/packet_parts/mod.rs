@@ -25,7 +25,7 @@ use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::EquipmentSlot;
 use crate::protocol_types::datatypes::internal_types::IDSet;
 use crate::protocol_types::datatypes::nbt::NbtCompound;
-use crate::protocol_types::datatypes::var_types::VarInt;
+use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum, VarIntEnum};
 use uuid::Uuid;
 
@@ -261,13 +261,6 @@ pub enum PlayerCommandAction {
 }
 
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
-pub enum InteractType {
-	Interact = 0,
-	Attack = 1,
-	InteractAt = 2,
-}
-
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 pub enum InteractHand {
 	Main = 0,
 	OffHand = 1,
@@ -388,6 +381,33 @@ pub enum ChatTypeParemeter {
 	Sender = 0,
 	Target = 1,
 	Content = 2,
+}
+
+/// # Particle Randomization Type (Packet Part)
+/// Controls how the Particle packet randomizes each particle when it spawns.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Particle>
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum ParticleRandomizationType {
+	Default = 0,
+	Alternative = 1,
+	AlternativeWithSpeed = 2,
+}
+
+/// # World Clock (Packet Part)
+/// One clock entry of the Update Time packet.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Time>
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct WorldClock {
+	#[doc = "ID in the minecraft:world_clock registry"]
+	pub clock_id: VarInt,
+	#[doc = "Current time of the clock, in ticks"]
+	pub time: VarLong,
+	#[doc = "Fractional part of the time in ticks, normally from 0 (inclusive) to 1 (exclusive)"]
+	pub fractional_time: f32,
+	#[doc = "Clock ticks to advance for each client tick"]
+	pub rate: f32,
 }
 
 #[cfg(test)]

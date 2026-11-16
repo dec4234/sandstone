@@ -79,24 +79,24 @@ pub enum TeamColor {
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct CreateTeam {
 	pub team_display_name: TextComponent,
-	pub friendly_flags: FriendlyFlags,
+	pub team_prefix: TextComponent,
+	pub team_suffix: TextComponent,
 	pub name_tag_visibility: NameTagVisibility,
 	pub collision_rule: CollisionRule,
 	pub team_color: TeamColor,
-	pub team_prefix: TextComponent,
-	pub team_suffix: TextComponent,
+	pub friendly_flags: FriendlyFlags,
 	pub entities: PrefixedArray<String>,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct UpdateTeamInfo {
 	pub team_display_name: TextComponent,
-	pub friendly_flags: FriendlyFlags,
+	pub team_prefix: TextComponent,
+	pub team_suffix: TextComponent,
 	pub name_tag_visibility: NameTagVisibility,
 	pub collision_rule: CollisionRule,
 	pub team_color: TeamColor,
-	pub team_prefix: TextComponent,
-	pub team_suffix: TextComponent,
+	pub friendly_flags: FriendlyFlags,
 }
 
 /// The `team_details` body of the Update Teams packet. The leading Method byte (see wiki) selects
@@ -218,6 +218,42 @@ mod test {
 			team_prefix: TextComponent::new(""),
 			team_suffix: TextComponent::new(""),
 		}));
+	}
+
+	/// 26.3 moved Team Prefix and Team Suffix to follow Team Display Name, and moved Friendly Flags
+	/// after Team Color. A client reads the fields in this order, so a wrong order corrupts the team.
+	#[test]
+	fn team_info_field_order_matches_wiki() {
+		let info = UpdateTeamInfo {
+			team_display_name: TextComponent::new("Blue"),
+			team_prefix: TextComponent::new("[B] "),
+			team_suffix: TextComponent::new("!"),
+			name_tag_visibility: NameTagVisibility::Never,
+			collision_rule: CollisionRule::PushOwnTeam,
+			team_color: TeamColor::Blue,
+			friendly_flags: FriendlyFlags::new(true, false),
+		};
+		let mut expected = ser(&info.team_display_name);
+		expected.extend(ser(&info.team_prefix));
+		expected.extend(ser(&info.team_suffix));
+		expected.extend(ser(&info.name_tag_visibility));
+		expected.extend(ser(&info.collision_rule));
+		expected.extend(ser(&info.team_color));
+		expected.extend(ser(&info.friendly_flags));
+		assert_eq!(ser(&info), expected);
+
+		let create = CreateTeam {
+			team_display_name: info.team_display_name.clone(),
+			team_prefix: info.team_prefix.clone(),
+			team_suffix: info.team_suffix.clone(),
+			name_tag_visibility: info.name_tag_visibility.clone(),
+			collision_rule: info.collision_rule.clone(),
+			team_color: info.team_color.clone(),
+			friendly_flags: info.friendly_flags.clone(),
+			entities: names(&["Steve"]),
+		};
+		expected.extend(ser(&create.entities));
+		assert_eq!(ser(&create), expected);
 	}
 
 	#[test]

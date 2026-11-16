@@ -1,7 +1,7 @@
-use log::{debug, info, LevelFilter};
+use log::{LevelFilter, debug, info};
+use sandstone::network::CraftConnection;
 use sandstone::network::server::server_handler_impl::{DefaultServerEncryptionHandler, DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
 use sandstone::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerStatusHandler};
-use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use sandstone::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::packets::{LoginSuccessPacket, Packet, SetCompressionPacket, StatusResponsePacket};
@@ -58,7 +58,7 @@ async fn main() {
 		client.enable_compression(Some(400));
 		debug!("Sent set compression to {client} and enabled compression");
 
-		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), username, PrefixedArray::new(vec![])));
+		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), username, PrefixedArray::new(vec![]), Uuid::new_v4()));
 		client.send_packet(login_success).await.unwrap();
 
 		let login_ack = client.receive_packet().await.unwrap();
