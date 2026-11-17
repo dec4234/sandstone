@@ -208,6 +208,15 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			},
 			ConfigServerLinks, 0x11 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Server_Links>"] => {
 				links: PrefixedArray<ServerLink>
+			},
+			ConfigClearDialog, 0x12 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Clear_Dialog_(configuration)>"] => {
+				// no fields
+			},
+			ConfigShowDialog, 0x13 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Show_Dialog_(configuration)>"] => {
+				dialog: Box<Dialog>
+			},
+			CodeOfConduct, 0x14 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Code_of_Conduct>"] => {
+				code_of_conduct: String
 			}
 		},
 		SERVER => {
@@ -253,6 +262,9 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				#[doc = "The number of bytes in the payload, maximum 65536"]
 				payload_size: VarInt,
 				payload: NbtCompound
+			},
+			AcceptCodeOfConduct, 0x09 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Accept_Code_of_Conduct>"] => {
+				// no fields
 			}
 		}
 	},
@@ -433,10 +445,10 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				radius: f32,
 				block_count: i32,
 				player_delta_velocity: PrefixedOptional<TripleDouble>,
-				explosion_particle_id: VarInt,
-				explosion_particle_data: Particle,
+				#[doc = "The particle ID and the data for that particle type"]
+				explosion_particle: Particle,
 				explosion_sound: IDorX<SoundEvent>,
-				block_particle_alternatives: BlockParticleAlternative,
+				block_particle_alternatives: PrefixedArray<BlockParticleAlternative>,
 				play_sound: bool
 			},
 			AddTransientBlock, 0x25 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Add_Transient_Block>"] => {
@@ -744,7 +756,9 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				is_debug: bool,
 				is_flat: bool,
 				has_death_location: bool,
+				#[mc(deserialize_if = has_death_location)]
 				death_dimension_name: Option<String>,
+				#[mc(deserialize_if = has_death_location)]
 				death_location: Option<Position>,
 				portal_cooldown: VarInt,
 				sea_level: VarInt,

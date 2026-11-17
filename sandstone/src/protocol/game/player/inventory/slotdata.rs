@@ -80,6 +80,75 @@ impl McDeserialize for SlotData {
 	}
 }
 
+/// An item stack that is never empty, used by the `item_stack` slot display.
+///
+/// The wire order is item ID, count, then the component patch. This differs from [SlotData],
+/// which sends the count first. The wiki does not show this yet. The order was taken from
+/// packets that a 26.3 server sent.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ItemStackTemplate {
+	pub item_id: VarInt,
+	pub item_count: VarInt,
+	pub components_to_add: Vec<StructuredComponent>,
+	pub components_to_remove: Vec<VarInt>,
+}
+
+impl McDefault for ItemStackTemplate {
+	fn mc_default() -> Self {
+		Self {
+			item_id: VarInt(1),
+			item_count: VarInt(1),
+			components_to_add: vec![],
+			components_to_remove: vec![],
+		}
+	}
+}
+
+impl McSerialize for ItemStackTemplate {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		self.item_id.mc_serialize(serializer)?;
+		self.item_count.mc_serialize(serializer)?;
+		VarInt(self.components_to_add.len() as i32).mc_serialize(serializer)?;
+		VarInt(self.components_to_remove.len() as i32).mc_serialize(serializer)?;
+		for component in &self.components_to_add {
+			component.mc_serialize(serializer)?;
+		}
+		for id in &self.components_to_remove {
+			id.mc_serialize(serializer)?;
+		}
+		Ok(())
+	}
+}
+
+impl McDeserialize for ItemStackTemplate {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
+		let item_id = VarInt::mc_deserialize(deserializer)?;
+		let item_count = VarInt::mc_deserialize(deserializer)?;
+		let num_add = VarInt::mc_deserialize(deserializer)?;
+		let num_remove = VarInt::mc_deserialize(deserializer)?;
+
+		let mut components_to_add = Vec::with_capacity(deserializer.prealloc_capacity(num_add.0)?);
+		for _ in 0..num_add.0 {
+			components_to_add.push(StructuredComponent::mc_deserialize(deserializer)?);
+		}
+
+		let mut components_to_remove = Vec::with_capacity(deserializer.prealloc_capacity(num_remove.0)?);
+		for _ in 0..num_remove.0 {
+			components_to_remove.push(VarInt::mc_deserialize(deserializer)?);
+		}
+
+		Ok(Self {
+			item_id,
+			item_count,
+			components_to_add,
+			components_to_remove,
+		})
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::SlotData;

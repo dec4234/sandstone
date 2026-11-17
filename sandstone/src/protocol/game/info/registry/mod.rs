@@ -9,7 +9,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
 
-use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfVariantAssets};
+use crate::protocol::game::info::registry::registry_components::{BlockStateProvider, BlockTransformer, CatSounds, ChickenSounds, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, SulfurCubeAttributeModifier, SulfurCubeContactDamage, SulfurCubeExplosion, SulfurCubeKnockbackModifiers, SulfurCubeSoundSettings, WolfSounds, WolfVariantAssets};
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
@@ -124,6 +124,10 @@ impl RegistryEntry {
 }
 
 /// Define a registry data group sent by a RegistryDataPacket.
+///
+/// The optional `custom:` section lists registries whose type is written by hand, e.g. because the
+/// root NBT tag is not a compound. Each such type must implement McSerialize, McDeserialize,
+/// McDefault, Debug, Clone and PartialEq. Only the `RegistryType` variant and match arms are generated.
 #[macro_export]
 macro_rules! registry_entry {
 	(
@@ -132,6 +136,7 @@ macro_rules! registry_entry {
 			$( $field_name:ident : $field_type:ty ),*
 		}
 		),*
+		$(; custom: $( $custom_mc_name:literal, $custom_lib_name:ident ),* )?
 	) => {
 		$(
 			/// Automatically generated registry entry body packet.
@@ -170,7 +175,8 @@ macro_rules! registry_entry {
 
 		#[derive(McDefault, Debug, Clone, PartialEq)]
 		pub enum RegistryType {
-			$($lib_name($lib_name)),*
+			$($lib_name($lib_name),)*
+			$($($custom_lib_name($custom_lib_name),)*)?
 		}
 
 		impl RegistryType {
@@ -181,7 +187,12 @@ macro_rules! registry_entry {
 						$mc_name => {
 							Ok(RegistryType::$lib_name($lib_name::mc_deserialize(deserializer)?))
 						}
-					),*
+					)*
+					$($(
+						$custom_mc_name => {
+							Ok(RegistryType::$custom_lib_name($custom_lib_name::mc_deserialize(deserializer)?))
+						}
+					)*)?
 					_ => Err(SerializingErr::UniqueFailure(format!("Unknown registry type: {}", registry_type))),
 				}
 			}
@@ -190,7 +201,8 @@ macro_rules! registry_entry {
 		impl McSerialize for RegistryType {
 			fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 				match self {
-					$(RegistryType::$lib_name(entry) => entry.mc_serialize(serializer)),*
+					$(RegistryType::$lib_name(entry) => entry.mc_serialize(serializer),)*
+					$($(RegistryType::$custom_lib_name(entry) => entry.mc_serialize(serializer),)*)?
 				}
 			}
 		}
@@ -217,7 +229,8 @@ registry_entry!(
 		translation_key: String
 	},
 	"minecraft:cat_variant", CatVariant => {
-		asset_id: String
+		asset_id: String,
+		baby_asset_id: String
 	},
 	"minecraft:chat_type", ChatType => {
 		chat: NbtCompound,
@@ -229,6 +242,7 @@ registry_entry!(
 	},
 	"minecraft:chicken_variant", ChickenVariant => {
 		asset_id: String,
+		baby_asset_id: String,
 		model: Option<String>
 	},
 	"minecraft:cow_sound_variant", CowSoundVariant => {
@@ -239,6 +253,7 @@ registry_entry!(
 	},
 	"minecraft:cow_variant", CowVariant => {
 		asset_id: String,
+		baby_asset_id: String,
 		model: Option<String>
 	},
 	"minecraft:damage_type", DamageType => {
@@ -247,6 +262,9 @@ registry_entry!(
 		exhaustion: f32,
 		message_id: String,
 		scaling: String
+	},
+	"minecraft:decorated_pot_pattern", DecoratedPotPattern => {
+		asset_id: String
 	},
 	"minecraft:dialog", Dialog => {
 		button_width: i32,
@@ -260,8 +278,11 @@ registry_entry!(
 	"minecraft:dimension_type", DimensionType => {
 		ambient_light: f32,
 		attributes: NbtCompound,
+		cardinal_light: Option<String>,
 		coordinate_scale: f64,
+		default_clock: Option<String>,
 		has_ceiling: i8,
+		has_ender_dragon_fight: i8,
 		has_fixed_time: Option<i8>,
 		has_skylight: i8,
 		height: i32,
@@ -277,9 +298,11 @@ registry_entry!(
 		anvil_cost: i32,
 		description: NbtTranslateColor,
 		effects: Option<NbtCompound>,
+		exclusive_set: Option<String>,
 		max_cost: EnchantmentCost,
 		max_level: i32,
 		min_cost: EnchantmentCost,
+		primary_items: Option<String>,
 		slots: Vec<String>,
 		supported_items: String,
 		weight: i32
@@ -300,11 +323,21 @@ registry_entry!(
 	},
 	"minecraft:pig_variant", PigVariant => {
 		asset_id: String,
+		baby_asset_id: String,
 		model: Option<String>
 	},
+	"minecraft:sulfur_cube_archetype", SulfurCubeArchetype => {
+		attribute_modifiers: Vec<SulfurCubeAttributeModifier>,
+		buoyant: Option<i8>,
+		contact_damage: Option<SulfurCubeContactDamage>,
+		explosion: Option<SulfurCubeExplosion>,
+		items: String,
+		knockback_modifiers: SulfurCubeKnockbackModifiers,
+		sound_settings: SulfurCubeSoundSettings
+	},
 	"minecraft:trim_material", TrimMaterial => {
-		asset_name: String,
-		description: NbtTranslateColor //todo: continue
+		description: NbtTranslateColor,
+		palette_id: String
 	},
 	"minecraft:trim_pattern", TrimPattern => {
 		asset_id: String,
@@ -312,19 +345,16 @@ registry_entry!(
 		description: NbtTranslateColor
 	},
 	"minecraft:wolf_sound_variant", WolfSoundVariant => {
-		ambient_sound: String,
-		death_sound: String,
-		growl_sound: String,
-		hurt_sound: String,
-		pant_sound: String,
-		whine_sound: String
+		adult_sounds: WolfSounds,
+		baby_sounds: WolfSounds
 	},
 	"minecraft:cat_sound_variant", CatSoundVariant => {
 		baby_sounds: CatSounds,
 		adult_sounds: CatSounds
 	},
 	"minecraft:wolf_variant", WolfVariant => {
-		assets: WolfVariantAssets
+		assets: WolfVariantAssets,
+		baby_assets: WolfVariantAssets
 	},
 	"minecraft:world_clock", WorldClock => {
 
@@ -367,9 +397,14 @@ registry_entry!(
 		r#type: String
 	},
 	"minecraft:timeline", Timeline => {
+		clock: String,
 		period_ticks: Option<i32>,
+		time_markers: Option<NbtCompound>,
 		tracks: Option<NbtCompound>
-	}
+	};
+	custom:
+	"minecraft:block_transformer", BlockTransformer,
+	"minecraft:worldgen/block_state_provider", BlockStateProvider
 );
 
 #[cfg(test)]
@@ -457,6 +492,35 @@ mod test {
 		assert_eq!(deserialized.entries[0].id, "minecraft:overworld");
 
 		assert_eq!(entry, deserialized.entries[0]);
+	}
+
+	/// The registry id picks the entry type. The two `custom:` registries must be found by their
+	/// vanilla ids, or the whole Registry Data packet fails to decode.
+	#[test]
+	fn custom_registries_decode_by_id() {
+		use crate::protocol::game::info::registry::registry_components::{BlockStateProvider, BlockTransformer};
+		use crate::protocol_types::datatypes::nbt::NbtCompound;
+
+		let mut provider = NbtCompound::new_no_name();
+		provider.add("type", "minecraft:rule_based");
+		let cases = [
+			("minecraft:block_transformer", RegistryType::BlockTransformer(BlockTransformer::new(vec![]))),
+			("minecraft:worldgen/block_state_provider", RegistryType::BlockStateProvider(BlockStateProvider::new(provider))),
+		];
+
+		for (registry_id, data) in cases {
+			let registry = RegistryDataPacketInternal {
+				registry_id: registry_id.to_string(),
+				num_entries: 1.into(),
+				entries: vec![RegistryEntry::new("minecraft:test".to_string(), Some(data))],
+			};
+			let mut serializer = McSerializer::new();
+			registry.mc_serialize(&mut serializer).unwrap();
+			let mut deserializer = McDeserializer::new(serializer.as_bytes());
+			let back = RegistryDataPacketInternal::mc_deserialize(&mut deserializer).unwrap_or_else(|e| panic!("{registry_id}: {e:?}"));
+			assert_eq!(back, registry);
+			assert!(deserializer.is_at_end(), "{registry_id}");
+		}
 	}
 
 	#[test]

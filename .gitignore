@@ -1,3 +1,9 @@
 /examples/status_handler/target/
 /src/sandstone-derive/target/
 /sandstone/src/sandstone-derive/target/
+/.idea
+/chunk_output
+/reg_data
+/target
+/sandstone/minecraft-data-cache
+CLAUDE.md

@@ -1,5 +1,5 @@
 use crate::protocol::game::player::inventory::components::StructuredComponent;
-use crate::protocol::game::player::inventory::slotdata::SlotData;
+use crate::protocol::game::player::inventory::slotdata::ItemStackTemplate;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
 use crate::protocol::serialization::McSerialize;
@@ -8,6 +8,7 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::internal_types::IDSet;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
@@ -19,12 +20,30 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 pub enum SlotDisplay {
 	Empty = 0,
 	AnyFuel = 1,
-	Item(VarInt) = 2,
-	ItemStack(SlotData) = 3,
-	Tag(String) = 4,
-	SmithingingTrim(Box<SmithingTrimSlotData>) = 5,
-	WithRemainder(Box<WithRemainderSlotData>) = 6,
-	Composite(Box<CompositeSlotData>) = 7,
+	WithAnyPotion(Box<SlotDisplay>) = 2,
+	OnlyWithComponent(Box<OnlyWithComponentSlotData>) = 3,
+	Item(VarInt) = 4,
+	/// The wiki shows a Slot here, but a 26.3 server sends an item-first template.
+	ItemStack(ItemStackTemplate) = 5,
+	/// The wiki shows an Identifier here, but a 26.3 server sends an ID Set (type 0 + tag name).
+	Tag(IDSet) = 6,
+	Dyed(Box<DyedSlotData>) = 7,
+	SmithingingTrim(Box<SmithingTrimSlotData>) = 8,
+	WithRemainder(Box<WithRemainderSlotData>) = 9,
+	Composite(Box<CompositeSlotData>) = 10,
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, PartialEq, Clone)]
+pub struct OnlyWithComponentSlotData {
+	pub base: SlotDisplay,
+	/// ID in the `minecraft:data_component_type` registry.
+	pub component_type: VarInt,
+}
+
+#[derive(McDefault, McSerialize, McDeserialize, Debug, PartialEq, Clone)]
+pub struct DyedSlotData {
+	pub dye: SlotDisplay,
+	pub target: SlotDisplay,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, PartialEq, Clone)]
@@ -77,9 +96,9 @@ pub struct FurnaceDisplay {
 	pub ingredient: SlotDisplay,
 	pub fuel: SlotDisplay,
 	pub result: SlotDisplay,
+	pub crafting_station: SlotDisplay,
 	pub duration: VarInt,
 	pub experience: f32,
-	pub crafting_station: SlotDisplay,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
@@ -150,6 +169,7 @@ pub enum InventoryOperationMode {
 #[cfg(test)]
 mod test {
 	use super::*;
+	use crate::protocol::packets::packet_parts::RecipeBookEntry;
 
 	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
@@ -169,8 +189,12 @@ mod test {
 		// The client picks the display type from this VarInt, so a wrong ID shows the wrong ingredient.
 		assert_eq!(ser(&SlotDisplay::Empty), vec![0]);
 		assert_eq!(ser(&SlotDisplay::AnyFuel), vec![1]);
-		assert_eq!(ser(&SlotDisplay::Item(VarInt(7))), vec![2, 7]);
-		assert_eq!(ser(&SlotDisplay::Tag("a".into())), vec![4, 1, b'a']);
+		assert_eq!(ser(&SlotDisplay::WithAnyPotion(Box::new(SlotDisplay::Empty))), vec![2, 0]);
+		assert_eq!(ser(&SlotDisplay::OnlyWithComponent(Box::new(OnlyWithComponentSlotData { base: SlotDisplay::Empty, component_type: VarInt(9) }))), vec![3, 0, 9]);
+		assert_eq!(ser(&SlotDisplay::Item(VarInt(7))), vec![4, 7]);
+		assert_eq!(ser(&SlotDisplay::Tag(IDSet { typ: VarInt(0), tag_name: Some("a".into()), ids: None })), vec![6, 0, 1, b'a']);
+		assert_eq!(ser(&SlotDisplay::Dyed(Box::new(DyedSlotData { dye: SlotDisplay::Empty, target: SlotDisplay::AnyFuel }))), vec![7, 0, 1]);
+		assert_eq!(ser(&SlotDisplay::Composite(Box::new(CompositeSlotData { options: PrefixedArray::new(vec![]) }))), vec![10, 0]);
 	}
 
 	#[test]
@@ -181,6 +205,47 @@ mod test {
 				SlotDisplay::WithRemainder(Box::new(WithRemainderSlotData { ingredient: SlotDisplay::AnyFuel, remainder: SlotDisplay::Empty })),
 			]),
 		})));
+	}
+
+	#[test]
+	fn reads_recipe_book_add_body_from_26_3_server() {
+		// Captured from a 26.3 server: the 2x2 planks -> crafting table recipe.
+		// The wiki gives a different layout for `tag` and `item_stack`. If these drift again,
+		// the client cannot finish the join, because every later field reads the wrong bytes.
+		let planks_tag = |b: &mut Vec<u8>| {
+			b.extend_from_slice(&[0x00, 0x10]);
+			b.extend_from_slice(b"minecraft:planks");
+		};
+		let mut body = vec![0x01, 0xd3, 0x02, 0x01, 0x02, 0x02, 0x04];
+		for _ in 0..4 {
+			body.push(0x06);
+			planks_tag(&mut body);
+		}
+		body.extend_from_slice(&[0x05, 0x95, 0x03, 0x01, 0x00, 0x00, 0x04, 0x95, 0x03, 0x00, 0x03, 0x01, 0x04]);
+		for _ in 0..4 {
+			planks_tag(&mut body);
+		}
+		body.extend_from_slice(&[0x02, 0x01]);
+
+		let mut d = McDeserializer::new(&body);
+		let entries = PrefixedArray::<RecipeBookEntry>::mc_deserialize(&mut d).unwrap();
+		let replace = bool::mc_deserialize(&mut d).unwrap();
+		assert!(d.is_at_end(), "all bytes must be used");
+		assert!(replace);
+
+		let entry = &entries.vec[0];
+		let RecipeDisplay::CraftingShaped(shaped) = &entry.display else { panic!("expected shaped recipe, got {:?}", entry.display) };
+		let planks = SlotDisplay::Tag(IDSet { typ: VarInt(0), tag_name: Some("minecraft:planks".into()), ids: None });
+		assert_eq!(shaped.ingredients.vec, vec![planks.clone(), planks.clone(), planks.clone(), planks]);
+		assert_eq!(shaped.result, SlotDisplay::ItemStack(ItemStackTemplate { item_id: VarInt(405), item_count: VarInt(1), components_to_add: vec![], components_to_remove: vec![] }));
+		assert_eq!(shaped.crafting_station, SlotDisplay::Item(VarInt(405)));
+		assert_eq!(entry.flags, 0x02);
+
+		// Writing it back must give the same bytes, or a sandstone server sends a packet the client rejects.
+		let mut s = McSerializer::new();
+		entries.mc_serialize(&mut s).unwrap();
+		replace.mc_serialize(&mut s).unwrap();
+		assert_eq!(s.as_bytes(), &body[..]);
 	}
 
 	#[test]

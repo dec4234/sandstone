@@ -3,23 +3,23 @@
 #![allow(elided_lifetimes_in_paths)]
 #![allow(mismatched_lifetime_syntaxes)]
 
-use log::{debug, LevelFilter};
+use log::{LevelFilter, debug};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::packets::packet_definer::PacketState;
 use sandstone::protocol::packets::{HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKnownPacksPacket};
-use sandstone::protocol::serialization::serializer_error::SerializingErr;
-use sandstone::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use sandstone::protocol::serialization::McDeserialize;
 use sandstone::protocol::serialization::McDeserializer;
 use sandstone::protocol::serialization::McSerialize;
 use sandstone::protocol::serialization::McSerializer;
 use sandstone::protocol::serialization::SerializingResult;
-use sandstone::protocol_types::datatypes::nbt::NbtCompound;
+use sandstone::protocol::serialization::serializer_error::SerializingErr;
+use sandstone::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
+use sandstone::protocol_types::datatypes::nbt::NbtTag;
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use sandstone_derive::{McDeserialize, McSerialize};
-use serde::ser::SerializeStruct;
 use serde::Serialize;
+use serde::ser::SerializeStruct;
 use simple_logger::SimpleLogger;
 use std::fs;
 use std::str::FromStr;
@@ -126,8 +126,8 @@ async fn main() {
 				debug!("Saved registry data for {id} to {filename}");
 				fs::write(&filename, json).unwrap();
 			}
-			Err(_) => {
-				debug!("Error received while parsing Registry Packet, assuming no more registry packets.");
+			Err(e) => {
+				debug!("Error received while parsing Registry Packet, assuming no more registry packets: {e:?}");
 				break;
 			}
 		}
@@ -184,7 +184,8 @@ impl Serialize for RegPacket {
 #[derive(Debug, McDeserialize, McSerialize)]
 pub struct Entry {
 	pub identifier: String,
-	pub data: PrefixedOptional<NbtCompound>,
+	/// Network NBT. The root tag can be any type, not only a compound (e.g. `block_transformer` sends a list).
+	pub data: PrefixedOptional<NbtTag>,
 }
 
 impl Serialize for Entry {
@@ -195,8 +196,11 @@ impl Serialize for Entry {
 		let mut state = serializer.serialize_struct("Entry", 2)?;
 		state.serialize_field("identifier", &self.identifier)?;
 
-		if self.data.is_present() {
-			state.serialize_field("data", &self.data.value().unwrap())?;
+		// Keep the old JSON shape for compound roots, so existing files do not change.
+		match self.data.value() {
+			Some(NbtTag::Compound(compound)) => state.serialize_field("data", compound)?,
+			Some(tag) => state.serialize_field("data", tag)?,
+			None => {}
 		}
 		state.end()
 	}

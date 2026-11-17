@@ -23,8 +23,8 @@ bitflag!(StructureBlockFlags: u8 {
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct BlockParticleAlternative {
-	pub particle_id: VarInt,
-	pub particle_data: Particle,
+	/// The particle ID and the data for that particle type
+	pub particle: Particle,
 	pub scaling: f32,
 	pub speed: f32,
 	pub weight: VarInt,
