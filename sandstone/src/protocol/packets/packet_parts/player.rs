@@ -14,6 +14,12 @@ bitflag!(TeleportFlags: i32 {
 	relative_x, relative_y, relative_z, relative_yaw, relative_pitch, relative_velocity_x, relative_velocity_y, relative_velocity_z, rotate_velocity
 });
 
+// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)>
+// Bit 7 appears unused, so it has no name.
+bitflag!(DisplayedSkinParts: u8 {
+	cape, jacket, left_sleeve, right_sleeve, left_pants_leg, right_pants_leg, hat
+});
+
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum WaypointData {
@@ -82,6 +88,38 @@ pub enum UseItemHand {
 	OffHand = 1
 }
 
+/// # Chat Mode (Packet Part)
+/// Which chat messages the client wants to receive
+///
+/// https://minecraft.wiki/w/Java_Edition_protocol/Chat#Client_chat_mode
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum ChatMode {
+	Enabled = 0,
+	CommandsOnly = 1,
+	Hidden = 2,
+}
+
+/// # Main Hand (Packet Part)
+/// The main hand set in the client settings. The values are not the same as [UseItemHand].
+///
+/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum MainHand {
+	Left = 0,
+	Right = 1,
+}
+
+/// # Particle Status (Packet Part)
+/// The particle setting of the client
+///
+/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)
+#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+pub enum ParticleStatus {
+	All = 0,
+	Decreased = 1,
+	Minimal = 2,
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
@@ -125,6 +163,42 @@ mod test {
 		round_trip(chunk);
 		round_trip(WaypointData::Azimuth(1.25));
 		assert_eq!(ser(&WaypointData::Empty), vec![0]);
+	}
+
+	#[test]
+	fn displayed_skin_part_bits_match_wiki() {
+		// Wiki: bit 0 cape, 1 jacket, 2 left sleeve, 3 right sleeve, 4 left pants leg,
+		// 5 right pants leg, 6 hat. A wrong bit shows or hides the wrong part of the skin.
+		let only = |i: usize| {
+			let mut b = [false; 7];
+			b[i] = true;
+			DisplayedSkinParts::new(b[0], b[1], b[2], b[3], b[4], b[5], b[6])
+		};
+		for i in 0..7 {
+			assert_eq!(ser(&only(i)), vec![1u8 << i], "flag index {i}");
+		}
+		let parts = DisplayedSkinParts::mc_deserialize(&mut McDeserializer::new(&[0x41])).unwrap();
+		assert!(parts.cape() && parts.hat() && !parts.jacket());
+		// the unused bit 7 must not be lost on a round trip
+		let parts = DisplayedSkinParts::mc_deserialize(&mut McDeserializer::new(&[0x80])).unwrap();
+		assert_eq!(ser(&parts), vec![0x80]);
+	}
+
+	#[test]
+	fn client_information_enum_ids_match_wiki() {
+		// Main hand is 0 = Left, 1 = Right. This is not the same as UseItemHand (0 = main hand).
+		// If they are mixed up, the server shows the player with the wrong main hand.
+		assert_eq!(ser(&MainHand::Left), vec![0]);
+		assert_eq!(ser(&MainHand::Right), vec![1]);
+		assert_eq!(ser(&ChatMode::Enabled), vec![0]);
+		assert_eq!(ser(&ChatMode::CommandsOnly), vec![1]);
+		assert_eq!(ser(&ChatMode::Hidden), vec![2]);
+		assert_eq!(ser(&ParticleStatus::All), vec![0]);
+		assert_eq!(ser(&ParticleStatus::Decreased), vec![1]);
+		assert_eq!(ser(&ParticleStatus::Minimal), vec![2]);
+		round_trip(ChatMode::Hidden);
+		round_trip(MainHand::Right);
+		round_trip(ParticleStatus::Minimal);
 	}
 
 	#[test]

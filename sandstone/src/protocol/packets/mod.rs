@@ -33,7 +33,7 @@ use crate::protocol::packets::packet_parts::block::{
 use crate::protocol::packets::packet_parts::debug::{CustomReportDetail, DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
 use crate::protocol::packets::packet_parts::entity::{EntityPositionDelta, EntityStatusEnum, MinecartMoveStep, PositionPath, SwingAnimationType};
 use crate::protocol::packets::packet_parts::item::{MapColorPatch, MapIcons, Trade};
-use crate::protocol::packets::packet_parts::player::{PlayerActionStatus, SeenAdvancementsAction, TeleportFlags, UseItemHand, WaypointData, WaypointOperation};
+use crate::protocol::packets::packet_parts::player::{ChatMode, DisplayedSkinParts, MainHand, ParticleStatus, PlayerActionStatus, SeenAdvancementsAction, TeleportFlags, UseItemHand, WaypointData, WaypointOperation};
 use crate::protocol::packets::packet_parts::scoreboard::{ObjectiveNumberFormat, ObjectiveType, UpdateScoreFormat, UpdateTeamOptions};
 use crate::protocol::packets::packet_parts::sound::StopSoundDetails;
 use crate::protocol::packets::packet_parts::{ChatTypeNetwork, PlayerAbilityFlags, PlayerInputFlags, PlayerPositionFlags};
@@ -224,13 +224,13 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				locale: String,
 				view_distance: i8,
 				#[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Chat#Client_chat_mode>"]
-				chat_mode: VarInt,
+				chat_mode: ChatMode,
 				chat_colors: bool,
-				displayed_skin_parts: u8,
-				main_hand: VarInt,
+				displayed_skin_parts: DisplayedSkinParts,
+				main_hand: MainHand,
 				enable_text_filtering: bool,
 				allow_server_listing: bool,
-				particle_status: VarInt
+				particle_status: ParticleStatus
 			},
 			CookieResponse, 0x01 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Cookie_Response>"] => {
 				key: String,
@@ -1110,13 +1110,13 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				locale: String,
 				view_distance: i8,
 				#[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Chat#Client_chat_mode>"]
-				chat_mode: VarInt,
+				chat_mode: ChatMode,
 				chat_colors: bool,
-				displayed_skin_parts: u8,
-				main_hand: VarInt,
+				displayed_skin_parts: DisplayedSkinParts,
+				main_hand: MainHand,
 				enable_text_filtering: bool,
 				allow_server_listing: bool,
-				particle_status: VarInt
+				particle_status: ParticleStatus
 			},
 			CommandSuggestionsRequest, 0x0F #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Command_Suggestions_Request>"] => {
 				transaction_id: VarInt,

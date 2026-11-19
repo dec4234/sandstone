@@ -68,6 +68,7 @@ fn bottom_section() -> ChunkSection {
 
 	ChunkSection {
 		block_count: block_count as i16,
+		fluid_count: 0,
 		block_states: PalletedContainer::indirect(palette, &indices, PaletteFormatType::BLOCKS).unwrap(),
 		biomes: PalletedContainer::single_valued(VarInt(PLAINS_BIOME)),
 	}
@@ -77,6 +78,7 @@ fn bottom_section() -> ChunkSection {
 fn air_section() -> ChunkSection {
 	ChunkSection {
 		block_count: 0,
+		fluid_count: 0,
 		block_states: PalletedContainer::single_valued(VarInt(AIR)),
 		biomes: PalletedContainer::single_valued(VarInt(PLAINS_BIOME)),
 	}

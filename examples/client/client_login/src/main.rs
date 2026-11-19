@@ -2,8 +2,9 @@ use log::{LevelFilter, debug, error, trace};
 use sandstone::network::CraftConnection;
 use sandstone::protocol::game::player::ClientStatusAction;
 use sandstone::protocol::packets::packet_definer::PacketState;
+use sandstone::protocol::packets::packet_parts::player::{ChatMode, DisplayedSkinParts, MainHand, ParticleStatus};
 use sandstone::protocol::packets::{
-	AcknowledgeFinishConfigurationPacket, ClientCommandPacket, ConfirmTeleportPacket, HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKeepAlivePacket,
+	AcknowledgeFinishConfigurationPacket, ChunkBatchReceivedPacket, ClientCommandPacket, ClientInformationPacket, ConfirmTeleportPacket, HandshakingPacket, LoginAcknowledgedPacket, LoginStartPacket, Packet, ServerboundKeepAlivePacket,
 	ServerboundKnownPacksPacket,
 };
 use sandstone::protocol::serialization::serializer_types::PrefixedArray;
@@ -64,6 +65,21 @@ async fn main() {
 	debug!("Sending login acknowledged packet");
 
 	client.change_state(PacketState::CONFIGURATION);
+
+	// without this, the server uses a default view distance of 2
+	let client_info = Packet::ClientInformation(ClientInformationPacket {
+		locale: "en_us".to_string(),
+		view_distance: 10,
+		chat_mode: ChatMode::Enabled,
+		chat_colors: true,
+		displayed_skin_parts: DisplayedSkinParts::new(true, true, true, true, true, true, true),
+		main_hand: MainHand::Right,
+		enable_text_filtering: false,
+		allow_server_listing: true,
+		particle_status: ParticleStatus::All,
+	});
+	debug!("Sending client information: {client_info:?}");
+	client.send_packet(client_info).await.unwrap();
 
 	loop {
 		let packet = client.receive_packet().await.unwrap();
@@ -242,6 +258,10 @@ async fn main() {
 				debug!("Received set center chunk: {scc:?}");
 				continue;
 			}
+			Packet::PostEffects(pe) => {
+				debug!("Received post effects: {pe:?}");
+				continue;
+			}
 			Packet::SetContainerContent(scc) => {
 				debug!("Received set container content: {scc:?}");
 				continue;
@@ -304,10 +324,19 @@ async fn main() {
 			}
 			Packet::ChunkBatchFinished(cbf) => {
 				debug!("Finished receiving {} chunks.", cbf.size.0);
+
+				// the server waits for this before it sends the next batch
+				let received = Packet::ChunkBatchReceived(ChunkBatchReceivedPacket { rate: 25.0 });
+				client.send_packet(received).await.unwrap();
+
 				continue;
 			}
 			Packet::BlockUpdate(bu) => {
 				debug!("Received block update {bu:?}");
+				continue;
+			}
+			Packet::AddTransientBlock(atb) => {
+				debug!("Received add transient block {atb:?}");
 				continue;
 			}
 			Packet::BundleDelimiter(_) => {

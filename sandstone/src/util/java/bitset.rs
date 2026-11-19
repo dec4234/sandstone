@@ -12,9 +12,25 @@ use std::ops::Range;
 /// A BitSet is a bitmask datatype of infinite size. It is stored as a Vec of u64
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#BitSet>
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct BitSet {
 	bits: Vec<u64>,
+}
+
+/// Same as Java's `BitSet.equals`: only the set bits count, so trailing zero longs are ignored.
+/// A decoded BitSet only has the longs that were sent, which can be fewer than the sender had.
+impl PartialEq for BitSet {
+	fn eq(&self, other: &Self) -> bool {
+		self.words_in_use() == other.words_in_use()
+	}
+}
+
+impl Eq for BitSet {}
+
+impl std::hash::Hash for BitSet {
+	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+		self.words_in_use().hash(state);
+	}
 }
 
 impl McSerialize for BitSet {
@@ -44,6 +60,12 @@ impl McDeserialize for BitSet {
 }
 
 impl BitSet {
+	/// The longs up to and including the last one that is not zero
+	fn words_in_use(&self) -> &[u64] {
+		let len = self.bits.iter().rposition(|&long| long != 0).map_or(0, |i| i + 1);
+		&self.bits[..len]
+	}
+
 	/// Create a new bitset, defining the number of bits within the bitset
 	pub fn new(size: usize) -> Self {
 		let byte_size = size.div_ceil(64);
@@ -413,6 +435,30 @@ mod test {
 		assert_eq!(bytes[8], 0x01);
 		assert_eq!(bytes[15], 0x80);
 		assert_eq!(BitSet::from(bytes.as_slice()), bitset);
+	}
+
+	/// A BitSet decoded from `toByteArray` bytes has only the longs it needs. It must still equal
+	/// the BitSet it was made from, or a round trip of light masks fails.
+	#[test]
+	fn equality_ignores_trailing_zero_longs() {
+		use std::hash::{DefaultHasher, Hash, Hasher};
+		let hash = |b: &BitSet| {
+			let mut h = DefaultHasher::new();
+			b.hash(&mut h);
+			h.finish()
+		};
+
+		let mut sized = BitSet::new(128);
+		sized.set_bit(3, true);
+		let decoded = BitSet::from(Vec::<u8>::from(sized.clone()).as_slice());
+		assert_eq!(decoded, sized);
+		assert_eq!(hash(&decoded), hash(&sized));
+		assert_eq!(BitSet::new(0), BitSet::new(64));
+
+		// a different set bit is still not equal
+		let mut other = BitSet::new(128);
+		other.set_bit(4, true);
+		assert_ne!(other, sized);
 	}
 
 	/// Java's `toByteArray` gives `(length() + 7) / 8` bytes, where `length()` is the highest set bit + 1.

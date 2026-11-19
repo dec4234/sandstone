@@ -26,7 +26,11 @@ pub struct ChunkData {
 }
 
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Light_Data>
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+///
+/// The wiki says the four masks are BitSets (a VarInt count of longs, then the longs). A 26.3
+/// vanilla server sends each mask as a Prefixed Array of Byte (Java's `BitSet.toByteArray`)
+/// instead, so the masks are serialized by hand here.
+#[derive(McDefault, Debug, Clone, PartialEq)]
 pub struct LightData {
 	pub sky_light_mask: BitSet,
 	pub block_light_mask: BitSet,
@@ -34,6 +38,39 @@ pub struct LightData {
 	pub empty_block_light_mask: BitSet,
 	pub sky_light: PrefixedArray<LightArray>,
 	pub block_light: PrefixedArray<LightArray>,
+}
+
+impl McSerialize for LightData {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		for mask in [&self.sky_light_mask, &self.block_light_mask, &self.empty_light_mask, &self.empty_block_light_mask] {
+			PrefixedArray::<u8>::new(mask.clone().into()).mc_serialize(serializer)?;
+		}
+		self.sky_light.mc_serialize(serializer)?;
+		self.block_light.mc_serialize(serializer)?;
+
+		Ok(())
+	}
+}
+
+impl McDeserialize for LightData {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
+		fn read_mask<'a>(deserializer: &mut McDeserializer) -> SerializingResult<'a, BitSet> {
+			let bytes = PrefixedArray::<u8>::mc_deserialize(deserializer)?;
+			Ok(BitSet::from(bytes.vec.as_slice()))
+		}
+
+		Ok(Self {
+			sky_light_mask: read_mask(deserializer)?,
+			block_light_mask: read_mask(deserializer)?,
+			empty_light_mask: read_mask(deserializer)?,
+			empty_block_light_mask: read_mask(deserializer)?,
+			sky_light: PrefixedArray::mc_deserialize(deserializer)?,
+			block_light: PrefixedArray::mc_deserialize(deserializer)?,
+		})
+	}
 }
 
 /// The length of the inner array is always 2048; There is 1 array for each bit set to true in the block
@@ -141,6 +178,8 @@ impl McDeserialize for ChunkByteData {
 pub struct ChunkSection {
 	/// Number of non-air blocks present in the chunk section. "Non-air" is defined as any fluid and block other than air, cave air, and void air
 	pub block_count: i16,
+	/// Number of waterlogged blocks plus `minecraft:water` or `minecraft:lava` blocks in any state
+	pub fluid_count: i16,
 	/// Consists of 4096 entries, representing all the blocks in the chunk section
 	pub block_states: PalletedContainer,
 	/// Consists of 64 entries, representing 4×4×4 biome regions in the chunk section
@@ -153,11 +192,13 @@ impl McDeserialize for ChunkSection {
 		Self: Sized,
 	{
 		let block_count = i16::mc_deserialize(deserializer)?;
+		let fluid_count = i16::mc_deserialize(deserializer)?;
 		let block_states = PalletedContainer::mc_deserialize(deserializer, 4096, BLOCKS)?;
 		let biomes = PalletedContainer::mc_deserialize(deserializer, 64, BIOMES)?;
 
 		Ok(Self {
 			block_count,
+			fluid_count,
 			block_states,
 			biomes,
 		})
@@ -479,6 +520,7 @@ mod test {
 
 		let section = ChunkSection {
 			block_count: 256,
+			fluid_count: 0,
 			block_states,
 			biomes,
 		};
@@ -574,12 +616,63 @@ mod test {
 		assert_eq!(small.bits_per_entry, 4);
 	}
 
+	/// The mask bytes come from a chunk packet sent by a 26.3 vanilla server. Each mask is a
+	/// Prefixed Array of Byte, not a count of longs. With the long layout, the reader takes the
+	/// wrong number of light arrays, and some chunk packets fail with "Input ended prematurely".
+	#[test]
+	fn light_data_reads_byte_array_masks_from_wire() {
+		use crate::protocol::game::world::chunk::LightData;
+
+		let mut bytes = vec![2, 0x00, 0x06, 1, 0xFE, 2, 0xFF, 0x01, 2, 0x01, 0x07];
+		for count in [2, 7] {
+			bytes.push(count);
+			for _ in 0..count {
+				bytes.extend_from_slice(&[0x80, 0x10]); // VarInt 2048
+				bytes.extend_from_slice(&[0; 2048]);
+			}
+		}
+
+		let mut de = McDeserializer::new(&bytes);
+		let light = LightData::mc_deserialize(&mut de).unwrap();
+		assert!(de.is_at_end());
+
+		let set_bits = |mask: &crate::util::java::bitset::BitSet| (0..64).filter(|&i| mask.get_bit(i)).collect::<Vec<_>>();
+		assert_eq!(set_bits(&light.sky_light_mask), vec![9, 10]);
+		assert_eq!(set_bits(&light.block_light_mask), vec![1, 2, 3, 4, 5, 6, 7]);
+		assert_eq!(set_bits(&light.empty_light_mask), vec![0, 1, 2, 3, 4, 5, 6, 7, 8]);
+		assert_eq!(set_bits(&light.empty_block_light_mask), vec![0, 8, 9, 10]);
+		// one light array per set bit in the matching mask
+		assert_eq!(light.sky_light.vec.len(), 2);
+		assert_eq!(light.block_light.vec.len(), 7);
+
+		// writing it back gives the same bytes
+		let mut serializer = McSerializer::new();
+		light.mc_serialize(&mut serializer).unwrap();
+		assert_eq!(serializer.output, bytes);
+	}
+
+	/// 26.3 sends a fluid count after the block count. If the reader skips it, the fluid count
+	/// bytes are read as the block states bits per entry and every chunk fails to decode.
+	#[test]
+	fn chunk_section_reads_fluid_count_from_wire() {
+		// block count 5, fluid count 3, single-valued blocks (id 1), single-valued biomes (id 2)
+		let bytes = [0x00, 0x05, 0x00, 0x03, 0x00, 0x01, 0x00, 0x02];
+		let mut de = McDeserializer::new(&bytes);
+		let section = ChunkSection::mc_deserialize(&mut de).unwrap();
+		assert_eq!(section.block_count, 5);
+		assert_eq!(section.fluid_count, 3);
+		assert_eq!(section.block_states, PalletedContainer::single_valued(VarInt(1)));
+		assert_eq!(section.biomes, PalletedContainer::single_valued(VarInt(2)));
+		assert!(de.is_at_end());
+	}
+
 	/// A ChunkSection reads blocks with 4096 entries and then biomes with 64 entries. Mixing up
 	/// the two counts would read the wrong number of longs.
 	#[test]
 	fn chunk_section_direct_blocks_then_biomes() {
 		let section = ChunkSection {
 			block_count: 1,
+			fluid_count: 0,
 			block_states: PalletedContainer {
 				bits_per_entry: 15,
 				palette: PalleteFormat::Direct,
