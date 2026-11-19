@@ -33,18 +33,10 @@ cesu8 = "1.1.0"
 smart-default = "0.7.1"
 
 sandstone-derive = { path = "src/sandstone-derive" } #todo: implications of local reference
-mc-data = { path = "src/protocol/game/info/content/mc-data" }
 mojang-api = { path = "src/util/mojang-api" }
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["net", "io-util", "rt", "macros", "time"] }
-
-[build-dependencies]
-serde_json = "1.0.154"
-ureq = "3.5.2"
-
-[features]
-vendored = ["mc-data/vendored"] # Pull block and item data from static JSON
 
 [lints.rust]
 mismatched_lifetime_syntaxes = "allow"

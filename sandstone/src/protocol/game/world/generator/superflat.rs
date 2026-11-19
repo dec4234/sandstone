@@ -1,16 +1,11 @@
 //! A minimal superflat world generator. Produces a single chunk (every chunk in a superflat world
 //! is identical) ready to be sent in a `Chunk Data and Update Light` packet.
 
+use crate::protocol::game::world::block_states::{AIR, BEDROCK, DIRT, GRASS_BLOCK};
 use crate::protocol::game::world::chunk::{ChunkByteData, ChunkData, ChunkSection, LightArray, LightData, PaletteFormatType, PalletedContainer};
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
-use mc_data::Block;
-
-const AIR: i32 = Block::Air::get_max_state_id() as i32;
-const GRASS_BLOCK: i32 = Block::GrassBlock::get_max_state_id() as i32;
-const DIRT: i32 = Block::Dirt::get_max_state_id() as i32;
-const BEDROCK: i32 = Block::Bedrock::get_max_state_id() as i32;
 
 // biome ID that matches the index in the registry for biomes
 const PLAINS_BIOME: i32 = 0;
