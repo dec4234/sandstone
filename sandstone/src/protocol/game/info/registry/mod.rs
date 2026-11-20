@@ -27,6 +27,7 @@ use sandstone_derive::{FromNbt, McDefault, McSerialize};
 pub mod registry_components;
 pub mod registry_default;
 pub mod registry_generator;
+pub mod vanilla_registries;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RegistryDataPacketInternal {
@@ -158,7 +159,14 @@ macro_rules! registry_entry {
 			impl McSerialize for $lib_name {
 				/// Serialize the registry via NBT.
 				fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-					self.as_nbt().mc_serialize(serializer)
+					let nbt = self.as_nbt();
+					// NbtCompound writes an empty compound as a lone End tag (0x00). The client
+					// requires a compound for every registry entry, so write an empty one instead.
+					if nbt.map.is_empty() {
+						10u8.mc_serialize(serializer)?;
+						return 0u8.mc_serialize(serializer);
+					}
+					nbt.mc_serialize(serializer)
 				}
 			}
 

@@ -4,7 +4,9 @@ use crate::network::network_error::NetworkError;
 use crate::network::server::server_handler_impl::DefaultServerEncryptionHandler;
 use crate::network::server::server_handler_trait::{ServerEncryptionHandler, ServerLoginHandler};
 use crate::protocol::game::info::registry::registry_generator;
+use crate::protocol::game::info::registry::vanilla_registries::{VANILLA_TAGS, VANILLA_VERSION};
 use crate::protocol::packets::packet_definer::PacketState;
+use crate::protocol::packets::packet_parts::ResourcePackEntry;
 use crate::protocol::packets::packet_parts::Tag;
 use crate::protocol::packets::packet_parts::player::TeleportFlags;
 use crate::protocol::packets::{ClientboundKnownPacksPacket, ClientboundPluginMessagePacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, SetCompressionPacket, SyncPlayerPositionPacket, UpdateTagsPacket};
@@ -16,6 +18,46 @@ use log::debug;
 use rand::Rng;
 use smart_default::SmartDefault;
 use uuid::Uuid;
+
+/// Every damage type tag in the vanilla 26.3 data pack.
+const VANILLA_DAMAGE_TYPE_TAGS: [&str; 36] = [
+	"always_hurts_ender_dragons",
+	"always_kills_armor_stands",
+	"always_most_significant_fall",
+	"always_triggers_silverfish",
+	"avoids_guardian_thorns",
+	"burn_from_stepping",
+	"burns_armor_stands",
+	"bypasses_armor",
+	"bypasses_cooldown",
+	"bypasses_effects",
+	"bypasses_enchantments",
+	"bypasses_invulnerability",
+	"bypasses_resistance",
+	"bypasses_shield",
+	"bypasses_wolf_armor",
+	"can_break_armor_stand",
+	"damages_helmet",
+	"ignites_armor_stands",
+	"is_drowning",
+	"is_explosion",
+	"is_fall",
+	"is_fire",
+	"is_freezing",
+	"is_lightning",
+	"is_player_attack",
+	"is_projectile",
+	"mace_smash",
+	"no_anger",
+	"no_impact",
+	"no_knockback",
+	"no_wolf_retaliation",
+	"panic_causes",
+	"panic_environmental_causes",
+	"sulfur_cube_with_block_immune_to",
+	"witch_resistant_to",
+	"wither_immune_to",
+];
 
 /// The default server login handler used to handle the login sequence for a Minecraft server.
 ///
@@ -89,12 +131,17 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 		connection.send_packet(server_brand).await?;
 		debug!("Sent server brand to {connection}");
 
-		let packs = Packet::ClientboundKnownPacks(ClientboundKnownPacksPacket::new(PrefixedArray::new(vec![])));
+		let core_pack = ResourcePackEntry {
+			namespace: "minecraft".to_string(),
+			id: "core".to_string(),
+			version: VANILLA_VERSION.to_string(),
+		};
+		let packs = Packet::ClientboundKnownPacks(ClientboundKnownPacksPacket::new(PrefixedArray::new(vec![core_pack.clone()])));
 		connection.send_packet(packs).await?;
 
 		debug!("Sent clientbound known packs to {connection}");
 
-		loop {
+		let client_has_core_pack = loop {
 			let packs = connection.receive_packet().await?;
 			match packs {
 				Packet::ServerboundPluginMessage(..) => {
@@ -105,29 +152,81 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 					// optional: before known packs
 					debug!("Received client information from {connection}: {packs:?}");
 				}
-				Packet::ServerboundKnownPacks(..) => {
+				Packet::ServerboundKnownPacks(ref packet) => {
 					debug!("Received serverbound known packs from {connection}: {packs:?}");
-					break;
+					break packet.entries.slice().contains(&core_pack);
 				}
 				_ => {
 					return Err(NetworkError::ExpectedDifferentPacket(format!("Expected serverbound known packs packet, got {packs:?}")));
 				}
 			}
-		}
+		};
 
-		// send all registry packets
-		debug!("Sending registry packets to {connection}");
-		for p in registry_generator::default() {
+		// With the core pack, send only the vanilla entry IDs and the client uses its own data.
+		// Without it, send the minimal registries with full data.
+		let registries = if client_has_core_pack {
+			registry_generator::vanilla_known_pack()
+		} else {
+			registry_generator::default()
+		};
+		debug!("Sending registry packets to {connection} (client has core pack: {client_has_core_pack})");
+		for p in registries {
 			connection.send_packet(p).await?;
 		}
 
-		let tags = Packet::UpdateTags(UpdateTagsPacket::new(PrefixedArray::new(vec![Mapping {
-			key: "minecraft:timeline".to_string(),
-			value: PrefixedArray::new(vec![Tag {
-				identifier: "minecraft:in_overworld".to_string(),
-				entries: PrefixedArray::new(vec![VarInt(0), VarInt(2)]),
-			}]),
-		}])));
+		// Tags are never taken from a known pack, so the client always needs them in full.
+		let tags = if client_has_core_pack {
+			Packet::UpdateTags(UpdateTagsPacket::new(PrefixedArray::new(
+				VANILLA_TAGS
+					.iter()
+					.map(|(registry, tags)| Mapping {
+						key: registry.to_string(),
+						value: PrefixedArray::new(
+							tags.iter()
+								.map(|(tag, ids)| Tag {
+									identifier: tag.to_string(),
+									entries: PrefixedArray::new(ids.iter().map(|id| VarInt(*id)).collect()),
+								})
+								.collect(),
+						),
+					})
+					.collect(),
+			)))
+		} else {
+			// The minimum tags that default() needs.
+			Packet::UpdateTags(UpdateTagsPacket::new(PrefixedArray::new(vec![
+				Mapping {
+					key: "minecraft:timeline".to_string(),
+					value: PrefixedArray::new(vec![Tag {
+						identifier: "minecraft:in_overworld".to_string(),
+						entries: PrefixedArray::new(vec![VarInt(0), VarInt(2)]),
+					}]),
+				},
+				// The default overworld dimension type refers to this tag in its "infiniburn" field.
+				// The client fails registry loading if the tag is missing. Empty is valid.
+				Mapping {
+					key: "minecraft:block".to_string(),
+					value: PrefixedArray::new(vec![Tag {
+						identifier: "minecraft:infiniburn_overworld".to_string(),
+						entries: PrefixedArray::new(vec![]),
+					}]),
+				},
+				// The client fails Finish Configuration if any vanilla damage type tag is missing.
+				// Empty is valid. The list comes from data/minecraft/tags/damage_type in the 26.3 client jar.
+				Mapping {
+					key: "minecraft:damage_type".to_string(),
+					value: PrefixedArray::new(
+						VANILLA_DAMAGE_TYPE_TAGS
+							.iter()
+							.map(|name| Tag {
+								identifier: format!("minecraft:{name}"),
+								entries: PrefixedArray::new(vec![]),
+							})
+							.collect(),
+					),
+				},
+			])))
+		};
 		connection.send_packet(tags).await?;
 
 		debug!("Sent update tags to {connection}");
@@ -197,17 +296,9 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 			}
 		}
 
-		let setpos = connection.receive_packet().await?;
-		match setpos {
-			Packet::SetPlayerPositionRotation(..) => {
-				debug!("Received set player position rotation from {connection}");
-				debug!("Set player position rotation: {setpos:?}");
-			}
-			_ => {
-				debug!("Expected set player position rotation, got {setpos:?}");
-				return Err(NetworkError::ExpectedDifferentPacket(format!("Expected set player position rotation packet, got {setpos:?}")));
-			}
-		}
+		// Do not wait for Set Player Position and Rotation here. The client stays on the loading
+		// screen and does not send it until it has chunks, and the caller sends chunks after this
+		// function returns.
 
 		Ok(())
 	}

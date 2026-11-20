@@ -25,7 +25,9 @@ use tokio::sync::Mutex;
 #[tokio::main]
 async fn main() {
 	SimpleLogger::new().with_level(LevelFilter::Debug).init().unwrap();
-	debug!("Starting server");
+	// Pass "--offline" to skip Mojang authentication (encryption is still used).
+	let offline = std::env::args().any(|arg| arg == "--offline");
+	debug!("Starting server (offline mode: {offline})");
 
 	let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
 
@@ -46,7 +48,11 @@ async fn main() {
 			continue;
 		}
 
-		DefaultServerLoginHandler::default().handle_login(&mut client).await.unwrap();
+		let login_handler = DefaultServerLoginHandler {
+			should_authenticate_with_mojang: !offline,
+			..Default::default()
+		};
+		login_handler.handle_login(&mut client).await.unwrap();
 
 		// Tell the client to begin loading terrain, then send the chunks around spawn.
 		let game_event = Packet::GameEvent(GameEventPacket::new(GameEventType::StartWaitingForLevelChunks, 0.0));

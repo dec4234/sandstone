@@ -1,6 +1,8 @@
 //! Generate registry packets necessary for a successful login.
 
-use crate::protocol::game::info::registry::{Biome, CatVariant, ChickenVariant, CowVariant, DamageType, DimensionType, PaintingVariant, RegistryDataPacketInternal, RegistryType, ZombieNautilusVariant};
+use crate::protocol::game::info::registry::vanilla_registries::SYNCED_REGISTRIES;
+use crate::protocol::game::info::registry::{Biome, CatVariant, ChickenVariant, CowVariant, DamageType, DimensionType, PaintingVariant, RegistryDataPacketInternal, RegistryType, WorldClock, ZombieNautilusVariant};
+use crate::protocol::game::info::registry::{CatSoundVariant, ChickenSoundVariant, CowSoundVariant, PigSoundVariant};
 use crate::protocol::game::info::registry::{FrogVariant, PigVariant, RegistryEntry, WolfSoundVariant, WolfVariant};
 use crate::protocol::packets::Packet;
 use crate::protocol::packets::RegistryDataPacket;
@@ -43,11 +45,25 @@ macro_rules! create_registry_packets {
 /// Send these packets during the Registry Data phase of the login sequence.
 pub fn default() -> Vec<Packet> {
     create_registry_packets!(
+		"minecraft:cat_sound_variant" => {
+			"minecraft:classic", RegistryType::CatSoundVariant(CatSoundVariant::default())
+		},
 		"minecraft:cat_variant" => {
 			"minecraft:black", RegistryType::CatVariant(CatVariant::default())
 		},
+		"minecraft:chicken_sound_variant" => {
+			"minecraft:classic", RegistryType::ChickenSoundVariant(ChickenSoundVariant::default())
+		},
 		"minecraft:chicken_variant" => {
 			"minecraft:warm", RegistryType::ChickenVariant(ChickenVariant::default())
+		},
+		"minecraft:cow_sound_variant" => {
+			"minecraft:classic", RegistryType::CowSoundVariant(CowSoundVariant::new(
+				"minecraft:entity.cow.ambient".to_string(),
+				"minecraft:entity.cow.death".to_string(),
+				"minecraft:entity.cow.hurt".to_string(),
+				"minecraft:entity.cow.step".to_string(),
+			))
 		},
 		"minecraft:cow_variant" => {
 			"minecraft:warm", RegistryType::CowVariant(CowVariant::default())
@@ -113,6 +129,10 @@ pub fn default() -> Vec<Packet> {
 		"minecraft:painting_variant" => {
 			"minecraft:alban", RegistryType::PaintingVariant(PaintingVariant::default())
 		},
+		"minecraft:pig_sound_variant" => {
+			// PigSoundVariant::default() uses the "pig_big" adult sounds.
+			"minecraft:big", RegistryType::PigSoundVariant(PigSoundVariant::default())
+		},
 		"minecraft:pig_variant" => {
 			"minecraft:warm", RegistryType::PigVariant(PigVariant::default())
 		},
@@ -122,6 +142,9 @@ pub fn default() -> Vec<Packet> {
 		"minecraft:wolf_variant" => {
             "minecraft:woods", RegistryType::WolfVariant(WolfVariant::default())
         },
+		"minecraft:world_clock" => {
+			"minecraft:overworld", RegistryType::WorldClock(WorldClock::new())
+		},
 	    "minecraft:worldgen/biome" => {
 		    "minecraft:plains", RegistryType::Biome(Biome::default())
 	    },
@@ -129,6 +152,24 @@ pub fn default() -> Vec<Packet> {
 			"minecraft:temperate", RegistryType::ZombieNautilusVariant(ZombieNautilusVariant::default())
 		}
     )
+}
+
+/// Generate registry packets for a client that has the vanilla `minecraft:core` known pack of
+/// version [`VANILLA_VERSION`](crate::protocol::game::info::registry::vanilla_registries::VANILLA_VERSION).
+///
+/// Each packet lists every vanilla entry ID with no data, so the client uses its own copy of the
+/// data. The entry order is the vanilla order, so the index of an entry is its numeric ID.
+pub fn vanilla_known_pack() -> Vec<Packet> {
+	SYNCED_REGISTRIES
+		.iter()
+		.map(|(registry, entries)| {
+			Packet::RegistryData(RegistryDataPacket::new(RegistryDataPacketInternal {
+				registry_id: registry.to_string(),
+				num_entries: VarInt(entries.len() as i32),
+				entries: entries.iter().map(|id| RegistryEntry::new(id.to_string(), None)).collect(),
+			}))
+		})
+		.collect()
 }
 
 #[cfg(test)]
@@ -196,9 +237,101 @@ mod test {
 			"minecraft:frog_variant",
 			"minecraft:pig_variant",
 			"minecraft:zombie_nautilus_variant",
+			// The default dimension type sets default_clock to "minecraft:overworld".
+			"minecraft:world_clock",
+			// The client requires these four to be non-empty (26.3).
+			"minecraft:cat_sound_variant",
+			"minecraft:chicken_sound_variant",
+			"minecraft:cow_sound_variant",
+			"minecraft:pig_sound_variant",
 		] {
 			assert!(ids.contains(needed), "missing {needed}");
 		}
+	}
+
+	fn known_pack_registry(id: &str) -> RegistryDataPacketInternal {
+		vanilla_known_pack()
+			.into_iter()
+			.map(|p| match p {
+				Packet::RegistryData(r) => r.packet,
+				_ => panic!("vanilla_known_pack() must only return Registry Data packets"),
+			})
+			.find(|r| r.registry_id == id)
+			.unwrap_or_else(|| panic!("missing {id}"))
+	}
+
+	#[test]
+	fn known_pack_entries_have_no_data_and_round_trip() {
+		// With the core pack, the client takes the data from its own copy. Data in the packet would
+		// replace it. The count must match, or the client misreads every later byte.
+		for p in vanilla_known_pack() {
+			let Packet::RegistryData(r) = p else { panic!("not Registry Data") };
+			let r = r.packet;
+			assert_eq!(r.num_entries.0 as usize, r.entries.len(), "{}", r.registry_id);
+			assert!(r.entries.iter().all(|e| !e.is_present && e.data.is_none()), "{}", r.registry_id);
+
+			let mut s = McSerializer::new();
+			r.mc_serialize(&mut s).unwrap();
+			let mut d = McDeserializer::new(s.as_bytes());
+			assert_eq!(RegistryDataPacketInternal::mc_deserialize(&mut d).unwrap(), r);
+			assert!(d.is_at_end(), "{}", r.registry_id);
+		}
+	}
+
+	#[test]
+	fn known_pack_has_elements_the_client_and_server_need() {
+		// The 26.3 client disconnected at Finish Configuration without trim_material minecraft:redstone.
+		let trims = known_pack_registry("minecraft:trim_material");
+		assert!(trims.entries.iter().any(|e| e.id == "minecraft:redstone"));
+		// Not in the wiki list of synced registries, but the 26.3 client needs it.
+		let pot_patterns = known_pack_registry("minecraft:decorated_pot_pattern");
+		assert!(pot_patterns.entries.iter().any(|e| e.id == "minecraft:angler"));
+		// The login handler sends dimension type ID 0 for "minecraft:overworld" in Login (play).
+		assert_eq!(known_pack_registry("minecraft:dimension_type").entries[0].id, "minecraft:overworld");
+	}
+
+	#[test]
+	fn vanilla_tags_match_the_registries_sent() {
+		use crate::protocol::game::info::registry::vanilla_registries::VANILLA_TAGS;
+		let tag = |registry: &str, name: &str| -> &[i32] {
+			let (_, tags) = VANILLA_TAGS.iter().find(|(r, _)| *r == registry).unwrap_or_else(|| panic!("no tags for {registry}"));
+			tags.iter().find(|(t, _)| *t == name).unwrap_or_else(|| panic!("no tag {name} in {registry}")).1
+		};
+		// The 26.3 client disconnected at Finish Configuration without these. Real IDs, not empty,
+		// because empty tags turn off the behavior (for example fire damage, enchantable items).
+		for (registry, name) in [
+			("minecraft:block", "minecraft:infiniburn_end"),
+			("minecraft:item", "minecraft:enchantable/head_armor"),
+			("minecraft:entity_type", "minecraft:sensitive_to_bane_of_arthropods"),
+			("minecraft:damage_type", "minecraft:is_fire"),
+		] {
+			assert!(!tag(registry, name).is_empty(), "{registry} {name}");
+		}
+
+		// A tag of a synced registry holds indexes into the entry list that the server sends.
+		// An index past the end refers to an entry that does not exist, and the client disconnects.
+		for (registry, tags) in VANILLA_TAGS {
+			if let Some((_, entries)) = SYNCED_REGISTRIES.iter().find(|(r, _)| r == registry) {
+				for (name, ids) in tags.iter() {
+					assert!(ids.iter().all(|id| (0..entries.len() as i32).contains(id)), "{registry} {name}");
+				}
+			}
+		}
+		// is_fire includes in_fire. Its index must point at that name in the order sent.
+		let (_, damage_types) = SYNCED_REGISTRIES.iter().find(|(r, _)| *r == "minecraft:damage_type").unwrap();
+		let in_fire = damage_types.iter().position(|d| *d == "minecraft:in_fire").unwrap() as i32;
+		assert!(tag("minecraft:damage_type", "minecraft:is_fire").contains(&in_fire));
+	}
+
+	#[test]
+	fn empty_entry_is_sent_as_compound() {
+		// Regression: an entry with no fields (world_clock) was written as a lone End tag (0x00).
+		// The client then failed to decode the whole Registry Data packet and disconnected.
+		let r = registries().into_iter().find(|r| r.registry_id == "minecraft:world_clock").unwrap();
+		let mut s = McSerializer::new();
+		r.mc_serialize(&mut s).unwrap();
+		// ..., is_present = true, then compound tag id (0x0a) and End tag (0x00).
+		assert!(s.as_bytes().ends_with(&[0x01, 0x0a, 0x00]), "{:02x?}", s.as_bytes());
 	}
 
 	#[test]

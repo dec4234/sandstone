@@ -7,8 +7,9 @@ use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
 
-// biome ID that matches the index in the registry for biomes
-const PLAINS_BIOME: i32 = 0;
+// Index of minecraft:plains in the vanilla worldgen/biome registry (vanilla_registries.rs). The
+// login handler sends this order when the client has the core pack. It is 0 in registry_generator::default().
+const PLAINS_BIOME: i32 = 41;
 
 // Overworld is 384 blocks tall (registry height 384, min_y -64) -> 24 sections.
 const SECTION_COUNT: usize = 24;
@@ -123,6 +124,15 @@ mod test {
 			}
 			PalleteFormat::Direct => panic!("superflat does not use the direct format"),
 		}
+	}
+
+	#[test]
+	fn plains_biome_id_matches_vanilla_registry_order() {
+		// The client reads the biome ID as an index into the registry the server sent. A wrong index
+		// shows a different biome (wrong grass color, sky and fog).
+		use crate::protocol::game::info::registry::vanilla_registries::SYNCED_REGISTRIES;
+		let (_, biomes) = SYNCED_REGISTRIES.iter().find(|(id, _)| *id == "minecraft:worldgen/biome").unwrap();
+		assert_eq!(biomes[PLAINS_BIOME as usize], "minecraft:plains");
 	}
 
 	#[test]
