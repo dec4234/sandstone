@@ -4,7 +4,9 @@
 //! - `report <version>` downloads the vanilla server jar for `<version>` from Mojang and runs its data
 //!   generator. The generator writes `generated/reports/blocks.json` into `work/<version>/`.
 //! - `generate <blocks.json> <version>` reads that report and writes
-//!   `sandstone/src/protocol/game/world/block_states.rs`.
+//!   `sandstone/src/protocol/game/world/block_states.rs`. It also reads `registries.json` from the same
+//!   folder and writes every block state and block entity type to
+//!   `sandstone/src/protocol/game/world/block_state_table.rs`.
 //!
 //! The tool does not depend on sandstone. If the generated file does not compile, you can still run
 //! this tool to write it again.
@@ -18,6 +20,9 @@ const VERSION_MANIFEST: &str = "https://piston-meta.mojang.com/mc/game/version_m
 
 /// The file that `generate` writes, relative to this crate.
 const OUTPUT_FILE: &str = "../../sandstone/src/protocol/game/world/block_states.rs";
+
+/// The file with every block state and every block entity type, relative to this crate.
+const TABLE_FILE: &str = "../../sandstone/src/protocol/game/world/block_state_table.rs";
 
 const USAGE: &str = "usage:
   cargo run -p block_states -- report <version>                 (example: report 26.3)
@@ -38,6 +43,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 			let out = crate_dir.join(OUTPUT_FILE);
 			fs::write(&out, source)?;
 			println!("constants written to {}", out.display());
+
+			// The data generator writes registries.json next to blocks.json.
+			let registries = fs::read_to_string(Path::new(report).with_file_name("registries.json"))?;
+			let table = generate_table(&json, &registries, version)?;
+			let out = crate_dir.join(TABLE_FILE);
+			fs::write(&out, table)?;
+			println!("state table written to {}", out.display());
 		}
 		_ => {
 			eprintln!("{USAGE}");
@@ -130,6 +142,157 @@ fn generate(report_json: &str, version: &str) -> Result<String, Box<dyn Error>> 
 	Ok(out)
 }
 
+/// Turns the vanilla `blocks.json` and `registries.json` reports into Rust source with every block
+/// state and every block entity type.
+///
+/// The table keeps only the first state ID and the property values of each block. The other IDs
+/// come from the vanilla order: the properties are sorted by name and the last property changes
+/// fastest. This function checks that order against the ID of every state in the report. If the
+/// order changes, the tool stops and does not write a table with wrong IDs.
+fn generate_table(blocks_json: &str, registries_json: &str, version: &str) -> Result<String, Box<dyn Error>> {
+	let report: serde_json::Map<String, serde_json::Value> = serde_json::from_str(blocks_json)?;
+
+	struct Block {
+		name: String,
+		first_id: i64,
+		count: i64,
+		default_id: i64,
+		properties: Vec<(String, Vec<String>)>,
+	}
+
+	let mut blocks = Vec::with_capacity(report.len());
+	for (name, block) in &report {
+		// serde_json keeps object keys sorted by name, which is the vanilla property order.
+		let mut properties = Vec::new();
+		if let Some(props) = block.get("properties") {
+			let props = props.as_object().ok_or_else(|| format!("{name}: `properties` is not an object"))?;
+			for (prop, values) in props {
+				let values = values.as_array().ok_or_else(|| format!("{name}.{prop}: values are not an array"))?;
+				let values = values
+					.iter()
+					.map(|v| v.as_str().map(str::to_string).ok_or_else(|| format!("{name}.{prop}: value is not a string")))
+					.collect::<Result<Vec<_>, _>>()?;
+				properties.push((prop.clone(), values));
+			}
+		}
+
+		let states = block["states"].as_array().ok_or_else(|| format!("{name}: no `states` array"))?;
+		let count: i64 = properties.iter().map(|(_, values)| values.len() as i64).product();
+		if states.len() as i64 != count {
+			return Err(format!("{name}: {} states, but the properties give {count}", states.len()).into());
+		}
+
+		let ids = states
+			.iter()
+			.map(|s| s["id"].as_i64().ok_or_else(|| format!("{name}: state without an `id`")))
+			.collect::<Result<Vec<_>, _>>()?;
+		let first_id = *ids.iter().min().ok_or_else(|| format!("{name}: no states"))?;
+		let mut default_id = None;
+
+		for (state, id) in states.iter().zip(&ids) {
+			let mut index = 0i64;
+			for (prop, values) in &properties {
+				let value = state["properties"][prop].as_str().ok_or_else(|| format!("{name}: state {id} has no value for `{prop}`"))?;
+				let position = values.iter().position(|v| v == value).ok_or_else(|| format!("{name}: state {id} has unknown value `{prop}={value}`"))?;
+				index = index * values.len() as i64 + position as i64;
+			}
+			if first_id + index != *id {
+				return Err(format!("{name}: state {id} is not at the expected ID {} (the state order changed)", first_id + index).into());
+			}
+			if state["default"] == true {
+				if default_id.is_some() {
+					return Err(format!("{name}: more than one default state").into());
+				}
+				default_id = Some(*id);
+			}
+		}
+
+		blocks.push(Block {
+			name: name.clone(),
+			first_id,
+			count,
+			default_id: default_id.ok_or_else(|| format!("{name}: no default state"))?,
+			properties,
+		});
+	}
+	blocks.sort_by_key(|b| b.first_id);
+
+	// A lookup by ID does a binary search over `first_id`, so the ranges must not have gaps.
+	let mut next_id = 0;
+	for block in &blocks {
+		if block.first_id != next_id {
+			return Err(format!("{}: first state ID is {}, expected {next_id}", block.name, block.first_id).into());
+		}
+		next_id += block.count;
+	}
+
+	let entity_types = registry_entries(registries_json, "minecraft:block_entity_type")?;
+
+	let mut out = format!(
+		"//! @generated by `data_collectors/block_states` from the vanilla {version} server reports. Do not edit.
+//!
+//! Every block state and every block entity type. To write this file again, see
+//! `data_collectors/block_states/README.md`.
+
+/// One block and the range of state IDs that it owns.
+///
+/// The state IDs of a block are `first_id..first_id + (product of the value counts)`. The index of a
+/// state in that range comes from the index of each property value. The last property changes fastest.
+#[derive(Debug)]
+pub struct BlockInfo {{
+	pub name: &'static str,
+	pub first_id: i32,
+	pub default_id: i32,
+	/// `(property name, values)`, sorted by property name.
+	pub properties: &'static [(&'static str, &'static [&'static str])],
+}}
+
+/// The number of block states. The direct palette of a chunk section uses `ceil(log2(BLOCK_STATE_COUNT))` bits.
+pub const BLOCK_STATE_COUNT: i32 = {next_id};
+
+/// Every block, sorted by `first_id`.
+pub const BLOCKS: &[BlockInfo] = &[
+"
+	);
+	for block in &blocks {
+		let properties: Vec<String> = block
+			.properties
+			.iter()
+			.map(|(prop, values)| format!("(\"{prop}\", &[{}])", values.iter().map(|v| format!("\"{v}\"")).collect::<Vec<_>>().join(", ")))
+			.collect();
+		out.push_str(&format!(
+			"\tBlockInfo {{ name: \"{}\", first_id: {}, default_id: {}, properties: &[{}] }},\n",
+			block.name,
+			block.first_id,
+			block.default_id,
+			properties.join(", ")
+		));
+	}
+	out.push_str("];\n\n/// Block entity type names. The index of a name is its protocol ID.\npub const BLOCK_ENTITY_TYPES: &[&str] = &[\n");
+	for name in entity_types {
+		out.push_str(&format!("\t\"{name}\",\n"));
+	}
+	out.push_str("];\n");
+	Ok(out)
+}
+
+/// The entry names of one registry in `registries.json`, in protocol ID order. Fails if the IDs are
+/// not exactly `0..n`.
+fn registry_entries(registries_json: &str, registry: &str) -> Result<Vec<String>, Box<dyn Error>> {
+	let report: serde_json::Value = serde_json::from_str(registries_json)?;
+	let entries = report[registry]["entries"].as_object().ok_or_else(|| format!("registries.json has no `{registry}` entries"))?;
+
+	let mut names = vec![None; entries.len()];
+	for (name, entry) in entries {
+		let id = entry["protocol_id"].as_u64().ok_or_else(|| format!("{registry} {name}: no `protocol_id`"))? as usize;
+		let slot = names.get_mut(id).ok_or_else(|| format!("{registry} {name}: protocol ID {id} is out of range"))?;
+		if slot.replace(name.clone()).is_some() {
+			return Err(format!("{registry}: two entries have protocol ID {id}").into());
+		}
+	}
+	Ok(names.into_iter().map(|n| n.expect("n entries with distinct IDs in 0..n fill every slot")).collect())
+}
+
 /// `minecraft:grass_block` -> `GRASS_BLOCK`.
 fn const_name(id: &str) -> Result<String, Box<dyn Error>> {
 	let path = id.strip_prefix("minecraft:").ok_or_else(|| format!("{id}: not in the `minecraft` namespace"))?;
@@ -164,6 +327,60 @@ mod tests {
 		// file with wrong IDs.
 		assert!(generate(r#"{ "minecraft:stone": { "states": [ { "id": 1 } ] } }"#, "test").is_err());
 		assert!(generate(r#"{ "minecraft:stone": { "states": [ { "id": 1, "default": true }, { "id": 2, "default": true } ] } }"#, "test").is_err());
+	}
+
+	const NO_ENTITIES: &str = r#"{ "minecraft:block_entity_type": { "entries": {} } }"#;
+
+	#[test]
+	fn table_keeps_the_vanilla_state_order() {
+		// Properties sorted by name, the last one changes fastest: a=0,b=1 is first_id + 1.
+		let report = r#"{
+			"minecraft:air": { "states": [ { "id": 0, "default": true } ] },
+			"minecraft:x": { "properties": { "b": ["0", "1"], "a": ["0", "1"] }, "states": [
+				{ "id": 1, "properties": { "a": "0", "b": "0" } },
+				{ "id": 2, "properties": { "a": "0", "b": "1" }, "default": true },
+				{ "id": 3, "properties": { "a": "1", "b": "0" } },
+				{ "id": 4, "properties": { "a": "1", "b": "1" } }
+			] }
+		}"#;
+		let out = generate_table(report, NO_ENTITIES, "test").unwrap();
+		assert!(
+			out.contains(r#"BlockInfo { name: "minecraft:x", first_id: 1, default_id: 2, properties: &[("a", &["0", "1"]), ("b", &["0", "1"])] },"#),
+			"{out}"
+		);
+		assert!(out.contains("pub const BLOCK_STATE_COUNT: i32 = 5;"), "{out}");
+	}
+
+	#[test]
+	fn table_refuses_a_changed_state_order() {
+		// Here the first property changes fastest. IDs computed from the table would be wrong.
+		let report = r#"{
+			"minecraft:x": { "properties": { "a": ["0", "1"], "b": ["0", "1"] }, "states": [
+				{ "id": 0, "properties": { "a": "0", "b": "0" }, "default": true },
+				{ "id": 1, "properties": { "a": "1", "b": "0" } },
+				{ "id": 2, "properties": { "a": "0", "b": "1" } },
+				{ "id": 3, "properties": { "a": "1", "b": "1" } }
+			] }
+		}"#;
+		assert!(generate_table(report, NO_ENTITIES, "test").is_err());
+	}
+
+	#[test]
+	fn table_refuses_a_gap_in_the_ids() {
+		let report = r#"{
+			"minecraft:air": { "states": [ { "id": 0, "default": true } ] },
+			"minecraft:stone": { "states": [ { "id": 2, "default": true } ] }
+		}"#;
+		assert!(generate_table(report, NO_ENTITIES, "test").is_err());
+	}
+
+	#[test]
+	fn block_entity_types_are_in_protocol_id_order() {
+		let registries = r#"{ "minecraft:block_entity_type": { "entries": { "minecraft:a": { "protocol_id": 1 }, "minecraft:b": { "protocol_id": 0 } } } }"#;
+		assert_eq!(registry_entries(registries, "minecraft:block_entity_type").unwrap(), vec!["minecraft:b", "minecraft:a"]);
+
+		let gap = r#"{ "minecraft:block_entity_type": { "entries": { "minecraft:a": { "protocol_id": 1 } } } }"#;
+		assert!(registry_entries(gap, "minecraft:block_entity_type").is_err());
 	}
 
 	#[test]

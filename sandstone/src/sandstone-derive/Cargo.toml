@@ -5,7 +5,6 @@ edition = "2021"
 license = "MIT"
 description = "Derive package for minecraft protocol traits"
 repository = "https://github.com/dec4234/sandstone"
-homepage = "https://github.com/dec4234/sandstone"
 readme = "README.md"
 keywords = ["minecraft", "networking", "server", "protocol"]
 categories = ["network-programming", "game-development", "game-engines"]

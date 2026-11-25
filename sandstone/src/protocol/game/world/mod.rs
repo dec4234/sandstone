@@ -10,6 +10,9 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::game_types::Position;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
+#[cfg(feature = "anvil")]
+pub mod anvil;
+pub mod block_state_table;
 pub mod block_states;
 pub mod chunk;
 pub mod generator;

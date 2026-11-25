@@ -1,16 +1,12 @@
 # TODO
 - [ ] Automatatic tests using McDefault
 - [ ] Identifier struct that verifies "minecraft:item" format
-- [x] Utilities
-    - [ ] Auto generate serialization/deserialization tests for all packets?
-        - [ ] Macro
-        - [ ] Default field trait? Derive?
 - [ ] Begin basic login procedure handler?
 - [ ] Documentation
     - [ ] Document all public functions
         - [ ] Better examples and documentation for packet reading
 - [ ] sNBT
-- [ ] Anvil format
+- [ ] Command parsing
 - [ ] World generation?
 - [ ] Feature flags
 - [ ] Lots of packets are repeated across multiple states with different ids = deduplicate

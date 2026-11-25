@@ -18,6 +18,11 @@ Requirements:
    ```
 
 Each constant is the default state ID of one block (for example `GRASS_BLOCK` is `grass_block[snowy=false]`).
+
+The same command also reads `registries.json` from the same folder and writes
+`sandstone/src/protocol/game/world/block_state_table.rs`. That file has every block with its properties and
+state ID range, and the block entity types in protocol ID order. The Anvil module uses it to change block state
+names into state IDs. The tool checks the state order against every state in the report and stops if it changed.
 The `work/` folder is not committed.
 
 ## Update instructions

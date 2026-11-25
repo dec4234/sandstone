@@ -284,18 +284,10 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 
 		debug!("Sent sync player position to {connection}");
 
-		let telep = connection.receive_packet().await?;
-		match telep {
-			Packet::ConfirmTeleport(..) => {
-				debug!("Received teleport confirm from {connection}");
-				debug!("Teleport confirm: {telep:?}");
-			}
-			_ => {
-				debug!("Expected teleport confirm, got {telep:?}");
-				return Err(NetworkError::ExpectedDifferentPacket(format!("Expected teleport confirm packet, got {telep:?}")));
-			}
-		}
-
+		// Do not wait for Confirm Teleportation here. The client can send other PLAY packets before
+		// it (a Fabric client sends a "minecraft:register" plugin message first). The caller reads
+		// all PLAY packets, so it gets the Confirm Teleportation with them.
+		//
 		// Do not wait for Set Player Position and Rotation here. The client stays on the loading
 		// screen and does not send it until it has chunks, and the caller sends chunks after this
 		// function returns.

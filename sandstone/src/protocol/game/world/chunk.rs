@@ -2,6 +2,7 @@
 //!
 //! https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format
 
+use crate::protocol::game::world::block_state_table::BLOCK_STATE_COUNT;
 use crate::protocol::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -323,6 +324,83 @@ impl PalletedContainer {
 		})
 	}
 
+	/// Build the smallest container for `values` (global IDs, one per entry). One distinct value gives
+	/// a single-valued container. A palette that fits the indirect range gives an indirect container.
+	/// Other values use the direct format with [`direct_bits_per_entry`] bits.
+	pub fn from_values<'a>(values: &[i32], typ: PaletteFormatType) -> SerializingResult<'a, Self> {
+		let mut palette: Vec<i32> = Vec::new();
+		let mut indices = Vec::with_capacity(values.len());
+		for &value in values {
+			let index = match palette.iter().position(|&v| v == value) {
+				Some(index) => index,
+				None => {
+					palette.push(value);
+					palette.len() - 1
+				}
+			};
+			indices.push(index as u16);
+		}
+
+		match palette.len() {
+			0 => Err(SerializingErr::OutOfBounds("A paletted container needs at least one entry".to_string())),
+			1 => Ok(Self::single_valued(VarInt(palette[0]))),
+			_ => match Self::indirect(palette.into_iter().map(VarInt).collect(), &indices, typ.clone()) {
+				Err(SerializingErr::InvalidBitsPerEntry) => Self::direct(values, typ),
+				other => other,
+			},
+		}
+	}
+
+	/// Build a direct container. Each entry holds its global ID.
+	fn direct<'a>(values: &[i32], typ: PaletteFormatType) -> SerializingResult<'a, Self> {
+		let bpe = direct_bits_per_entry(&typ);
+		let per_long = entries_per_i64(bpe) as usize;
+		let mut data = vec![PackedEntries::new(bpe); values.len().div_ceil(per_long)];
+		for (i, &value) in values.iter().enumerate() {
+			if value < 0 || value as u64 >= 1 << bpe {
+				return Err(SerializingErr::OutOfBounds(format!("ID {value} does not fit in a direct palette of {bpe} bits")));
+			}
+			data[i / per_long].set_entry((i % per_long) as u8, value as u64);
+		}
+
+		Ok(Self {
+			bits_per_entry: bpe,
+			palette: PalleteFormat::Direct,
+			data,
+		})
+	}
+
+	/// The global ID of each of the `num_entries` entries (4096 for blocks, 64 for biomes).
+	pub fn values<'a>(&self, num_entries: usize) -> SerializingResult<'a, Vec<i32>> {
+		if let PalleteFormat::SingleValued(value) = &self.palette {
+			return Ok(vec![value.0; num_entries]);
+		}
+
+		let per_long = entries_per_i64(self.bits_per_entry) as usize;
+		if per_long == 0 || self.data.len() < num_entries.div_ceil(per_long) {
+			return Err(SerializingErr::InconsistentField(format!(
+				"{} longs is too few for {num_entries} entries at {} bits",
+				self.data.len(),
+				self.bits_per_entry
+			)));
+		}
+
+		(0..num_entries)
+			.map(|i| {
+				let entry = self.data[i / per_long].get_entry((i % per_long) as u8);
+				match &self.palette {
+					PalleteFormat::Indirect(format) => format
+						.palette
+						.vec
+						.get(entry as usize)
+						.map(|id| id.0)
+						.ok_or_else(|| SerializingErr::OutOfBounds(format!("Palette index {entry} is out of bounds"))),
+					_ => Ok(entry as i32),
+				}
+			})
+			.collect()
+	}
+
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, num_entries: u16, typ: PaletteFormatType) -> SerializingResult<'a, Self>
 	where
 		Self: Sized,
@@ -400,7 +478,7 @@ impl PalleteFormat {
 			BLOCKS => {
 				if (4..=8).contains(&bits_per_entry) {
 					Ok(PalleteFormat::Indirect(IndirectFormat::mc_deserialize(deserializer)?))
-				} else if bits_per_entry == 15 {
+				} else if bits_per_entry == direct_bits_per_entry(&BLOCKS) {
 					Ok(PalleteFormat::Direct)
 				} else {
 					Err(SerializingErr::InvalidBitsPerEntry)
@@ -409,7 +487,7 @@ impl PalleteFormat {
 			BIOMES => {
 				if (1..=3).contains(&bits_per_entry) {
 					Ok(PalleteFormat::Indirect(IndirectFormat::mc_deserialize(deserializer)?))
-				} else if bits_per_entry == 7 {
+				} else if bits_per_entry == direct_bits_per_entry(&BIOMES) {
 					Ok(PalleteFormat::Direct)
 				} else {
 					Err(SerializingErr::InvalidBitsPerEntry)
@@ -437,6 +515,16 @@ impl Heightmap {
 			typ,
 			data,
 		}
+	}
+
+	/// The heightmap type ID (for example 4 is `MOTION_BLOCKING`).
+	pub fn typ(&self) -> VarInt {
+		self.typ
+	}
+
+	/// The packed heights, one entry per column.
+	pub fn data(&self) -> &[i64] {
+		&self.data.vec
 	}
 }
 
@@ -472,6 +560,17 @@ impl PackedXZ {
 
 	pub fn z(&self) -> u8 {
 		self.data & 0x0F
+	}
+}
+
+/// The bits per entry of a direct palette: `ceil(log2(number of IDs))`. The client computes it from
+/// the registry size. For blocks that is [`BLOCK_STATE_COUNT`] (35723 states in 26.3 -> 16 bits, not
+/// the 15 that older protocol versions used). For biomes it is 7, from the 67 vanilla biomes. A server
+/// with a different number of biomes needs a different value.
+pub fn direct_bits_per_entry(typ: &PaletteFormatType) -> u8 {
+	match typ {
+		BLOCKS => (u32::BITS - (BLOCK_STATE_COUNT as u32 - 1).leading_zeros()) as u8,
+		BIOMES => 7,
 	}
 }
 
@@ -571,11 +670,12 @@ mod test {
 		assert!(de.is_at_end());
 	}
 
-	/// Direct format has no palette on the wire: bpe, then the packed longs. Blocks use 15 bpe and
-	/// biomes use 7 bpe in this implementation.
+	/// Direct format has no palette on the wire: bpe, then the packed longs. In 26.3 blocks use 16 bpe
+	/// (35723 states) and biomes use 7 bpe (67 biomes).
 	#[test]
 	fn direct_palette_round_trip() {
-		for (typ, bpe, entries) in [(PaletteFormatType::BLOCKS, 15u8, 4096u16), (PaletteFormatType::BIOMES, 7, 64)] {
+		assert_eq!(super::direct_bits_per_entry(&PaletteFormatType::BLOCKS), 16);
+		for (typ, bpe, entries) in [(PaletteFormatType::BLOCKS, 16u8, 4096u16), (PaletteFormatType::BIOMES, 7, 64)] {
 			let longs = (entries as usize).div_ceil((64 / bpe) as usize);
 			let container = PalletedContainer {
 				bits_per_entry: bpe,
@@ -595,7 +695,15 @@ mod test {
 	/// block ranges, so a value that is valid for blocks can be invalid for biomes.
 	#[test]
 	fn invalid_bits_per_entry_errors() {
-		for (typ, bpe) in [(PaletteFormatType::BLOCKS, 3u8), (PaletteFormatType::BLOCKS, 9), (PaletteFormatType::BLOCKS, 16), (PaletteFormatType::BIOMES, 4), (PaletteFormatType::BIOMES, 8)] {
+		// 15 was the direct value before the block state count went over 32768.
+		for (typ, bpe) in [
+			(PaletteFormatType::BLOCKS, 3u8),
+			(PaletteFormatType::BLOCKS, 9),
+			(PaletteFormatType::BLOCKS, 15),
+			(PaletteFormatType::BLOCKS, 17),
+			(PaletteFormatType::BIOMES, 4),
+			(PaletteFormatType::BIOMES, 8),
+		] {
 			let bytes = [bpe, 0, 0, 0];
 			let result = PalletedContainer::mc_deserialize(&mut McDeserializer::new(&bytes), 64, typ.clone());
 			assert!(matches!(result, Err(SerializingErr::InvalidBitsPerEntry)), "{typ:?} bpe {bpe}: {result:?}");
@@ -674,9 +782,9 @@ mod test {
 			block_count: 1,
 			fluid_count: 0,
 			block_states: PalletedContainer {
-				bits_per_entry: 15,
+				bits_per_entry: 16,
 				palette: PalleteFormat::Direct,
-				data: vec![PackedEntries::new(15); 4096usize.div_ceil(4)],
+				data: vec![PackedEntries::new(16); 4096usize.div_ceil(4)],
 			},
 			biomes: PalletedContainer::single_valued(VarInt(2)),
 		};
@@ -684,6 +792,42 @@ mod test {
 		let mut de = McDeserializer::new(&bytes);
 		assert_eq!(ChunkSection::mc_deserialize(&mut de).unwrap(), section);
 		assert!(de.is_at_end());
+	}
+
+	/// `from_values` must pick the smallest valid format, and `values` must give back the same IDs.
+	/// The Anvil conversion depends on both: a wrong format makes the client reject the chunk, and a
+	/// wrong value puts the wrong block in the world.
+	#[test]
+	fn from_values_picks_format_and_round_trips() {
+		let one = vec![7; 4096];
+		let c = PalletedContainer::from_values(&one, PaletteFormatType::BLOCKS).unwrap();
+		assert_eq!(c, PalletedContainer::single_valued(VarInt(7)));
+		assert_eq!(c.values(4096).unwrap(), one);
+
+		// 256 distinct values fit 8 bpe indirect, 257 do not and go direct.
+		for (distinct, bpe) in [(2, 4), (256, 8), (257, 16), (4096, 16)] {
+			// spread out, but below the block state count
+			let values: Vec<i32> = (0..4096).map(|i| (i % distinct) * 8).collect();
+			let c = PalletedContainer::from_values(&values, PaletteFormatType::BLOCKS).unwrap();
+			assert_eq!(c.bits_per_entry, bpe, "{distinct} distinct values");
+			assert_eq!(c.values(4096).unwrap(), values);
+
+			// and it survives the wire format
+			let bytes = to_bytes(&c);
+			let back = PalletedContainer::mc_deserialize(&mut McDeserializer::new(&bytes), 4096, PaletteFormatType::BLOCKS).unwrap();
+			assert_eq!(back.values(4096).unwrap(), values);
+		}
+
+		// 9 biomes need 4 bits, past the 3-bit indirect limit, so biomes go direct at 7 bits.
+		let biomes: Vec<i32> = (0..64).map(|i| i % 9).collect();
+		let c = PalletedContainer::from_values(&biomes, PaletteFormatType::BIOMES).unwrap();
+		assert_eq!(c.bits_per_entry, 7);
+		assert_eq!(c.values(64).unwrap(), biomes);
+
+		// An ID that does not fit the direct bits must be an error, not a cut value.
+		let mut too_big: Vec<i32> = (0..64).map(|i| i % 9).collect();
+		too_big[0] = 128;
+		assert!(PalletedContainer::from_values(&too_big, PaletteFormatType::BIOMES).is_err());
 	}
 
 	/// PackedXZ is x in the high nibble and z in the low nibble. Values over 15 would overwrite

@@ -2,6 +2,8 @@
 
 use log::{LevelFilter, debug};
 use simple_logger::SimpleLogger;
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
@@ -10,6 +12,7 @@ use sandstone::network::network_error::NetworkError;
 use sandstone::network::server::server_handler_impl::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
 use sandstone::network::server::server_handler_trait::{ServerHandshakeHandler, ServerLoginHandler, ServerStatusHandler};
 use sandstone::network::server::server_login_impl::DefaultServerLoginHandler;
+use sandstone::protocol::game::world::anvil::{Dimension, RegionFile, region_file_name};
 use sandstone::protocol::game::world::generator::superflat;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use sandstone::protocol::packets::packet_parts::GameEventType;
@@ -27,6 +30,9 @@ async fn main() {
 	SimpleLogger::new().with_level(LevelFilter::Debug).init().unwrap();
 	// Pass "--offline" to skip Mojang authentication (encryption is still used).
 	let offline = std::env::args().any(|arg| arg == "--offline");
+	// Pass "--region <folder>" to send the chunks of a vanilla overworld region folder instead of a
+	// superflat world.
+	let region_folder = std::env::args().skip_while(|arg| arg != "--region").nth(1).map(PathBuf::from);
 	debug!("Starting server (offline mode: {offline})");
 
 	let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
@@ -67,20 +73,37 @@ async fn main() {
 		// Send the full view-distance grid (view_distance = 10 -> 21x21 chunks centered on spawn),
 		// wrapped in a chunk batch.
 		const VIEW_DISTANCE: i32 = 10;
-		let chunk_count = (2 * VIEW_DISTANCE + 1) * (2 * VIEW_DISTANCE + 1);
+		let mut chunk_count = 0;
+		let mut regions: HashMap<String, RegionFile> = HashMap::new();
 
 		client.send_packet(Packet::ChunkBatchStart(ChunkBatchStartPacket::new())).await.unwrap();
 
 		for cx in -VIEW_DISTANCE..=VIEW_DISTANCE {
 			for cz in -VIEW_DISTANCE..=VIEW_DISTANCE {
-				let chunk = Packet::ChunkDataUpdateLight(ChunkDataUpdateLightPacket::new(cx, cz, chunk_data.clone(), light_data.clone()));
-				client.send_packet(chunk).await.unwrap();
+				let packet = match &region_folder {
+					Some(folder) => {
+						let name = region_file_name(cx, cz);
+						let path = folder.join(&name);
+						if !path.exists() {
+							continue;
+						}
+						let region = regions.entry(name).or_insert_with(|| RegionFile::open(path).unwrap());
+						// Chunks that are not finished are not sent, like vanilla.
+						match region.read_chunk(cx, cz).unwrap() {
+							Some(chunk) if chunk.status == "minecraft:full" => chunk.to_packet(&Dimension::overworld()).unwrap(),
+							_ => continue,
+						}
+					}
+					None => ChunkDataUpdateLightPacket::new(cx, cz, chunk_data.clone(), light_data.clone()),
+				};
+				client.send_packet(Packet::ChunkDataUpdateLight(packet)).await.unwrap();
+				chunk_count += 1;
 			}
 		}
 
 		client.send_packet(Packet::ChunkBatchFinished(ChunkBatchFinishedPacket::new(VarInt(chunk_count)))).await.unwrap();
 
-		debug!("Sent {chunk_count} superflat chunks to {client}");
+		debug!("Sent {chunk_count} chunks to {client}");
 
 		let arc = Arc::new(Mutex::new(client));
 
