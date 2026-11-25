@@ -15,8 +15,11 @@ use crate::util::encryption::aes::CraftCipher;
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
+#[cfg(feature = "dns")]
 use hickory_resolver::Resolver;
+#[cfg(feature = "dns")]
 use hickory_resolver::proto::rr::RecordRef;
+#[cfg(feature = "dns")]
 use hickory_resolver::proto::rr::rdata::SRV;
 use log::{debug, error, trace};
 use std::fmt::Display;
@@ -95,6 +98,7 @@ impl CraftConnection {
 	/// actual server lives elsewhere; without this lookup such hostnames connect to the wrong
 	/// endpoint and hang. Returns `None` (so the caller falls back to `host:25565`) on any DNS
 	/// failure or when no record is published.
+	#[cfg(feature = "dns")]
 	async fn resolve_srv(host: &str) -> Option<String> {
 		let resolver = Resolver::builder_tokio().ok()?.build().ok()?;
 		let lookup = resolver.srv_lookup(format!("_minecraft._tcp.{host}.")).await.ok()?;
@@ -103,6 +107,12 @@ impl CraftConnection {
 		let target = srv.target.to_utf8();
 		let target = target.trim_end_matches('.');
 		Some(format!("{target}:{}", srv.port))
+	}
+
+	/// Without the `dns` feature there is no SRV lookup, so the caller always dials `host:25565`.
+	#[cfg(not(feature = "dns"))]
+	async fn resolve_srv(_host: &str) -> Option<String> {
+		None
 	}
 
 	/// Create a `CraftConnection` from an already-established `TcpStream`. This is for server-side

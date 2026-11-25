@@ -24,7 +24,6 @@ thiserror = "2.0.21"
 aes = "0.9.4"
 rsa = { version = "0.10.0", features = ["std", "pkcs1v15"] }
 rand = "0.10.4"
-hickory-resolver = "0.26.4"
 paste = "1.0"
 cesu8 = "1.1.0"
 smart-default = "0.7.1"
@@ -36,13 +35,18 @@ lz4_flex = { version = "0.14.2", optional = true }
 xxhash-rust = { version = "0.8.21", features = ["xxh32"], optional = true }
 # Used only by the `favicon` feature. Only the PNG codec is enabled.
 image = { version = "0.25.10", default-features = false, features = ["png"], optional = true }
+# Used only by the `dns` feature (SRV record lookup in CraftConnection::connect).
+hickory-resolver = { version = "0.26.4", optional = true }
 
 [features]
-default = ["anvil", "favicon"]
+default = ["anvil", "favicon", "dns"]
 # Read and write Anvil region files (.mca) and convert chunks to and from chunk packets.
 anvil = ["dep:lz4_flex", "dep:xxhash-rust"]
 # Set the server list icon from an `image::DynamicImage` (StatusResponseSpec::set_favicon_image).
 favicon = ["dep:image"]
+# Look up the `_minecraft._tcp` SRV record when a client connects without a port.
+# Without it, `CraftConnection::connect` dials `host:25565` directly. Servers do not need it.
+dns = ["dep:hickory-resolver"]
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["net", "io-util", "rt", "macros", "time"] }
