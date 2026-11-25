@@ -8,4 +8,4 @@ sandstone = {path = "../../../sandstone"}
 tokio = {version = "1.53.1", features = ["full", "macros"]}
 simple_logger = "5.2.0"
 log = "0.4.33"
-image = "0.25.10"
+image = { version = "0.25.10", default-features = false, features = ["png"] }

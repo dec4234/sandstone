@@ -34,8 +34,8 @@ async fn main() {
 		let mut response = StatusResponseSpec::new(ProtocolVerison::latest(), "&a&lThis is a test description &b§kttt");
 		response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
 
-		let image = image::open("examples/status_handler/src/server-icon.png").unwrap();
-		response.set_favicon_image(image);
+		let image = image::open("examples/server/status_handler/src/server-icon.png").unwrap();
+		response.set_favicon_image(image, true).unwrap();
 
 		DefaultServerHandshakeHandler::handle_handshake(&mut client).await.unwrap();
 		DefaultServerStatusHandler::handle_status(&mut client, StatusResponsePacket::new(response), DefaultServerPingHandler)

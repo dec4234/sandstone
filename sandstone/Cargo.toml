@@ -19,9 +19,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 uuid = { version = "1.29.3", features = ["v4"] }
 base64 = "0.23.1"
 log = "0.4.35"
-image = { version = "0.25.10", features = ["default", "png"] }
 flate2 = "1.1.11"
-regex = "1.13.2"
 thiserror = "2.0.21"
 aes = "0.9.4"
 rsa = { version = "0.10.0", features = ["std", "pkcs1v15"] }
@@ -36,14 +34,20 @@ mojang-api = { path = "src/util/mojang-api" }
 # Used only by the `anvil` feature (LZ4 compressed chunks).
 lz4_flex = { version = "0.14.2", optional = true }
 xxhash-rust = { version = "0.8.21", features = ["xxh32"], optional = true }
+# Used only by the `favicon` feature. Only the PNG codec is enabled.
+image = { version = "0.25.10", default-features = false, features = ["png"], optional = true }
 
 [features]
-default = ["anvil"]
+default = ["anvil", "favicon"]
 # Read and write Anvil region files (.mca) and convert chunks to and from chunk packets.
 anvil = ["dep:lz4_flex", "dep:xxhash-rust"]
+# Set the server list icon from an `image::DynamicImage` (StatusResponseSpec::set_favicon_image).
+favicon = ["dep:image"]
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["net", "io-util", "rt", "macros", "time"] }
+# Used only by the sNBT tests in protocol_types/datatypes/nbt/snbt_testing.rs.
+regex = "1.13.2"
 
 [lints.rust]
 mismatched_lifetime_syntaxes = "allow"

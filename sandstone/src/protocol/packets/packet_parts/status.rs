@@ -6,13 +6,33 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
+#[cfg(feature = "favicon")]
 use base64::Engine;
+#[cfg(feature = "favicon")]
 use base64::engine::general_purpose;
+#[cfg(feature = "favicon")]
+use image::imageops::FilterType;
+#[cfg(feature = "favicon")]
 use image::{DynamicImage, ImageFormat};
 use sandstone_derive::McDefault;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "favicon")]
 use std::io::Cursor;
 use uuid::Uuid;
+
+/// Width and height in pixels that the client needs for a server list icon.
+#[cfg(feature = "favicon")]
+pub const FAVICON_SIZE: u32 = 64;
+
+/// Errors from [`StatusResponseSpec::set_favicon_image`].
+#[cfg(feature = "favicon")]
+#[derive(thiserror::Error, Debug)]
+pub enum FaviconError {
+	#[error("Favicon must be {FAVICON_SIZE}x{FAVICON_SIZE}, got {width}x{height}")]
+	WrongSize { width: u32, height: u32 },
+	#[error(transparent)]
+	Encode(#[from] image::ImageError),
+}
 
 /// # Status Response Spec (Packet Part)
 /// A prepared response to a status request from a client. This provides useful functions for building
@@ -61,15 +81,29 @@ impl StatusResponseSpec {
 		}
 	}
 
-	/// Set the image returned to the user as the server logo.
-	/// This must be a 64x64 PNG image.
-	pub fn set_favicon_image(&mut self, image: DynamicImage) {
+	/// Set the image returned to the user as the server logo. The client needs a 64x64 image.
+	///
+	/// If `resize` is true, an image of a different size is stretched to exactly 64x64 (the aspect
+	/// ratio is not kept). If `resize` is false, an image of a different size gives
+	/// [`FaviconError::WrongSize`] and the favicon is not changed.
+	#[cfg(feature = "favicon")]
+	pub fn set_favicon_image(&mut self, image: DynamicImage, resize: bool) -> Result<(), FaviconError> {
+		let (width, height) = (image.width(), image.height());
+		let image = if (width, height) == (FAVICON_SIZE, FAVICON_SIZE) {
+			image
+		} else if resize {
+			image.resize_exact(FAVICON_SIZE, FAVICON_SIZE, FilterType::Lanczos3)
+		} else {
+			return Err(FaviconError::WrongSize { width, height });
+		};
+
 		let mut image_data: Vec<u8> = Vec::new();
-		image.write_to(&mut Cursor::new(&mut image_data), ImageFormat::Png).unwrap();
+		image.write_to(&mut Cursor::new(&mut image_data), ImageFormat::Png)?;
 		let res_base64 = general_purpose::STANDARD.encode(image_data);
 		let s = format!("data:image/png;base64,{}", res_base64);
 
 		self.favicon = Some(s);
+		Ok(())
 	}
 
 	/// Unknown purpose. Might be related to post 1.18 chat security.
@@ -215,6 +249,49 @@ mod test {
 	use crate::protocol_types::datatypes::chat::ComponentType;
 	use crate::protocol_types::protocol_verison::ProtocolVerison;
 	use uuid::Uuid;
+
+	/// Decode the PNG inside a `data:image/png;base64,...` favicon string.
+	#[cfg(feature = "favicon")]
+	fn decode_favicon(favicon: &str) -> image::DynamicImage {
+		use base64::Engine;
+		let b64 = favicon.strip_prefix("data:image/png;base64,").expect("favicon must be a PNG data URI");
+		let bytes = base64::engine::general_purpose::STANDARD.decode(b64).unwrap();
+		image::load_from_memory_with_format(&bytes, image::ImageFormat::Png).unwrap()
+	}
+
+	#[test]
+	#[cfg(feature = "favicon")]
+	fn favicon_correct_size_is_kept() {
+		// A 64x64 image is what the client wants, so it must be accepted as is, with or without resize.
+		for resize in [false, true] {
+			let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "Test");
+			spec.set_favicon_image(image::DynamicImage::new_rgba8(64, 64), resize).unwrap();
+			let img = decode_favicon(spec.favicon.as_deref().unwrap());
+			assert_eq!((img.width(), img.height()), (64, 64));
+		}
+	}
+
+	#[test]
+	#[cfg(feature = "favicon")]
+	fn favicon_wrong_size_without_resize_is_an_error() {
+		// The client does not show icons of other sizes, so we must refuse them and keep the old favicon.
+		let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "Test");
+		let err = spec.set_favicon_image(image::DynamicImage::new_rgba8(128, 32), false).unwrap_err();
+		assert!(matches!(err, super::FaviconError::WrongSize { width: 128, height: 32 }));
+		assert_eq!(spec.favicon, None);
+	}
+
+	#[test]
+	#[cfg(feature = "favicon")]
+	fn favicon_wrong_size_with_resize_becomes_64x64() {
+		// With resize on, any input size must end up as a 64x64 PNG that the client can show.
+		for (w, h) in [(128, 128), (16, 16), (100, 30)] {
+			let mut spec = StatusResponseSpec::new(ProtocolVerison::latest(), "Test");
+			spec.set_favicon_image(image::DynamicImage::new_rgba8(w, h), true).unwrap();
+			let img = decode_favicon(spec.favicon.as_deref().unwrap());
+			assert_eq!((img.width(), img.height()), (64, 64), "input {w}x{h}");
+		}
+	}
 
 	#[test]
 	fn test_color_code_translation() {
