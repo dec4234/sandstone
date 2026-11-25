@@ -56,6 +56,7 @@ pub struct TextComponent {
 /// Hand-written because a derived default fills `extra` with more default components,
 /// and each of those does the same, so the derive recurses without end.
 impl McDefault for TextComponent {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			content: ComponentType::mc_default(),

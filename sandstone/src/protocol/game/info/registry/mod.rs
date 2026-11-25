@@ -76,6 +76,7 @@ impl McDeserialize for RegistryDataPacketInternal {
 /// derived default (random id, count that does not match) cannot be read back.
 /// `RegistryType::mc_default()` is the first registry in `registry_entry!`, which is banner_pattern.
 impl McDefault for RegistryDataPacketInternal {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		let entries: Vec<RegistryEntry> = McDefault::mc_default();
 		Self {

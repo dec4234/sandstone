@@ -53,6 +53,7 @@ impl McDeserialize for PotionEffectDetail {
 }
 
 impl McDefault for PotionEffectDetail {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			amplifier: VarInt(1),

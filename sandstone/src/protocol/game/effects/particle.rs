@@ -135,6 +135,7 @@ pub enum Particle {
 }
 
 impl McDefault for Particle {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self::Cloud
 	}

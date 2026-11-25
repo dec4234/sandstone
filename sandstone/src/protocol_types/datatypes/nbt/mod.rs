@@ -182,6 +182,7 @@ impl McDeserialize for NbtTag {
 }
 
 impl McDefault for NbtTag {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		NbtTag::String("default".to_string())
 	}
@@ -504,6 +505,7 @@ impl McDeserialize for NbtCompound {
 }
 
 impl McDefault for NbtCompound {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		let mut compound = NbtCompound::new_no_name();
 
@@ -723,6 +725,7 @@ impl Default for NbtList {
 }
 
 impl McDefault for NbtList {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		let mut list = NbtList::new();
 

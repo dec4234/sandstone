@@ -177,6 +177,7 @@ impl BitSet {
 }
 
 impl McDefault for BitSet {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		let mut bit = Self::new(6);
 

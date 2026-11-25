@@ -153,6 +153,7 @@ impl McDeserialize for IdOrTrimMaterial {
 }
 
 impl McDefault for IdOrTrimMaterial {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		IdOrTrimMaterial::Registry(VarInt(0))
 	}
@@ -191,6 +192,7 @@ impl McDeserialize for IdOrTrimPattern {
 }
 
 impl McDefault for IdOrTrimPattern {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		IdOrTrimPattern::Registry(VarInt(0))
 	}
@@ -238,6 +240,7 @@ impl McDeserialize for IdOrInstrument {
 }
 
 impl McDefault for IdOrInstrument {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		IdOrInstrument::Registry(VarInt(0))
 	}
@@ -283,6 +286,7 @@ impl McDeserialize for IdOrBannerPattern {
 }
 
 impl McDefault for IdOrBannerPattern {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		IdOrBannerPattern::Registry(VarInt(0))
 	}
@@ -330,6 +334,7 @@ impl McDeserialize for IdOrPaintingVariant {
 }
 
 impl McDefault for IdOrPaintingVariant {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		IdOrPaintingVariant::Registry(VarInt(0))
 	}

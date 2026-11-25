@@ -19,10 +19,12 @@ uuid = { version = "1.29.3", features = ["v4"] }
 log = "0.4.35"
 flate2 = "1.1.11"
 thiserror = "2.0.21"
-rand = "0.10.4"
+# Used only by the `server` and `encryption` features.
+rand = { version = "0.10.4", optional = true }
 paste = "1.0"
 cesu8 = "1.1.0"
-smart-default = "0.7.1"
+# Used only by the `server` feature.
+smart-default = { version = "0.7.1", optional = true }
 
 sandstone-derive = { path = "src/sandstone-derive" }
 # Always used for the HasJoinedResponse and HttpError types. The `auth` feature adds its HTTP client.
@@ -41,21 +43,23 @@ rsa = { version = "0.10.0", features = ["std", "pkcs1v15"], optional = true }
 hickory-resolver = { version = "0.26.4", optional = true }
 
 [features]
-default = ["anvil", "favicon", "dns", "encryption", "auth"]
+default = ["client", "server", "anvil", "favicon", "dns", "encryption", "online"]
+# Client-side handlers in `network::client` (for example DefaultClientStatusHandler).
+client = []
+# Server-side handlers in `network::server` (handshake, status, ping, login and encryption handlers).
+server = ["dep:rand", "dep:smart-default"]
 # Read and write Anvil region files (.mca) and convert chunks to and from chunk packets.
 anvil = ["dep:lz4_flex", "dep:xxhash-rust"]
 # Set the server list icon from an `image::DynamicImage` (StatusResponseSpec::set_favicon_image).
 favicon = ["dep:image", "dep:base64"]
-# Look up the `_minecraft._tcp` SRV record when a client connects without a port.
-# Without it, `CraftConnection::connect` dials `host:25565` directly. Servers do not need it.
+# Used for dns lookup for server addresses
 dns = ["dep:hickory-resolver"]
-# Encrypt the connection after login (AES/CFB8 stream cipher, RSA key exchange).
-# Without it, CraftConnection never encrypts, and DefaultServerLoginHandler skips the encryption
-# step (vanilla offline mode). Offline-mode tools do not need it.
-encryption = ["dep:aes", "dep:cfb8", "dep:rsa"]
-# Check joining players with the Mojang session server (online mode). Brings in an HTTP client.
-# Without it, a server can still use encryption, but only in offline mode. Proxies do not need it.
-auth = ["encryption", "mojang-api/http"]
+# Enables connection encryption
+encryption = ["dep:rand", "dep:aes", "dep:cfb8", "dep:rsa"]
+# Enables online server authentication for real Minecraft accounts
+online = ["server", "encryption", "mojang-api/http"]
+# Enables testing functions
+testing = []
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["net", "io-util", "rt", "macros", "time"] }

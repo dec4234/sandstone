@@ -56,6 +56,7 @@ pub enum EntityMetadataValue {
 }
 
 impl McDefault for EntityMetadataValue {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		EntityMetadataValue::Byte(0)
 	}
@@ -75,6 +76,7 @@ pub struct EntityMetadataEntry {
 }
 
 impl McDefault for EntityMetadataEntry {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			index: 0,

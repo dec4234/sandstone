@@ -89,6 +89,7 @@ impl<'a, T: BitFieldInteger + McSerialize + McDeserialize> McDeserialize for Bit
 }
 
 impl<T: BitFieldInteger + McSerialize + McDeserialize + McDefault> McDefault for BitField<T> {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		BitField::new(T::mc_default())
 	}
@@ -136,6 +137,7 @@ macro_rules! bitflag {
 		}
 
 		impl $crate::protocol::testing::McDefault for $name {
+			#[cfg(any(test, feature = "testing"))]
 			fn mc_default() -> Self {
 				Self {
 					flags: $crate::util::java::bitfield::BitField::new(0),

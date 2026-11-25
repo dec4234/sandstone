@@ -68,6 +68,7 @@ pub struct IDSet {
 }
 
 impl McDefault for IDSet {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			typ: VarInt(1),
@@ -179,6 +180,7 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDeserialize for IDorX
 }
 
 impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDefault for IDorX<T> {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		IDorX::Registry(VarInt(0))
 	}
@@ -228,6 +230,7 @@ impl<X: McSerialize + McDeserialize + Clone + PartialEq, Y: McSerialize + McDese
 }
 
 impl<X: McSerialize + McDeserialize + Clone + PartialEq + McDefault, Y: McSerialize + McDeserialize + Clone + PartialEq + McDefault> McDefault for Either<X, Y> {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self::X(X::mc_default())
 	}
@@ -251,6 +254,7 @@ pub struct LpVec3 {
 }
 
 impl McDefault for LpVec3 {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			x: 0.0,
@@ -390,6 +394,7 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDeserialize for Mappi
 }
 
 impl<T: McSerialize + McDeserialize + Clone + PartialEq + McDefault> McDefault for Mapping<T> {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Mapping {
 			key: String::mc_default(),

@@ -13,6 +13,7 @@ pub struct SlotData {
 }
 
 impl McDefault for SlotData {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			item_count: VarInt(1),
@@ -94,6 +95,7 @@ pub struct ItemStackTemplate {
 }
 
 impl McDefault for ItemStackTemplate {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			item_id: VarInt(1),

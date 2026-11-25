@@ -57,6 +57,7 @@ pub enum GameDifficulty {
 }
 
 impl McDefault for GameDifficulty {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		GameDifficulty::Normal
 	}

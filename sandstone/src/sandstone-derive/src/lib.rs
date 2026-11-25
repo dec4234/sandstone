@@ -959,6 +959,9 @@ pub fn derive_type_enum(input: TokenStream) -> TokenStream {
 
 /// Derive the `McDefault` trait for a struct. This trait provides a default value for the struct,
 /// which can be used for automated packet testing.
+///
+/// The generated `mc_default` has `#[cfg(any(test, feature = "testing"))]`. The cfg is checked in the
+/// crate that uses the derive, so only use it inside `sandstone`.
 #[proc_macro_derive(McDefault)]
 pub fn derive_mc_default(input: TokenStream) -> TokenStream {
 	let input = parse_macro_input!(input as DeriveInput);
@@ -1042,6 +1045,7 @@ pub fn derive_mc_default(input: TokenStream) -> TokenStream {
 	let expanded = quote! {
 		#[allow(clippy::nonminimal_bool, unused_variables, non_snake_case)]
 		impl McDefault for #name {
+			#[cfg(any(test, feature = "testing"))]
 			fn mc_default() -> Self {
 				#mc_default_impl
 			}

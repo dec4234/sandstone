@@ -151,6 +151,7 @@ pub enum EntityStatusEnum {
 }
 
 impl McDefault for EntityStatusEnum {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self::Arrow0
 	}
@@ -368,6 +369,7 @@ impl McDeserialize for EntityPositionDelta {
 }
 
 impl McDefault for EntityPositionDelta {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			on_ground: false,

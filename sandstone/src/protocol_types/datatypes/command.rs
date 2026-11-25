@@ -73,6 +73,7 @@ impl McDeserialize for Node {
 /// `children`. A derived default does not keep these in agreement, so this is written by hand.
 /// It is an argument node with every optional field present, so that each read path runs.
 impl McDefault for Node {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		let children: Vec<VarInt> = McDefault::mc_default();
 		Self {
@@ -552,6 +553,7 @@ impl McDeserialize for Parser {
 }
 
 impl McDefault for Parser {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Parser::BrigadierBool
 	}

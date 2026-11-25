@@ -29,8 +29,10 @@ use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
+#[cfg(feature = "client")]
 pub mod client;
 pub mod network_error;
+#[cfg(feature = "server")]
 pub mod server;
 
 /// A type that is an alias for [PacketDirection] to prevent some naming confusion for connection intialization.

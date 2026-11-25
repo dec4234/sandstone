@@ -72,6 +72,7 @@ macro_rules! versions {
         }
 
         impl McDefault for $name {
+            #[cfg(any(test, feature = "testing"))]
             fn mc_default() -> Self {
                 Self::latest()
             }

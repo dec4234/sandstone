@@ -57,6 +57,7 @@ impl McDeserialize for EnumSet {
 }
 
 impl McDefault for EnumSet {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self::new()
 	}
@@ -173,6 +174,7 @@ impl PlayerAction {
 }
 
 impl McDefault for PlayerAction {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			add_player: None,
@@ -238,6 +240,7 @@ impl McDeserialize for PlayerInfoUpdateData {
 }
 
 impl McDefault for PlayerInfoUpdateData {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			actions: EnumSet::new(),

@@ -430,6 +430,7 @@ impl PalletedContainer {
 /// A derived default would give a bits per entry of `u8::mc_default()`, which no reader accepts.
 /// A single-valued container is valid for both block states and biomes.
 impl McDefault for PalletedContainer {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self::single_valued(VarInt::mc_default())
 	}

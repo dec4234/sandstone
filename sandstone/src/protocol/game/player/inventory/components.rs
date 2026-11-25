@@ -233,6 +233,7 @@ impl McDeserialize for ProvidesTrimMaterialComponent {
 }
 
 impl McDefault for ProvidesTrimMaterialComponent {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		ProvidesTrimMaterialComponent::ByName(String::mc_default())
 	}
@@ -275,6 +276,7 @@ impl McDeserialize for JukeboxPlayableComponent {
 }
 
 impl McDefault for JukeboxPlayableComponent {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		JukeboxPlayableComponent::ByName(String::mc_default())
 	}
@@ -322,6 +324,7 @@ impl McDeserialize for LodestoneTrackerComponent {
 }
 
 impl McDefault for LodestoneTrackerComponent {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			has_global_pos: false,
@@ -405,6 +408,7 @@ impl McDeserialize for ChickenVariantComponent {
 }
 
 impl McDefault for ChickenVariantComponent {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		ChickenVariantComponent::Registry(VarInt(0))
 	}
@@ -446,6 +450,7 @@ impl McDeserialize for PaintingVariantComponent {
 }
 
 impl McDefault for PaintingVariantComponent {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		PaintingVariantComponent::Registry(VarInt(0))
 	}
@@ -557,6 +562,7 @@ pub enum StructuredComponent {
 }
 
 impl McDefault for StructuredComponent {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		StructuredComponent::MaxStackSize(VarInt(64))
 	}

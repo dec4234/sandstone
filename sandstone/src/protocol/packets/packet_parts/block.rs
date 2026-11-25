@@ -71,6 +71,7 @@ impl McDeserialize for BlockPredicate {
 }
 
 impl McDefault for BlockPredicate {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			blocks: PrefixedOptional::new(None),
@@ -132,6 +133,7 @@ impl McDeserialize for BlockProperty {
 }
 
 impl McDefault for BlockProperty {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			name: String::mc_default(),

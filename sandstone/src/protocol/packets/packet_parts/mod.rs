@@ -116,6 +116,7 @@ pub struct StonecutterRecipe {
 }
 
 impl McDefault for StonecutterRecipe {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			id_set: IDSet {
@@ -230,6 +231,7 @@ impl McDeserialize for EquipmentList {
 }
 
 impl McDefault for EquipmentList {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			entries: vec![EquipmentEntry {
@@ -241,6 +243,7 @@ impl McDefault for EquipmentList {
 }
 
 impl McDefault for EquipmentEntry {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		Self {
 			slot: EquipmentSlot::MainHand,

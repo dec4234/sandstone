@@ -127,6 +127,7 @@ impl McDeserialize for IdOrJukeboxSong {
 }
 
 impl McDefault for IdOrJukeboxSong {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		IdOrJukeboxSong::Registry(VarInt(0))
 	}

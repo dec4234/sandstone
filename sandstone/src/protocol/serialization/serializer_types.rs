@@ -361,6 +361,7 @@ impl<T: McSerialize + McDeserialize> McDeserialize for PrefixedOptional<T> {
 }
 
 impl<T: McSerialize + McDeserialize + McDefault> McDefault for PrefixedOptional<T> {
+	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
 		PrefixedOptional {
 			is_present: true,
