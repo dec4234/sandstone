@@ -1,5 +1,6 @@
 //! Important utility functions and macros used throughout the library.
 
+#[cfg(feature = "encryption")]
 pub mod encryption;
 pub mod java;
 

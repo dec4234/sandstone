@@ -180,6 +180,7 @@ mod test {
 		assert_eq!(body[1], 0x78, "body must start with a zlib header");
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn encryption_round_trip_with_shared_secret() {
 		let secret = [7u8; 16];
@@ -196,6 +197,7 @@ mod test {
 		}
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn encryption_with_compression_round_trip() {
 		// Wiki order: compress first, then encrypt the full frame. Both sides must agree.
@@ -211,6 +213,7 @@ mod test {
 		assert_eq!(server.receive_packet().await.unwrap(), ping(99));
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn encrypted_bytes_differ_from_plaintext() {
 		// If encryption did nothing, the session would leak data and vanilla would fail to decrypt.
@@ -223,6 +226,7 @@ mod test {
 		assert_ne!(bytes, vec![9, 0x01, 1, 2, 3, 4, 5, 6, 7, 8]);
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn shared_secret_must_be_16_bytes() {
 		// The protocol uses AES-128, so any other key length is a protocol error.
@@ -266,6 +270,7 @@ mod test {
 		assert_eq!(server.peek_n_bytes(4).await.unwrap(), vec![1, 2, 3, 4]);
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn peek_is_rejected_while_encrypted() {
 		// Peeked bytes cannot be decrypted without advancing the cipher, so peek must refuse.
@@ -448,6 +453,7 @@ mod test {
 		}
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn try_receive_decrypts_and_decompresses() {
 		// try_receive reads the frame in parts, so each part must go through the stream cipher in

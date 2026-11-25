@@ -4,6 +4,7 @@
 use crate::network::CraftConnection;
 use crate::network::network_error::NetworkError;
 use crate::protocol::packets::StatusResponsePacket;
+#[cfg(feature = "encryption")]
 use mojang_api::HasJoinedResponse;
 
 /// The procedure required to handle a handshake as a server. Check [DefaultHandshakeHandler] for a default implementation.
@@ -43,6 +44,7 @@ pub trait ServerLoginHandler {
 /// Handle enabling encryption for an incoming client connections.
 ///
 /// More info here: https://minecraft.wiki/w/Java_Edition_protocol/Encryption
+#[cfg(feature = "encryption")]
 pub trait ServerEncryptionHandler {
 	/// ## Arguments
 	/// * `connection` - The connection to the client.

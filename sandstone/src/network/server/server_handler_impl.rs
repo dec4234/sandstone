@@ -1,14 +1,23 @@
 use crate::network::CraftConnection;
 use crate::network::network_error::NetworkError;
-use crate::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerPingHandler, ServerStatusHandler};
+#[cfg(feature = "encryption")]
+use crate::network::server::server_handler_trait::ServerEncryptionHandler;
+use crate::network::server::server_handler_trait::{ServerHandshakeHandler, ServerPingHandler, ServerStatusHandler};
+#[cfg(feature = "encryption")]
+use crate::protocol::packets::EncryptionRequestPacket;
 use crate::protocol::packets::packet_definer::PacketState;
-use crate::protocol::packets::{EncryptionRequestPacket, Packet, PingResponsePacket, StatusResponsePacket};
+use crate::protocol::packets::{Packet, PingResponsePacket, StatusResponsePacket};
 use crate::protocol_types::datatypes::var_types::VarInt;
+#[cfg(feature = "encryption")]
 use crate::util::encryption::EncryptionError;
+#[cfg(feature = "encryption")]
 use crate::util::encryption::rsa::{decrypt_with_private_key, encode_public_key, generate_key_pair, generate_verify_token};
+#[cfg(feature = "encryption")]
+use log::info;
 #[cfg(feature = "auth")]
 use log::warn;
-use log::{debug, error, info, trace};
+use log::{debug, error, trace};
+#[cfg(feature = "encryption")]
 use mojang_api::HasJoinedResponse;
 #[cfg(feature = "auth")]
 use mojang_api::{generate_server_id, has_joined};
@@ -143,8 +152,10 @@ impl ServerHandshakeHandler for DefaultServerHandshakeHandler {
 /// ```ignore
 /// DefaultServerEncryptionHandler::handle_encryption(connection, true, "dec4234".to_string(), None).await?;
 /// ```
+#[cfg(feature = "encryption")]
 pub struct DefaultServerEncryptionHandler;
 
+#[cfg(feature = "encryption")]
 impl ServerEncryptionHandler for DefaultServerEncryptionHandler {
 	async fn handle_encryption(
 		connection: &mut CraftConnection,

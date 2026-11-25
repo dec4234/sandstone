@@ -9,8 +9,12 @@ mod test {
 	use sandstone::network::client::client_handlers::ClientStatusHandler;
 	use sandstone::network::client::client_status_handler::DefaultClientStatusHandler;
 	use sandstone::network::network_error::NetworkError;
-	use sandstone::network::server::server_handler_impl::{DefaultServerEncryptionHandler, DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
-	use sandstone::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerLoginHandler, ServerStatusHandler};
+	#[cfg(feature = "encryption")]
+	use sandstone::network::server::server_handler_impl::DefaultServerEncryptionHandler;
+	use sandstone::network::server::server_handler_impl::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+	#[cfg(feature = "encryption")]
+	use sandstone::network::server::server_handler_trait::ServerEncryptionHandler;
+	use sandstone::network::server::server_handler_trait::{ServerHandshakeHandler, ServerLoginHandler, ServerStatusHandler};
 	use sandstone::network::server::server_login_impl::DefaultServerLoginHandler;
 	use sandstone::network::{ConnectionRole, CraftConnection};
 	use sandstone::protocol::packets::packet_definer::PacketState;
@@ -20,6 +24,7 @@ mod test {
 	use sandstone::protocol::serialization::{McDeserialize, McDeserializer};
 	use sandstone::protocol_types::datatypes::var_types::VarInt;
 	use sandstone::protocol_types::protocol_verison::ProtocolVerison;
+	#[cfg(feature = "encryption")]
 	use sandstone::util::encryption::rsa::{decode_public_key, encrypt_with_public_key};
 	use std::time::Duration;
 	use tokio::net::TcpListener;
@@ -157,6 +162,7 @@ mod test {
 	// ---- Encryption ----
 
 	/// Act as the client side of the encryption exchange. Returns the shared secret it sent.
+	#[cfg(feature = "encryption")]
 	async fn client_encryption(client: &mut CraftConnection, corrupt_token: bool) -> Vec<u8> {
 		let request = match recv(client).await {
 			Packet::EncryptionRequest(r) => r,
@@ -178,6 +184,7 @@ mod test {
 		secret
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn encryption_with_good_token_enables_encryption() {
 		let (mut client, mut server) = pair().await;
@@ -201,6 +208,7 @@ mod test {
 		}
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn encryption_rejects_wrong_verify_token() {
 		// The verify token proves the client has the server's public key. A wrong token must stop the login.
@@ -213,6 +221,7 @@ mod test {
 		assert!(matches!(err, NetworkError::EncryptionError(_)), "got {err:?}");
 	}
 
+	#[cfg(feature = "encryption")]
 	#[tokio::test]
 	async fn encryption_requires_login_state() {
 		let (_client, mut server) = pair().await;
@@ -220,7 +229,7 @@ mod test {
 		assert!(matches!(err, NetworkError::InvalidPacketState), "got {err:?}");
 	}
 
-	#[cfg(not(feature = "auth"))]
+	#[cfg(all(feature = "encryption", not(feature = "auth")))]
 	#[tokio::test]
 	async fn encryption_without_auth_feature_rejects_online_mode() {
 		// Without the `auth` feature the server cannot check the player with Mojang. It must fail
@@ -244,6 +253,33 @@ mod test {
 
 	// ---- Full login ----
 
+	/// The client side of the login encryption step. With the `encryption` feature the server
+	/// sends an Encryption Request. Without it the server skips this step (vanilla offline mode),
+	/// so the next packet must be Set Compression or Login Success.
+	async fn client_login_encryption(client: &mut CraftConnection) {
+		#[cfg(feature = "encryption")]
+		{
+			let secret = client_encryption(client, false).await;
+			client.set_shared_secret(&secret).unwrap();
+		}
+		#[cfg(not(feature = "encryption"))]
+		let _ = client;
+	}
+
+	#[cfg(not(feature = "encryption"))]
+	#[tokio::test]
+	async fn login_without_encryption_feature_rejects_online_mode() {
+		// Without encryption the server cannot do the Mojang check. If it sent Login Success, the
+		// player would join with any name and no check. So it must fail first.
+		let (mut client, mut server) = pair().await;
+		client.change_state(PacketState::LOGIN);
+		server.change_state(PacketState::LOGIN);
+		client.send_packet(Packet::LoginStart(LoginStartPacket { username: "Steve".into(), uuid: Uuid::nil() })).await.unwrap();
+		let handler = DefaultServerLoginHandler { should_authenticate_with_mojang: true, ..Default::default() };
+		let err = handler.handle_login(&mut server).await.unwrap_err();
+		assert!(matches!(err, NetworkError::AuthNotEnabled), "got {err:?}");
+	}
+
 	#[tokio::test]
 	async fn full_login_sequence_reaches_play() {
 		// This is the order a vanilla client expects. If a packet is missing or moved, the client
@@ -263,8 +299,7 @@ mod test {
 		});
 
 		client.send_packet(Packet::LoginStart(LoginStartPacket { username: "Steve".into(), uuid: Uuid::nil() })).await.unwrap();
-		let secret = client_encryption(&mut client, false).await;
-		client.set_shared_secret(&secret).unwrap();
+		client_login_encryption(&mut client).await;
 
 		match recv(&mut client).await {
 			Packet::SetCompression(p) => assert_eq!(p.threshold, VarInt(64)),
@@ -354,8 +389,7 @@ mod test {
 		let server_task = tokio::spawn(async move { handler.handle_login(&mut server).await });
 
 		client.send_packet(Packet::LoginStart(LoginStartPacket { username: "Alex".into(), uuid: Uuid::nil() })).await.unwrap();
-		let secret = client_encryption(&mut client, false).await;
-		client.set_shared_secret(&secret).unwrap();
+		client_login_encryption(&mut client).await;
 		assert!(matches!(recv(&mut client).await, Packet::LoginSuccess(_)));
 
 		// Send the wrong packet: the server must return an error, not continue.

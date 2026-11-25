@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use std::io;
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
+#[cfg(feature = "encryption")]
 use crate::util::encryption::EncryptionError;
 use thiserror::Error;
 
@@ -37,6 +38,7 @@ pub enum NetworkError {
 	SerializingErr(#[from] SerializingErr),
 	#[error(transparent)]
 	IOError(#[from] io::Error),
+	#[cfg(feature = "encryption")]
 	#[error(transparent)]
 	EncryptionError(#[from] EncryptionError),
 	#[error(transparent)]
@@ -62,6 +64,7 @@ impl PartialEq for NetworkError {
 
 			(NetworkError::SerializingErr(a), NetworkError::SerializingErr(b)) => a == b,
 			(NetworkError::IOError(a), NetworkError::IOError(b)) => a.to_string() == b.to_string(),
+			#[cfg(feature = "encryption")]
 			(NetworkError::EncryptionError(a), NetworkError::EncryptionError(b)) => a.to_string() == b.to_string(),
 			_ => false,
 		}

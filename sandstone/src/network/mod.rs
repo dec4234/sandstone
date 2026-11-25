@@ -11,6 +11,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::protocol_types::protocol_verison::ProtocolVerison;
+#[cfg(feature = "encryption")]
 use crate::util::encryption::aes::CraftCipher;
 use flate2::Compression;
 use flate2::read::ZlibDecoder;
@@ -57,6 +58,7 @@ pub struct CraftConnection {
 	pub compression_threshold: Option<u32>,
 	pub protocol_version: Option<VarInt>,
 	pub client_type: ConnectionRole,
+	#[cfg(feature = "encryption")]
 	craft_cipher: Option<CraftCipher>,
 	/// Reusable buffer for packet reads, avoids allocating per packet
 	read_buffer: Vec<u8>,
@@ -131,6 +133,7 @@ impl CraftConnection {
 			compression_threshold: None,
 			protocol_version: None,
 			client_type,
+			#[cfg(feature = "encryption")]
 			craft_cipher: None,
 			read_buffer: Vec::with_capacity(1024),
 			pending_frame: Vec::new(),
@@ -177,6 +180,7 @@ impl CraftConnection {
 		}
 
 		// Encrypt the fully-framed packet after compression, if encryption is enabled.
+		#[cfg(feature = "encryption")]
 		if let Some(cipher) = &mut self.craft_cipher {
 			cipher.encrypt(&mut frame.output);
 		}
@@ -243,8 +247,10 @@ impl CraftConnection {
 		let mut varint_len = 0usize;
 
 		loop {
+			#[cfg_attr(not(feature = "encryption"), allow(unused_mut))]
 			let mut b = self.tcp_stream.read_u8().await?;
 
+			#[cfg(feature = "encryption")]
 			if let Some(cipher) = &mut self.craft_cipher {
 				let mut one = [b];
 				cipher.decrypt(&mut one);
@@ -291,6 +297,7 @@ impl CraftConnection {
 
 		trace!("Received from {} : {:?}", self, &self.read_buffer[..total_len]);
 
+		#[cfg(feature = "encryption")]
 		if let Some(cipher) = &mut self.craft_cipher {
 			cipher.decrypt(&mut self.read_buffer[varint_len..]);
 		}
@@ -361,6 +368,7 @@ impl CraftConnection {
 			return Err(NetworkError::NoDataReceived);
 		}
 
+		#[cfg(feature = "encryption")]
 		if let Some(cipher) = &mut self.craft_cipher {
 			cipher.decrypt(&mut self.pending_frame[start..]);
 		}
@@ -388,6 +396,7 @@ impl CraftConnection {
 	///
 	/// Cannot be used if encryption is enabled.
 	pub async fn peek_packet(&mut self) -> Result<Packet, NetworkError> {
+		#[cfg(feature = "encryption")]
 		if self.craft_cipher.is_some() {
 			return Err(NetworkError::PeekNotSupportedWhileEncrypted);
 		}
@@ -499,6 +508,7 @@ impl CraftConnection {
 	/// This should be called after the handshake and encryption request/response have been completed.
 	///
 	/// See [server::server_handler_trait::ServerEncryptionHandler] to auto-handle encryption handshakes for incoming connections.
+	#[cfg(feature = "encryption")]
 	pub fn set_shared_secret(&mut self, secret: &[u8]) -> Result<(), NetworkError> {
 		let secret = match <[u8; 16]>::try_from(secret) {
 			Ok(s) => s,

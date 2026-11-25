@@ -1,8 +1,11 @@
 use crate::game::player::{PlayerGamemode, PreviousGamemode};
 use crate::network::CraftConnection;
 use crate::network::network_error::NetworkError;
+#[cfg(feature = "encryption")]
 use crate::network::server::server_handler_impl::DefaultServerEncryptionHandler;
-use crate::network::server::server_handler_trait::{ServerEncryptionHandler, ServerLoginHandler};
+#[cfg(feature = "encryption")]
+use crate::network::server::server_handler_trait::ServerEncryptionHandler;
+use crate::network::server::server_handler_trait::ServerLoginHandler;
 use crate::protocol::game::info::registry::registry_generator;
 use crate::protocol::game::info::registry::vanilla_registries::{VANILLA_TAGS, VANILLA_VERSION};
 use crate::protocol::packets::packet_definer::PacketState;
@@ -98,7 +101,15 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 			}
 		};
 
+		#[cfg(feature = "encryption")]
 		DefaultServerEncryptionHandler::handle_encryption(connection, self.should_authenticate_with_mojang, username.clone(), None).await?;
+
+		// Without encryption, skip the Encryption Request, as a vanilla offline-mode server does.
+		// Online mode cannot work without it, so fail before Login Success.
+		#[cfg(not(feature = "encryption"))]
+		if self.should_authenticate_with_mojang {
+			return Err(NetworkError::AuthNotEnabled);
+		}
 
 		if let Some(compression_threshold) = self.compression_threshold {
 			let set_compression = Packet::SetCompression(SetCompressionPacket::new(VarInt(compression_threshold)));
