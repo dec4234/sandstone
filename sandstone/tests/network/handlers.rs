@@ -229,7 +229,7 @@ mod test {
 		assert!(matches!(err, NetworkError::InvalidPacketState), "got {err:?}");
 	}
 
-	#[cfg(all(feature = "encryption", not(feature = "auth")))]
+	#[cfg(all(feature = "encryption", not(feature = "online")))]
 	#[tokio::test]
 	async fn encryption_without_auth_feature_rejects_online_mode() {
 		// Without the `auth` feature the server cannot check the player with Mojang. It must fail
@@ -248,7 +248,7 @@ mod test {
 	#[test]
 	fn default_login_handler_matches_auth_feature() {
 		// Without `auth`, an online-mode default would make every login fail with AuthNotEnabled.
-		assert_eq!(DefaultServerLoginHandler::default().should_authenticate_with_mojang, cfg!(feature = "auth"));
+		assert_eq!(DefaultServerLoginHandler::default().should_authenticate_with_mojang, cfg!(feature = "online"));
 	}
 
 	// ---- Full login ----

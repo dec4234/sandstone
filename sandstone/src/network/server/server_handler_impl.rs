@@ -14,12 +14,12 @@ use crate::util::encryption::EncryptionError;
 use crate::util::encryption::rsa::{decrypt_with_private_key, encode_public_key, generate_key_pair, generate_verify_token};
 #[cfg(feature = "encryption")]
 use log::info;
-#[cfg(feature = "auth")]
+#[cfg(feature = "online")]
 use log::warn;
 use log::{debug, error, trace};
 #[cfg(feature = "encryption")]
 use mojang_api::HasJoinedResponse;
-#[cfg(feature = "auth")]
+#[cfg(feature = "online")]
 use mojang_api::{generate_server_id, has_joined};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -170,9 +170,9 @@ impl ServerEncryptionHandler for DefaultServerEncryptionHandler {
 
 		// Fail before the Encryption Request is sent. If the client sees
 		// should_authenticate_with_mojang = true, it posts a join to Mojang that this server cannot check.
-		#[cfg(not(feature = "auth"))]
+		#[cfg(not(feature = "online"))]
 		let _ = (&username, &server_ip); // Only the Mojang check uses these.
-		#[cfg(not(feature = "auth"))]
+		#[cfg(not(feature = "online"))]
 		if should_authenticate_with_mojang {
 			error!("Mojang authentication requested for {}, but the `auth` feature is disabled", connection);
 			return Err(NetworkError::AuthNotEnabled);
@@ -207,7 +207,7 @@ impl ServerEncryptionHandler for DefaultServerEncryptionHandler {
 
 		connection.set_shared_secret(&shared_secret)?;
 
-		#[cfg(feature = "auth")]
+		#[cfg(feature = "online")]
 		if should_authenticate_with_mojang {
 			let server_id = generate_server_id("", &encode_public_key(pair.as_public_key())?, &shared_secret);
 
