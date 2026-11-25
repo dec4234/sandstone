@@ -1,13 +1,17 @@
+use crate::network::CraftConnection;
 use crate::network::network_error::NetworkError;
 use crate::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerPingHandler, ServerStatusHandler};
-use crate::network::CraftConnection;
 use crate::protocol::packets::packet_definer::PacketState;
 use crate::protocol::packets::{EncryptionRequestPacket, Packet, PingResponsePacket, StatusResponsePacket};
 use crate::protocol_types::datatypes::var_types::VarInt;
-use crate::util::encryption::rsa::{decrypt_with_private_key, encode_public_key, generate_key_pair, generate_verify_token};
 use crate::util::encryption::EncryptionError;
-use log::{debug, error, info, trace, warn};
-use mojang_api::{generate_server_id, has_joined, HasJoinedResponse};
+use crate::util::encryption::rsa::{decrypt_with_private_key, encode_public_key, generate_key_pair, generate_verify_token};
+#[cfg(feature = "auth")]
+use log::warn;
+use log::{debug, error, info, trace};
+use mojang_api::HasJoinedResponse;
+#[cfg(feature = "auth")]
+use mojang_api::{generate_server_id, has_joined};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The default server-list status handler. No reason to really override this but you could if you wanted to.
@@ -153,6 +157,16 @@ impl ServerEncryptionHandler for DefaultServerEncryptionHandler {
 			return Err(NetworkError::InvalidPacketState);
 		}
 
+		// Fail before the Encryption Request is sent. If the client sees
+		// should_authenticate_with_mojang = true, it posts a join to Mojang that this server cannot check.
+		#[cfg(not(feature = "auth"))]
+		let _ = (&username, &server_ip); // Only the Mojang check uses these.
+		#[cfg(not(feature = "auth"))]
+		if should_authenticate_with_mojang {
+			error!("Mojang authentication requested for {}, but the `auth` feature is disabled", connection);
+			return Err(NetworkError::AuthNotEnabled);
+		}
+
 		let pair = generate_key_pair()?;
 		let verify_token = generate_verify_token();
 
@@ -182,6 +196,7 @@ impl ServerEncryptionHandler for DefaultServerEncryptionHandler {
 
 		connection.set_shared_secret(&shared_secret)?;
 
+		#[cfg(feature = "auth")]
 		if should_authenticate_with_mojang {
 			let server_id = generate_server_id("", &encode_public_key(pair.as_public_key())?, &shared_secret);
 

@@ -17,7 +17,6 @@ cfb8 = { version = "0.9.1" }
 serde_json = "1.0.154"
 serde = { version = "1.0.229", features = ["derive"] }
 uuid = { version = "1.29.3", features = ["v4"] }
-base64 = "0.23.1"
 log = "0.4.35"
 flate2 = "1.1.11"
 thiserror = "2.0.21"
@@ -29,24 +28,29 @@ cesu8 = "1.1.0"
 smart-default = "0.7.1"
 
 sandstone-derive = { path = "src/sandstone-derive" }
-mojang-api = { path = "src/util/mojang-api" }
+# Always used for the HasJoinedResponse and HttpError types. The `auth` feature adds its HTTP client.
+mojang-api = { path = "src/util/mojang-api", default-features = false }
 # Used only by the `anvil` feature (LZ4 compressed chunks).
 lz4_flex = { version = "0.14.2", optional = true }
 xxhash-rust = { version = "0.8.21", features = ["xxh32"], optional = true }
 # Used only by the `favicon` feature. Only the PNG codec is enabled.
 image = { version = "0.25.10", default-features = false, features = ["png"], optional = true }
+base64 = { version = "0.23.1", optional = true }
 # Used only by the `dns` feature (SRV record lookup in CraftConnection::connect).
 hickory-resolver = { version = "0.26.4", optional = true }
 
 [features]
-default = ["anvil", "favicon", "dns"]
+default = ["anvil", "favicon", "dns", "auth"]
 # Read and write Anvil region files (.mca) and convert chunks to and from chunk packets.
 anvil = ["dep:lz4_flex", "dep:xxhash-rust"]
 # Set the server list icon from an `image::DynamicImage` (StatusResponseSpec::set_favicon_image).
-favicon = ["dep:image"]
+favicon = ["dep:image", "dep:base64"]
 # Look up the `_minecraft._tcp` SRV record when a client connects without a port.
 # Without it, `CraftConnection::connect` dials `host:25565` directly. Servers do not need it.
 dns = ["dep:hickory-resolver"]
+# Check joining players with the Mojang session server (online mode). Brings in an HTTP client.
+# Without it, a server can still use encryption, but only in offline mode. Proxies do not need it.
+auth = ["mojang-api/http"]
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["net", "io-util", "rt", "macros", "time"] }

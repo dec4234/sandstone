@@ -40,7 +40,11 @@ pub enum NetworkError {
 	#[error(transparent)]
 	EncryptionError(#[from] EncryptionError),
 	#[error(transparent)]
-	HttpError(#[from] mojang_api::http::HttpError)
+	HttpError(#[from] mojang_api::http::HttpError),
+	/// Mojang authentication was requested, but sandstone was built without the `auth` feature.
+	/// Only returned when the `auth` feature is disabled.
+	#[error("Mojang authentication requires the `auth` feature")]
+	AuthNotEnabled,
 }
 
 impl PartialEq for NetworkError {

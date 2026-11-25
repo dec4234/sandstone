@@ -63,7 +63,7 @@ mod offline {
 	}
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "http"))]
 mod test {
 	use mojang_api::{generate_server_id, get_blocked_servers, get_mojang_public_keys, get_player_details, get_uuid_from_username, get_uuids_from_usernames, has_joined, join_server};
 	use rand_chacha::rand_core::SeedableRng;

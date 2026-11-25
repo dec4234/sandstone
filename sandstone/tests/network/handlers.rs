@@ -220,6 +220,28 @@ mod test {
 		assert!(matches!(err, NetworkError::InvalidPacketState), "got {err:?}");
 	}
 
+	#[cfg(not(feature = "auth"))]
+	#[tokio::test]
+	async fn encryption_without_auth_feature_rejects_online_mode() {
+		// Without the `auth` feature the server cannot check the player with Mojang. It must fail
+		// before it sends the Encryption Request. If the client got should_authenticate = true, it
+		// would post a join to Mojang that nobody checks, and the player would log in unverified.
+		let (mut client, mut server) = pair().await;
+		client.change_state(PacketState::LOGIN);
+		server.change_state(PacketState::LOGIN);
+		let err = DefaultServerEncryptionHandler::handle_encryption(&mut server, true, "Steve".into(), None).await.unwrap_err();
+		assert!(matches!(err, NetworkError::AuthNotEnabled), "got {err:?}");
+		drop(server);
+		// The server closed the socket without sending anything.
+		assert!(client.receive_packet().await.is_err());
+	}
+
+	#[test]
+	fn default_login_handler_matches_auth_feature() {
+		// Without `auth`, an online-mode default would make every login fail with AuthNotEnabled.
+		assert_eq!(DefaultServerLoginHandler::default().should_authenticate_with_mojang, cfg!(feature = "auth"));
+	}
+
 	// ---- Full login ----
 
 	#[tokio::test]

@@ -1,8 +1,8 @@
 //! Lists the traits used to handle packet sequences for the server. These are included so that you can
 //! override the default functionality for your own purposes.
 
-use crate::network::network_error::NetworkError;
 use crate::network::CraftConnection;
+use crate::network::network_error::NetworkError;
 use crate::protocol::packets::StatusResponsePacket;
 use mojang_api::HasJoinedResponse;
 
@@ -47,6 +47,7 @@ pub trait ServerEncryptionHandler {
 	/// ## Arguments
 	/// * `connection` - The connection to the client.
 	/// * `should_authenticate_with_mojang` - Whether to authenticate with Mojang. If false, the server will skip authentication and allow any username.
+	///   Without the `auth` feature, this must be false.
 	/// * `username` - The username of the client. Must match what was sent by the client in the login start packet.
 	/// * `server_ip` - The IP address of the server. If included, it should block connections from proxies. Typically not included.
 	async fn handle_encryption(connection: &mut CraftConnection, should_authenticate_with_mojang: bool, username: String, server_ip: Option<String>)

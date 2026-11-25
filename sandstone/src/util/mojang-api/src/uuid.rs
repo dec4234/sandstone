@@ -1,6 +1,8 @@
 //! Username -> UUID lookups via the Mojang API.
 
-use crate::http::{HttpError, MojangServerQueryClient};
+use crate::http::HttpError;
+#[cfg(feature = "http")]
+use crate::http::MojangServerQueryClient;
 use serde::{Deserialize, Serialize};
 
 const MOJANG_API: &str = "https://api.mojang.com";
@@ -8,10 +10,12 @@ const MINECRAFT_SERVICES: &str = "https://api.minecraftservices.com";
 
 /// Get the UUID of a username
 /// This will return an error if it exceeds the rate limit or if no user with the given username exists
+#[cfg(feature = "http")]
 pub async fn get_uuid_from_username(name: String) -> Result<UuidRequestResponse, HttpError> {
 	get_uuid_from_username_at(MOJANG_API, name).await
 }
 
+#[cfg(feature = "http")]
 pub(crate) async fn get_uuid_from_username_at(base_url: &str, name: String) -> Result<UuidRequestResponse, HttpError> {
 	let url = format!("{}/users/profiles/minecraft/{}", base_url, name);
 
@@ -31,17 +35,19 @@ pub struct UuidRequestResponse {
 
 /// Get the UUIDs of multiple usernames at once, in alphabetical order
 /// This will return an error if it exceeds the rate limit
+#[cfg(feature = "http")]
 pub async fn get_uuids_from_usernames(names: Vec<String>) -> Result<Vec<UuidRequestResponse>, HttpError> {
 	get_uuids_from_usernames_at(MINECRAFT_SERVICES, names).await
 }
 
+#[cfg(feature = "http")]
 pub(crate) async fn get_uuids_from_usernames_at(base_url: &str, names: Vec<String>) -> Result<Vec<UuidRequestResponse>, HttpError> {
 	let body = serde_json::to_string(&names)?;
 
 	MojangServerQueryClient::post_parse(format!("{}/minecraft/profile/lookup/bulk/byname", base_url), body, false).await
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "http"))]
 mod tests {
 	use super::*;
 	use mockito::Matcher;

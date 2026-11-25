@@ -3,17 +3,21 @@
 //! This file is taken from my previous project, Rustiny: https://github.com/dec4234/Rustiny/blob/master/src/api/ApiClient.rs
 
 use log::{debug, error, info, trace};
+#[cfg(feature = "http")]
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use thiserror::Error;
+#[cfg(feature = "http")]
 use tokio::sync::Mutex;
 
 /// An HTTP client used to interact with Mojang's API
+#[cfg(feature = "http")]
 pub(crate) struct MojangServerQueryClient;
 
+#[cfg(feature = "http")]
 impl MojangServerQueryClient {
 	/// A simple GET request to an endpoint
 	pub(crate) async fn get(url: String) -> Result<String, HttpError> {
@@ -128,10 +132,14 @@ impl MojangServerQueryClient {
 }
 
 /// Any sort of error that could occur while performing or processing the response of an HTTP request.
+///
+/// Marked `#[non_exhaustive]` because the `ReqwestError` variant exists only with the `http` feature.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum HttpError {
 	#[error(transparent)]
 	SerdeError(#[from] serde_json::Error),
+	#[cfg(feature = "http")]
 	#[error(transparent)]
 	ReqwestError(#[from] reqwest::Error),
 	#[error(transparent)]
@@ -146,7 +154,7 @@ pub enum HttpError {
 	UuidError(#[from] uuid::Error),
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "http"))]
 mod tests {
 	use super::*;
 	use mockito::Matcher;

@@ -66,7 +66,8 @@ const VANILLA_DAMAGE_TYPE_TAGS: [&str; 36] = [
 /// ```
 #[derive(Debug, Clone, SmartDefault)]
 pub struct DefaultServerLoginHandler {
-	#[default(true)]
+	/// Defaults to true with the `auth` feature and false without it.
+	#[default(cfg!(feature = "auth"))]
 	pub should_authenticate_with_mojang: bool,
 	#[default(Some(400))]
 	pub compression_threshold: Option<i32>,

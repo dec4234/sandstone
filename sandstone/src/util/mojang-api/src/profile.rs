@@ -1,6 +1,8 @@
 //! Player profile details and skin data via the Mojang API.
 
-use crate::http::{HttpError, MojangServerQueryClient};
+use crate::http::HttpError;
+#[cfg(feature = "http")]
+use crate::http::MojangServerQueryClient;
 use base64::Engine;
 use base64::engine::general_purpose;
 use serde::{Deserialize, Serialize};
@@ -9,10 +11,12 @@ const SESSION_SERVER: &str = "https://sessionserver.mojang.com";
 
 /// Get details about a given UUID such as the name of the user, a list of moderation actions against their account
 /// and most importantly, their skin base64 encoded
+#[cfg(feature = "http")]
 pub async fn get_player_details(uuid: String) -> Result<PlayerDetailsResponse, HttpError> {
 	get_player_details_at(SESSION_SERVER, uuid).await
 }
 
+#[cfg(feature = "http")]
 pub(crate) async fn get_player_details_at(base_url: &str, uuid: String) -> Result<PlayerDetailsResponse, HttpError> {
 	let url = format!("{}/session/minecraft/profile/{}?unsigned=false", base_url, uuid);
 
@@ -76,7 +80,7 @@ pub struct SkinMetadata {
 	pub model: String,
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "http"))]
 mod tests {
 	use super::*;
 	use mockito::Matcher;

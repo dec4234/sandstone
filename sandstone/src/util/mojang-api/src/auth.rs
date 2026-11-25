@@ -4,9 +4,12 @@
 //! hash, the client telling Mojang it has joined a server, the server verifying that
 //! join, and fetching Mojang's signing public keys.
 
-use crate::http::{HttpError, MojangServerQueryClient};
+use crate::http::HttpError;
+#[cfg(feature = "http")]
+use crate::http::MojangServerQueryClient;
 use crate::profile::SkinPropertyWrapper;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "http")]
 use sha1::{Digest, Sha1};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -24,6 +27,7 @@ const MINECRAFT_SERVICES: &str = "https://api.minecraftservices.com";
 /// `base_server_id` is usually an empty string. Its bytes are taken as ISO-8859-1;
 /// for the typical empty/ASCII value this is identical to UTF-8.
 /// `public_key` and `secret_key` are the DER/encoded key bytes.
+#[cfg(feature = "http")]
 pub fn generate_server_id(base_server_id: &str, public_key: &[u8], secret_key: &[u8]) -> String {
 	let mut hasher = Sha1::new();
 	hasher.update(base_server_id.as_bytes());
@@ -80,10 +84,12 @@ pub struct JoinServerRequest {
 /// POSTs to `https://sessionserver.mojang.com/session/minecraft/join`. Mojang responds
 /// with HTTP 204 on success, so this returns `Ok(())` when authentication passes.
 /// This endpoint is rate limited to 6 joins per 30 seconds per account.
+#[cfg(feature = "http")]
 pub async fn join_server(access_token: String, selected_profile: Uuid, server_id: String) -> Result<(), HttpError> {
 	join_server_at(SESSION_SERVER, access_token, selected_profile, server_id).await
 }
 
+#[cfg(feature = "http")]
 pub(crate) async fn join_server_at(base_url: &str, access_token: String, selected_profile: Uuid, server_id: String) -> Result<(), HttpError> {
 	let body = JoinServerRequest {
 		accessToken: access_token,
@@ -114,10 +120,12 @@ pub struct HasJoinedResponse {
 /// GETs `https://sessionserver.mojang.com/session/minecraft/hasJoined`. The `ip` argument
 /// is optional. On success Mojang returns the player's signed profile; if verification
 /// fails Mojang returns HTTP 204 with an empty body, which surfaces here as an error.
+#[cfg(feature = "http")]
 pub async fn has_joined(username: String, server_id: String, ip: Option<String>) -> Result<HasJoinedResponse, HttpError> {
 	has_joined_at(SESSION_SERVER, username, server_id, ip).await
 }
 
+#[cfg(feature = "http")]
 pub(crate) async fn has_joined_at(base_url: &str, username: String, server_id: String, ip: Option<String>) -> Result<HasJoinedResponse, HttpError> {
 	let mut map: HashMap<&str, &str> = HashMap::new();
 	map.insert("username", username.as_str());
@@ -161,15 +169,17 @@ pub struct MojangPublicKeysResponse {
 ///
 /// GETs `https://api.minecraftservices.com/publickeys`. These keys are used to verify
 /// player properties, player certificates and authentication tokens.
+#[cfg(feature = "http")]
 pub async fn get_mojang_public_keys() -> Result<MojangPublicKeysResponse, HttpError> {
 	get_mojang_public_keys_at(MINECRAFT_SERVICES).await
 }
 
+#[cfg(feature = "http")]
 pub(crate) async fn get_mojang_public_keys_at(base_url: &str) -> Result<MojangPublicKeysResponse, HttpError> {
 	MojangServerQueryClient::get_parse(format!("{}/publickeys", base_url), false).await
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "http"))]
 mod tests {
 	use super::*;
 	use mockito::Matcher;

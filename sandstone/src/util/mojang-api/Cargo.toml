@@ -8,11 +8,17 @@ base64 = "0.23.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 thiserror = "2.0.19"
-reqwest = { version = "0.13.4", default-features = false, features = ["rustls", "query"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["rustls", "query"], optional = true }
 log = "0.4.33"
-sha1 = "0.11.0"
-tokio = {version = "1.53.1", features = ["sync", "macros"]}
+sha1 = { version = "0.11.0", optional = true }
+tokio = { version = "1.53.1", features = ["sync", "macros"], optional = true }
 uuid = { version = "1.24.0", features = ["v4"] }
+
+[features]
+default = ["http"]
+# Calls to the Mojang API and the server ID hash for the login handshake.
+# Without it, only the response types and HttpError are available, with no HTTP client.
+http = ["dep:reqwest", "dep:sha1", "dep:tokio"]
 
 [dev-dependencies]
 rsa = { version = "0.10.0-rc.18", features = ["std"] }
