@@ -29,10 +29,10 @@ macro_rules! create_registry_packets {
 		vec![
 			$(
 				Packet::RegistryData(RegistryDataPacket::new(RegistryDataPacketInternal {
-					registry_id: $parent_name.to_string(),
+					registry_id: $parent_name.parse().unwrap(),
 					num_entries: VarInt($crate::count_items!($($entry_name),+)),
 					entries: vec![$(
-						RegistryEntry::new($entry_name.to_string(), Some($entry)),
+						RegistryEntry::new($entry_name.parse().unwrap(), Some($entry)),
 					)+]
 				})),
 			)+
@@ -164,9 +164,9 @@ pub fn vanilla_known_pack() -> Vec<Packet> {
 		.iter()
 		.map(|(registry, entries)| {
 			Packet::RegistryData(RegistryDataPacket::new(RegistryDataPacketInternal {
-				registry_id: registry.to_string(),
+				registry_id: registry.parse().unwrap(),
 				num_entries: VarInt(entries.len() as i32),
-				entries: entries.iter().map(|id| RegistryEntry::new(id.to_string(), None)).collect(),
+				entries: entries.iter().map(|id| RegistryEntry::new(id.parse().unwrap(), None)).collect(),
 			}))
 		})
 		.collect()
@@ -174,11 +174,11 @@ pub fn vanilla_known_pack() -> Vec<Packet> {
 
 #[cfg(test)]
 mod test {
-	use super::*;
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use std::collections::HashSet;
+    use super::*;
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use std::collections::HashSet;
 
-	fn registries() -> Vec<RegistryDataPacketInternal> {
+    fn registries() -> Vec<RegistryDataPacketInternal> {
 		default()
 			.into_iter()
 			.map(|p| match p {
@@ -223,7 +223,7 @@ mod test {
 	#[test]
 	fn includes_registries_needed_for_login() {
 		// The client disconnects during configuration if one of these is missing.
-		let ids: HashSet<String> = registries().into_iter().map(|r| r.registry_id).collect();
+		let ids: HashSet<String> = registries().into_iter().map(|r| r.registry_id.to_string()).collect();
 		for needed in [
 			"minecraft:dimension_type",
 			"minecraft:worldgen/biome",
@@ -292,8 +292,8 @@ mod test {
 
 	#[test]
 	fn vanilla_tags_match_the_registries_sent() {
-		use crate::protocol::game::info::registry::vanilla_registries::VANILLA_TAGS;
-		let tag = |registry: &str, name: &str| -> &[i32] {
+        use crate::protocol::game::info::registry::vanilla_registries::VANILLA_TAGS;
+        let tag = |registry: &str, name: &str| -> &[i32] {
 			let (_, tags) = VANILLA_TAGS.iter().find(|(r, _)| *r == registry).unwrap_or_else(|| panic!("no tags for {registry}"));
 			tags.iter().find(|(t, _)| *t == name).unwrap_or_else(|| panic!("no tag {name} in {registry}")).1
 		};

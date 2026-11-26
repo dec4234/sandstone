@@ -27,8 +27,8 @@ use crate::protocol::game::world::chunk::{ChunkData, LightData};
 use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use crate::protocol::packets::packet_parts::auth::PublicKeyNetwork;
 use crate::protocol::packets::packet_parts::block::{
-	BlockFace, BlockParticleAlternative, CommandBlockFlag, CommandBlockMode, SignTextSlot, SpecialBlockRotation, StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode, TestBlockMode,
-	TestInstanceBlockActionAction, TestInstanceStatus,
+    BlockFace, BlockParticleAlternative, CommandBlockFlag, CommandBlockMode, SignTextSlot, SpecialBlockRotation, StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode, TestBlockMode,
+    TestInstanceBlockActionAction, TestInstanceStatus,
 };
 use crate::protocol::packets::packet_parts::debug::{CustomReportDetail, DebugSampleType, DebugSubscriptionEvent, DebugSubscriptionUpdate};
 use crate::protocol::packets::packet_parts::entity::{EntityPositionDelta, EntityStatusEnum, MinecartMoveStep, PositionPath, SwingAnimationType};
@@ -46,7 +46,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::{JsonTextComponent, PlayerChatFilter, PlayerChatSignature, TextComponent};
 use crate::protocol_types::datatypes::command::Node;
 use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, GameDifficulty, Position, SectionBlockEntry, SourcePosition, WorldEventType};
-use crate::protocol_types::datatypes::internal_types::{Angle, Either, IDorX, LpVec3, Mapping, RgbColor, TripleDouble};
+use crate::protocol_types::datatypes::internal_types::{Angle, Either, IDorX, Identifier, LpVec3, Mapping, RgbColor, TripleDouble};
 use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use crate::util::java::bitset::BitSet;
@@ -54,8 +54,8 @@ use packet_parts::ProtocolPropertyElement;
 use packet_parts::stats::StatisticAward;
 use packet_parts::status::StatusResponseSpec;
 use packet_parts::{
-	AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, LoginCookieResponseSpec, LoginPluginSpec,
-	ParticleRandomizationType, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StonecutterRecipe, Tag, TooltipMatch, WorldClock,
+    AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, LoginCookieResponseSpec, LoginPluginSpec,
+    ParticleRandomizationType, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StonecutterRecipe, Tag, TooltipMatch, WorldClock,
 };
 use uuid::Uuid;
 
@@ -120,11 +120,11 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			LoginPluginRequest, 0x04 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Login_Plugin_Request>"] => {
 				message_id: VarInt,
 				#[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Plugin_channels>"]
-				channel: String,
+				channel: Identifier,
 				data: Vec<u8>
 			},
 			LoginCookieRequest, 0x05 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Cookie_Request>"] => {
-				key: String
+				key: Identifier
 			}
 		},
 		SERVER => {
@@ -150,11 +150,11 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 	CONFIGURATION => {
 		CLIENT => {
 			ConfigCookieRequest, 0x00 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Cookie_Request>"] => {
-				key: String
+				key: Identifier
 			},
 			ClientboundPluginMessage, 0x01 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Plugin_Message_(clientbound)>"] => {
 				#[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Plugin_channels>"]
-				channel: String,
+				channel: Identifier,
 				data: Vec<u8>
 			},
 			ConfigDisconnect, 0x02 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disconnect>"] => {
@@ -183,10 +183,10 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			},
 			ConfigPostEffects, 0x0A #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Post_Effects>"] => {
 				#[doc = "Identifiers of the post effects"]
-				post_effects: PrefixedArray<String>
+				post_effects: PrefixedArray<Identifier>
 			},
 			ConfigStoreCookie, 0x0B #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Store_Cookie>"] => {
-				key: String,
+				key: Identifier,
 				payload: PrefixedArray<u8>
 			},
 			ConfigTransfer, 0x0C #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Transfer>"] => {
@@ -195,7 +195,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			},
 			FeatureFlags, 0x0D #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Feature_Flags>"] => {
 				total: VarInt,
-				flags: Vec<String>
+				flags: Vec<Identifier>
 			},
 			UpdateTags, 0x0E #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Tags>"] => {
 				tags: PrefixedArray<Mapping<PrefixedArray<Tag>>>
@@ -233,12 +233,12 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				particle_status: ParticleStatus
 			},
 			CookieResponse, 0x01 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Cookie_Response>"] => {
-				key: String,
+				key: Identifier,
 				payload: PrefixedOptional<PrefixedArray<u8>>
 			},
 			ServerboundPluginMessage, 0x02 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Plugin_Message_(serverbound)>"] => {
 				#[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Plugin_channels>"]
-				channel: String,
+				channel: Identifier,
 				data: Vec<u8>
 			},
 			AcknowledgeFinishConfiguration, 0x03 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Acknowledge_Finish_Configuration>"] => {
@@ -258,7 +258,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				entries: PrefixedArray<ResourcePackEntry>
 			},
 			ConfigCustomClickAction, 0x08 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Custom_Click_Action>"] => {
-				id: String,
+				id: Identifier,
 				#[doc = "The number of bytes in the payload, maximum 65536"]
 				payload_size: VarInt,
 				payload: NbtCompound
@@ -370,10 +370,10 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				slot_data: SlotData
 			},
 			CookieRequestPlay, 0x15 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Cookie_Request>"] => {
-				key: String
+				key: Identifier
 			},
 			SetCooldown, 0x16 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Cooldown>"] => {
-				cooldown_group: String,
+				cooldown_group: Identifier,
 				cooldown_ticks: VarInt
 			},
 			ChatSuggestions, 0x17 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chat_Suggestions>"] => {
@@ -382,7 +382,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			},
 			ClientboundPluginMessagePlay, 0x18 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Plugin_Message_(clientbound)>"] => {
 				#[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Plugin_channels>"]
-				channel: String,
+				channel: Identifier,
 				data: Vec<u8>
 			},
 			DamageEvent, 0x19 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Damage_Event>"] => {
@@ -535,7 +535,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
 				entity_id: i32,
 				is_hardcore: bool,
-				dimension_names: PrefixedArray<String>,
+				dimension_names: PrefixedArray<Identifier>,
 				max_players: VarInt,
 				#[doc = "Render distance of the server in chunks. The client may use any value less than or equal to this value."]
 				view_distance: VarInt,
@@ -544,7 +544,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				enable_respawn_screen: bool,
 				do_limited_crafting: bool,
 				dimension_type: VarInt,
-				dimension_name: String,
+				dimension_name: Identifier,
 				hashed_seed: i64,
 				gamemode: PlayerGamemode,
 				previous_gamemode: PreviousGamemode,
@@ -555,7 +555,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				#[doc = "When true, saves details about the player's death location."]
 				has_death_location: bool,
 				#[mc(deserialize_if = has_death_location)]
-				death_dimension_name: Option<String>,
+				death_dimension_name: Option<Identifier>,
 				#[mc(deserialize_if = has_death_location)]
 				death_location: Option<Position>,
 				portal_cooldown: VarInt,
@@ -745,11 +745,11 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			},
 			PostEffects, 0x53 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Post_Effects>"] => {
 				#[doc = "Identifiers of the post effects"]
-				post_effects: PrefixedArray<String>
+				post_effects: PrefixedArray<Identifier>
 			},
 			Respawn, 0x54 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Respawn>"] => {
 				dimension_type: VarInt,
-				dimension_name: String,
+				dimension_name: Identifier,
 				hashed_seed: i64,
 				gamemode: PlayerGamemode,
 				previous_gamemode: PreviousGamemode,
@@ -757,7 +757,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				is_flat: bool,
 				has_death_location: bool,
 				#[mc(deserialize_if = has_death_location)]
-				death_dimension_name: Option<String>,
+				death_dimension_name: Option<Identifier>,
 				#[mc(deserialize_if = has_death_location)]
 				death_location: Option<Position>,
 				portal_cooldown: VarInt,
@@ -773,7 +773,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				blocks: PrefixedArray<SectionBlockEntry>
 			},
 			SelectAdvancementsTab, 0x57 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Select_Advancements_Tab>"] => {
-				tab_id: PrefixedOptional<String>
+				tab_id: PrefixedOptional<Identifier>
 			},
 			ServerData, 0x58 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Server_Data>"] => {
 				motd: TextComponent,
@@ -814,7 +814,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				item: SlotData
 			},
 			SetDefaultSpawnPosition, 0x63 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Default_Spawn_Position>"] => {
-				dimension_name: String,
+				dimension_name: Identifier,
 				location: Position,
 				yaw: f32,
 				pitch: f32
@@ -925,7 +925,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				details: StopSoundDetails
 			},
 			StoreCookie, 0x7A #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Store_Cookie>"] => {
-				key: String,
+				key: Identifier,
 				payload: PrefixedArray<u8>
 			},
 			SwingAnimation, 0x7B #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Swing_Animation>"] => {
@@ -989,7 +989,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			UpdateAdvancements, 0x85 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Advancements>"] => {
 				reset: bool,
 				advancement_mapping: PrefixedArray<Mapping<Advancement>>,
-				identifiers: PrefixedArray<String>,
+				identifiers: PrefixedArray<Identifier>,
 				progress_mapping: PrefixedArray<Mapping<PrefixedArray<Mapping<PrefixedOptional<i64>>>>>,
 				show_advancements: bool
 			},
@@ -1024,7 +1024,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			Waypoint, 0x8D #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Waypoint>"] => {
 				operation: WaypointOperation,
 				identifier: Either<Uuid, String>,
-				icon_style: String,
+				icon_style: Identifier,
 				color: PrefixedOptional<RgbColor>,
 				waypoint_type: WaypointData
 			},
@@ -1152,12 +1152,12 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				state: bool
 			},
 			CookieResponsePlay, 0x15 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Cookie_Response>"] => {
-				key: String,
+				key: Identifier,
 				payload: PrefixedOptional<PrefixedArray<u8>>
 			},
 			ServerboundPluginMessagePlay, 0x16 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Plugin_Message_(serverbound)>"] => {
 				#[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Plugin_channels>"]
-				channel: String,
+				channel: Identifier,
 				data: Vec<u8>
 			},
 			DebugSubscriptionRequest, 0x17 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Subscription_Request>"] => {
@@ -1291,7 +1291,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			SeenAdvancements, 0x33 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Seen_Advancements>"] => {
 				action: SeenAdvancementsAction,
 				#[mc(deserialize_if = action == SeenAdvancementsAction::OpenedTab)]
-				tab_id: Option<String>
+				tab_id: Option<Identifier>
 			},
 			SelectTrade, 0x34 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Select_Trade>"] => {
 				selected_slot: VarInt
@@ -1326,9 +1326,9 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			},
 			ProgramJigsawBlock, 0x3B #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Jigsaw_Block>"] => {
 				location: Position,
-				name: String,
-				target: String,
-				pool: String,
+				name: Identifier,
+				target: Identifier,
+				pool: Identifier,
 				final_state: String,
 				joint_type: String,
 				selection_priority: VarInt,
@@ -1376,7 +1376,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			TestInstanceBlockAction, 0x41 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action>"] => {
 				position: Position,
 				action: TestInstanceBlockActionAction,
-				test: PrefixedOptional<String>,
+				test: PrefixedOptional<Identifier>,
 				size_x: VarInt,
 				size_y: VarInt,
 				size_z: VarInt,
@@ -1407,7 +1407,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				pitch: f32
 			},
 			CustomClickAction, 0x44 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Custom_Click_Action>"] => {
-				id: String,
+				id: Identifier,
 				#[doc = "The number of bytes in the payload, maximum 65536"]
 				payload_size: VarInt,
 				payload: NbtCompound

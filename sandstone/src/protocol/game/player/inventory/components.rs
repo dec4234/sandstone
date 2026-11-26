@@ -12,7 +12,7 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::Position;
-use crate::protocol_types::datatypes::internal_types::{IDSet, IDorX};
+use crate::protocol_types::datatypes::internal_types::{IDSet, IDorX, Identifier};
 use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
@@ -31,7 +31,7 @@ pub struct EnchantmentList {
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct AttributeModifierEntry {
 	pub attribute_id: VarInt,
-	pub modifier_id: String,
+	pub modifier_id: Identifier,
 	pub value: f64,
 	pub operation: VarInt,
 	pub slot: VarInt,
@@ -75,7 +75,7 @@ pub struct ConsumableComponent {
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct UseCooldownComponent {
 	pub seconds: f32,
-	pub cooldown_group: PrefixedOptional<String>,
+	pub cooldown_group: PrefixedOptional<Identifier>,
 }
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
@@ -103,8 +103,8 @@ pub struct WeaponComponent {
 pub struct EquippableComponent {
 	pub slot: VarInt,
 	pub equip_sound: IDorX<SoundEvent>,
-	pub model: PrefixedOptional<String>,
-	pub camera_overlay: PrefixedOptional<String>,
+	pub model: PrefixedOptional<Identifier>,
+	pub camera_overlay: PrefixedOptional<Identifier>,
 	pub allowed_entities: PrefixedOptional<IDSet>,
 	pub dispensable: bool,
 	pub swappable: bool,
@@ -285,7 +285,7 @@ impl McDefault for JukeboxPlayableComponent {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LodestoneTrackerComponent {
 	pub has_global_pos: bool,
-	pub dimension: Option<String>,
+	pub dimension: Option<Identifier>,
 	pub position: Option<Position>,
 	pub tracked: bool,
 }
@@ -309,7 +309,7 @@ impl McDeserialize for LodestoneTrackerComponent {
 	{
 		let has_global_pos = bool::mc_deserialize(deserializer)?;
 		let (dimension, position) = if has_global_pos {
-			(Some(String::mc_deserialize(deserializer)?), Some(Position::mc_deserialize(deserializer)?))
+			(Some(Identifier::mc_deserialize(deserializer)?), Some(Position::mc_deserialize(deserializer)?))
 		} else {
 			(None, None)
 		};
@@ -470,7 +470,7 @@ pub enum StructuredComponent {
 	Unbreakable = 4,
 	CustomName(TextComponent) = 5,
 	ItemName(TextComponent) = 6,
-	ItemModel(String) = 7,
+	ItemModel(Identifier) = 7,
 	Lore(PrefixedArray<TextComponent>) = 8,
 	Rarity(VarInt) = 9,
 	Enchantments(EnchantmentList) = 10,
@@ -494,7 +494,7 @@ pub enum StructuredComponent {
 	Equippable(EquippableComponent) = 28,
 	Repairable(IDSet) = 29,
 	Glider = 30,
-	TooltipStyle(String) = 31,
+	TooltipStyle(Identifier) = 31,
 	DeathProtection(PrefixedArray<ConsumeEffect>) = 32,
 	BlocksAttacks(BlocksAttacksComponent) = 33,
 	StoredEnchantments(EnchantmentList) = 34,
@@ -525,7 +525,7 @@ pub enum StructuredComponent {
 	FireworkExplosionComponent(FireworkExplosion) = 59,
 	Fireworks(FireworksComponent) = 60,
 	Profile(ResolvableProfile) = 61,
-	NoteBlockSound(String) = 62,
+	NoteBlockSound(Identifier) = 62,
 	BannerPatterns(BannerPatternsComponent) = 63,
 	BaseColor(DyeColor) = 64,
 	PotDecorations(PrefixedArray<VarInt>) = 65,
@@ -570,9 +570,9 @@ impl McDefault for StructuredComponent {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()
@@ -620,7 +620,7 @@ mod test {
 	fn lodestone_with_target_round_trips() {
 		round_trip(LodestoneTrackerComponent {
 			has_global_pos: true,
-			dimension: Some("minecraft:overworld".into()),
+			dimension: Some("minecraft:overworld".parse().unwrap()),
 			position: Some(Position::new(10, 64, -10)),
 			tracked: false,
 		});

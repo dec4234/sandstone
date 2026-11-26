@@ -17,6 +17,7 @@ pub use parse::{ArgumentValue, CommandParseError, CommandParseErrorKind, ParsedA
 use crate::protocol::packets::CommandsGraphPacket;
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol_types::datatypes::command::{Node, NodeFlags, NodeType, Parser};
+use crate::protocol_types::datatypes::internal_types::Identifier;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use thiserror::Error;
 
@@ -37,7 +38,7 @@ pub enum CommandNodeKind {
 		/// The suggestions type, for example `minecraft:ask_server`.
 		///
 		/// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Suggestions_Types>
-		suggestions: Option<String>,
+		suggestions: Option<Identifier>,
 	},
 }
 
@@ -178,7 +179,7 @@ impl CommandGraph {
 	///
 	/// # Panics
 	/// If `id` is not an argument node. Only argument nodes have a suggestions type.
-	pub fn set_suggestions(&mut self, id: NodeId, suggestions_type: Option<String>) {
+	pub fn set_suggestions(&mut self, id: NodeId, suggestions_type: Option<Identifier>) {
 		match &mut self.nodes[id.0].kind {
 			CommandNodeKind::Argument { suggestions, .. } => *suggestions = suggestions_type,
 			_ => panic!("only argument nodes have a suggestions type"),

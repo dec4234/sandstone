@@ -23,6 +23,8 @@ thiserror = "2.0.21"
 rand = { version = "0.10.4", optional = true }
 paste = "1.0"
 cesu8 = "1.1.0"
+# Checks the format of Identifier text.
+regex = "1.13.2"
 # Used only by the `server` feature.
 smart-default = { version = "0.7.1", optional = true }
 
@@ -70,8 +72,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["net", "io-util", "rt", "macros", "time"] }
-# Used only by the sNBT tests in protocol_types/datatypes/nbt/snbt_testing.rs.
-regex = "1.13.2"
 
 [lints.rust]
 mismatched_lifetime_syntaxes = "allow"

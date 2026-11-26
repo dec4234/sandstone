@@ -17,6 +17,7 @@ use crate::protocol::serialization::McSerializer;
 use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::internal_types::Identifier;
 use crate::protocol_types::datatypes::nbt::NbtCompound;
 use crate::protocol_types::datatypes::nbt::NbtTag;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
@@ -32,7 +33,7 @@ pub mod vanilla_registries;
 #[derive(Debug, Clone, PartialEq)]
 pub struct RegistryDataPacketInternal {
 	/// The registry type this data is for, e.g. "minecraft:dimension_type"
-	pub registry_id: String,
+	pub registry_id: Identifier,
 	pub num_entries: VarInt, // can't use PrefixedArray because we have custom deserialization
 	pub entries: Vec<RegistryEntry>,
 }
@@ -52,7 +53,7 @@ impl McDeserialize for RegistryDataPacketInternal {
 	where
 		Self: Sized,
 	{
-		let id = String::mc_deserialize(deserializer)?;
+		let id = Identifier::mc_deserialize(deserializer)?;
 		let num_entries = VarInt::mc_deserialize(deserializer)?;
 
 		let mut entries = Vec::with_capacity(deserializer.prealloc_capacity(num_entries.0)?);
@@ -60,7 +61,7 @@ impl McDeserialize for RegistryDataPacketInternal {
 		for _ in 0..num_entries.0 {
 			// We need to deserialize each entry, but we don't know the type yet.
 			// So we will deserialize it as a RegistryEntry and then convert it to the correct type.
-			let entry = RegistryEntry::mc_deserialize(deserializer, id.clone())?;
+			let entry = RegistryEntry::mc_deserialize(deserializer, id.to_string())?;
 			entries.push(entry);
 		}
 
@@ -80,7 +81,7 @@ impl McDefault for RegistryDataPacketInternal {
 	fn mc_default() -> Self {
 		let entries: Vec<RegistryEntry> = McDefault::mc_default();
 		Self {
-			registry_id: "minecraft:banner_pattern".to_string(),
+			registry_id: "minecraft:banner_pattern".parse().unwrap(),
 			num_entries: VarInt(entries.len() as i32),
 			entries,
 		}
@@ -90,14 +91,14 @@ impl McDefault for RegistryDataPacketInternal {
 #[derive(McDefault, McSerialize, Debug, Clone, PartialEq)]
 pub struct RegistryEntry {
 	/// The ID of the registry entry, e.g. "minecraft:overworld"
-	pub id: String,
+	pub id: Identifier,
 	/// Whether the entry is present in the registry, used for serializing the data field.
 	pub is_present: bool,
 	pub data: Option<RegistryType>,
 }
 
 impl RegistryEntry {
-	pub fn new(id: String, data: Option<RegistryType>) -> Self {
+	pub fn new(id: Identifier, data: Option<RegistryType>) -> Self {
 		Self {
 			id,
 			is_present: data.is_some(),
@@ -106,7 +107,7 @@ impl RegistryEntry {
 	}
 
 	pub fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer, registry_type: String) -> SerializingResult<'a, Self> {
-		let id = String::mc_deserialize(deserializer)?;
+		let id = Identifier::mc_deserialize(deserializer)?;
 		let is_present = bool::mc_deserialize(deserializer)?;
 
 		let data = if is_present {
@@ -418,15 +419,15 @@ registry_entry!(
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::game::info::registry::{BannerPattern, DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType};
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol::game::info::registry::{BannerPattern, DimensionType, RegistryDataPacketInternal, RegistryEntry, RegistryType};
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 
-	/// Regression: the entry count comes from the peer. A large count used to go straight to
+    /// Regression: the entry count comes from the peer. A large count used to go straight to
 	/// Vec::with_capacity and abort the process. A negative count used to panic. Both must be errors.
 	#[test]
 	fn registry_data_bad_entry_count_errors() {
-		use crate::protocol_types::datatypes::var_types::VarInt;
-		for count in [i32::MAX, -1] {
+        use crate::protocol_types::datatypes::var_types::VarInt;
+        for count in [i32::MAX, -1] {
 			let mut serializer = McSerializer::new();
 			"minecraft:banner_pattern".to_string().mc_serialize(&mut serializer).unwrap();
 			VarInt(count).mc_serialize(&mut serializer).unwrap();
@@ -464,7 +465,7 @@ mod test {
 	#[test]
 	fn test_registry_internal() {
 		let registry = RegistryDataPacketInternal {
-			registry_id: "minecraft:dimension_type".to_string(),
+			registry_id: "minecraft:dimension_type".parse().unwrap(),
 			num_entries: 0.into(),
 			entries: vec![],
 		};
@@ -480,13 +481,13 @@ mod test {
 	fn test_registry_components() {
 		let dim = DimensionType::default();
 		let entry = RegistryEntry {
-			id: "minecraft:overworld".to_string(),
+			id: "minecraft:overworld".parse().unwrap(),
 			is_present: true,
 			data: Some(RegistryType::DimensionType(dim)),
 		};
 
 		let registry = RegistryDataPacketInternal {
-			registry_id: "minecraft:dimension_type".to_string(),
+			registry_id: "minecraft:dimension_type".parse().unwrap(),
 			num_entries: 1.into(),
 			entries: vec![entry.clone()],
 		};
@@ -507,10 +508,10 @@ mod test {
 	/// vanilla ids, or the whole Registry Data packet fails to decode.
 	#[test]
 	fn custom_registries_decode_by_id() {
-		use crate::protocol::game::info::registry::registry_components::{BlockStateProvider, BlockTransformer};
-		use crate::protocol_types::datatypes::nbt::NbtCompound;
+        use crate::protocol::game::info::registry::registry_components::{BlockStateProvider, BlockTransformer};
+        use crate::protocol_types::datatypes::nbt::NbtCompound;
 
-		let mut provider = NbtCompound::new_no_name();
+        let mut provider = NbtCompound::new_no_name();
 		provider.add("type", "minecraft:rule_based");
 		let cases = [
 			("minecraft:block_transformer", RegistryType::BlockTransformer(BlockTransformer::new(vec![]))),
@@ -519,9 +520,9 @@ mod test {
 
 		for (registry_id, data) in cases {
 			let registry = RegistryDataPacketInternal {
-				registry_id: registry_id.to_string(),
+				registry_id: registry_id.parse().unwrap(),
 				num_entries: 1.into(),
-				entries: vec![RegistryEntry::new("minecraft:test".to_string(), Some(data))],
+				entries: vec![RegistryEntry::new("minecraft:test".parse().unwrap(), Some(data))],
 			};
 			let mut serializer = McSerializer::new();
 			registry.mc_serialize(&mut serializer).unwrap();
@@ -537,7 +538,7 @@ mod test {
 		let mut serializer = McSerializer::new();
 		let dim = DimensionType::default();
 		let entry = RegistryEntry {
-			id: "minecraft:overworld".to_string(),
+			id: "minecraft:overworld".parse().unwrap(),
 			is_present: true,
 			data: Some(RegistryType::DimensionType(dim)),
 		};

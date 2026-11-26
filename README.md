@@ -6,37 +6,39 @@ sandstone is a **Minecraft: Java Edition** networking library. It is not a serve
 The ultimate goal is to use this library in a future implementation of a Minecraft: Java Edition server
 in Rust. 
 
+This library currently supports Java Edition **v26.3**
+
 **This project will be a continuous work in progress, and may see months of no activity.**
 
 This library is provided as a structured baseline and as an open source software solution for anyone looking
 to create specialized **Minecraft: Java Edition** software. It is built with convenient optimizations and abstractions in mind. 
-
-The library currently has a fully custom packet serializer and deserializer, as well as a client connection handler.
 
 Here is a current example of handling the server list status.
 
 ```rust
 #[tokio::main]
 async fn main() {
-  SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();
-  debug!("Starting server");
-
-  let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
-
-  loop {
-    let (socket, _) = server.accept().await.unwrap();
-
-    let mut client = CraftConnection::from_connection(socket, PacketDirection::SERVER).unwrap();
-
-    let mut response = StatusResponseSpec::new(ProtocolVerison::latest(), "&a&lThis is a test description &b§kttt");
-    response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
-
-    let image = image::open("examples/status_handler/src/server-icon.png").unwrap();
-    response.set_favicon_image(image);
-
-    DefaultHandshakeHandler::handle_handshake(&mut client).await.unwrap();
-    DefaultStatusHandler::handle_status(&mut client, StatusResponsePacket::new(response), DefaultPingHandler).await.unwrap();
-  }
+    SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();
+    debug!("Starting server");
+    
+    let server = TcpListener::bind("127.0.0.1:25565").await.unwrap();
+    
+    loop {
+        let (socket, _) = server.accept().await.unwrap();
+    
+        let mut client = CraftConnection::from_connection(socket, PacketDirection::SERVER).unwrap();
+    
+        let mut response = StatusResponseSpec::new(ProtocolVerison::latest(), "&a&lThis is a test description &b§kttt");
+        response.set_player_info(1, 0, vec![PlayerSample::new_random("&6&lTest")]);
+    
+        let image = image::open("examples/server/status_handler/src/server-icon.png").unwrap();
+        response.set_favicon_image(image, true).unwrap();
+    
+        DefaultServerHandshakeHandler::handle_handshake(&mut client).await.unwrap();
+        DefaultServerStatusHandler::handle_status(&mut client, StatusResponsePacket::new(response), DefaultServerPingHandler)
+            .await
+            .unwrap();
+    }
 }
 ```
 
@@ -46,15 +48,7 @@ Which produces this...<br>
 ### More examples can be found in the [examples/](examples) folder.
 
 ## Project Goals
-Here is an outline of the major project goals for sandstone.
-- Create a full wrapper for the Minecraft: Java Edition protocol, both for the client and server.
-- Rigorous testing of all aspects of the protocol to ensure parity with the vanilla client and server.
-- Extremely detailed documentation for all library functions, with examples for all major functions.
-
-See more in the [TODO](TODO.md)
-
-## Usage
-This library currently supports **1.21.11**. 
+See the extended goals list in the [TODO](TODO.md)
 
 ## Disclaimer
 Please note that this project is under heavy development and functions might not be heavily optimized yet.<br>

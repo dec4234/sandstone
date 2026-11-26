@@ -1,13 +1,14 @@
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::internal_types::Identifier;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
 /// [Doc link](https://minecraft.wiki/w/Java_Edition_protocol/Packets#Sound_Event)
 #[derive(McDefault, McSerialize, McDeserialize, Debug, PartialOrd, PartialEq, Clone)]
 pub struct SoundEvent {
-	pub name: String,
+	pub name: Identifier,
 	pub has_fixed_range: bool,
 	#[mc(deserialize_if = has_fixed_range)]
 	pub fixed_range: Option<f32>,
@@ -49,12 +50,12 @@ mod test {
 	#[test]
 	fn sound_event_range_only_when_flag_set() {
 		// Wiki (Sound Event): Fixed Range is only present if Has Fixed Range is true.
-		let without = SoundEvent { name: "a".into(), has_fixed_range: false, fixed_range: None };
-		assert_eq!(ser(&without), vec![1, b'a', 0]);
+		let without = SoundEvent { name: "a:b".parse().unwrap(), has_fixed_range: false, fixed_range: None };
+		assert_eq!(ser(&without), vec![3, b'a', b':', b'b', 0]);
 		round_trip(without);
 
-		let with = SoundEvent { name: "a".into(), has_fixed_range: true, fixed_range: Some(32.0) };
-		let mut expected = vec![1, b'a', 1];
+		let with = SoundEvent { name: "a:b".parse().unwrap(), has_fixed_range: true, fixed_range: Some(32.0) };
+		let mut expected = vec![3, b'a', b':', b'b', 1];
 		expected.extend_from_slice(&32.0f32.to_be_bytes());
 		assert_eq!(ser(&with), expected);
 		round_trip(with);

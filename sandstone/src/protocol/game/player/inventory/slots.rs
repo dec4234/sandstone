@@ -192,7 +192,7 @@ mod test {
 		assert_eq!(ser(&SlotDisplay::WithAnyPotion(Box::new(SlotDisplay::Empty))), vec![2, 0]);
 		assert_eq!(ser(&SlotDisplay::OnlyWithComponent(Box::new(OnlyWithComponentSlotData { base: SlotDisplay::Empty, component_type: VarInt(9) }))), vec![3, 0, 9]);
 		assert_eq!(ser(&SlotDisplay::Item(VarInt(7))), vec![4, 7]);
-		assert_eq!(ser(&SlotDisplay::Tag(IDSet { typ: VarInt(0), tag_name: Some("a".into()), ids: None })), vec![6, 0, 1, b'a']);
+		assert_eq!(ser(&SlotDisplay::Tag(IDSet { typ: VarInt(0), tag_name: Some("a:b".parse().unwrap()), ids: None })), vec![6, 0, 3, b'a', b':', b'b']);
 		assert_eq!(ser(&SlotDisplay::Dyed(Box::new(DyedSlotData { dye: SlotDisplay::Empty, target: SlotDisplay::AnyFuel }))), vec![7, 0, 1]);
 		assert_eq!(ser(&SlotDisplay::Composite(Box::new(CompositeSlotData { options: PrefixedArray::new(vec![]) }))), vec![10, 0]);
 	}
@@ -235,7 +235,7 @@ mod test {
 
 		let entry = &entries.vec[0];
 		let RecipeDisplay::CraftingShaped(shaped) = &entry.display else { panic!("expected shaped recipe, got {:?}", entry.display) };
-		let planks = SlotDisplay::Tag(IDSet { typ: VarInt(0), tag_name: Some("minecraft:planks".into()), ids: None });
+		let planks = SlotDisplay::Tag(IDSet { typ: VarInt(0), tag_name: Some("minecraft:planks".parse().unwrap()), ids: None });
 		assert_eq!(shaped.ingredients.vec, vec![planks.clone(), planks.clone(), planks.clone(), planks]);
 		assert_eq!(shaped.result, SlotDisplay::ItemStack(ItemStackTemplate { item_id: VarInt(405), item_count: VarInt(1), components_to_add: vec![], components_to_remove: vec![] }));
 		assert_eq!(shaped.crafting_station, SlotDisplay::Item(VarInt(405)));

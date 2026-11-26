@@ -15,7 +15,7 @@ use crate::protocol::packets::packet_parts::player::TeleportFlags;
 use crate::protocol::packets::{ClientboundKnownPacksPacket, ClientboundPluginMessagePacket, FinishConfigurationPacket, LoginInfoPacket, LoginSuccessPacket, Packet, SetCompressionPacket, SyncPlayerPositionPacket, UpdateTagsPacket};
 use crate::protocol::serialization::serializer_types::PrefixedArray;
 use crate::protocol::serialization::{McSerialize, McSerializer};
-use crate::protocol_types::datatypes::internal_types::Mapping;
+use crate::protocol_types::datatypes::internal_types::{Identifier, Mapping};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use log::debug;
 use rand::Rng;
@@ -137,7 +137,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 		self.server_brand.mc_serialize(&mut serializer)?;
 
 		let server_brand = Packet::ClientboundPluginMessage(ClientboundPluginMessagePacket {
-			channel: "minecraft:brand".to_string(),
+			channel: Identifier::minecraft("brand")?,
 			data: serializer.output,
 		});
 		connection.send_packet(server_brand).await?;
@@ -196,7 +196,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 						value: PrefixedArray::new(
 							tags.iter()
 								.map(|(tag, ids)| Tag {
-									identifier: tag.to_string(),
+									identifier: tag.parse().unwrap(),
 									entries: PrefixedArray::new(ids.iter().map(|id| VarInt(*id)).collect()),
 								})
 								.collect(),
@@ -210,7 +210,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 				Mapping {
 					key: "minecraft:timeline".to_string(),
 					value: PrefixedArray::new(vec![Tag {
-						identifier: "minecraft:in_overworld".to_string(),
+						identifier: Identifier::minecraft("in_overworld")?,
 						entries: PrefixedArray::new(vec![VarInt(0), VarInt(2)]),
 					}]),
 				},
@@ -219,7 +219,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 				Mapping {
 					key: "minecraft:block".to_string(),
 					value: PrefixedArray::new(vec![Tag {
-						identifier: "minecraft:infiniburn_overworld".to_string(),
+						identifier: Identifier::minecraft("infiniburn_overworld")?,
 						entries: PrefixedArray::new(vec![]),
 					}]),
 				},
@@ -231,7 +231,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 						VANILLA_DAMAGE_TYPE_TAGS
 							.iter()
 							.map(|name| Tag {
-								identifier: format!("minecraft:{name}"),
+								identifier: Identifier::minecraft(name).unwrap(),
 								entries: PrefixedArray::new(vec![]),
 							})
 							.collect(),
@@ -265,7 +265,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 		let login = Packet::LoginInfo(LoginInfoPacket::new(
 			rand::rng().next_u32() as i32,
 			false,
-			PrefixedArray::new(vec!["minecraft:overworld".to_string(), "minecraft:the_nether".to_string(), "minecraft:the_end".to_string()]),
+			PrefixedArray::new(vec![Identifier::minecraft("overworld")?, Identifier::minecraft("the_nether")?, Identifier::minecraft("the_end")?]),
 			self.max_players.into(),
 			self.view_distance.into(),
 			self.simulation_distance.into(),
@@ -273,7 +273,7 @@ impl ServerLoginHandler for DefaultServerLoginHandler {
 			true,
 			false,
 			VarInt(0),
-			"minecraft:overworld".to_string(),
+			Identifier::minecraft("overworld")?,
 			rand::rng().next_u64() as i64,
 			PlayerGamemode::SURVIVAL,
 			PreviousGamemode(PlayerGamemode::UNDEFINED),

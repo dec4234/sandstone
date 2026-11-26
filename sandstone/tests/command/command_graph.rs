@@ -104,7 +104,7 @@ mod test {
 				min: Some(1),
 				max: Some(64),
 			}),
-			suggestions: Some("minecraft:ask_server".to_string()),
+			suggestions: Some("minecraft:ask_server".parse().unwrap()),
 		};
 		let bytes = to_bytes(&node);
 		assert_eq!(&bytes[..4], &[0x1E, 0x01, 0x04, 0x09], "flags, child count, child, redirect");

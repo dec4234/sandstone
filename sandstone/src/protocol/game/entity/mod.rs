@@ -7,6 +7,7 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::Position;
+use crate::protocol_types::datatypes::internal_types::Identifier;
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 use uuid::Uuid;
@@ -65,7 +66,7 @@ impl McDefault for EntityMetadataValue {
 /// The dimension/position pair carried by [EntityMetadataValue::OptionalGlobalPosition].
 #[derive(McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct GlobalPosition {
-	pub dimension: String,
+	pub dimension: Identifier,
 	pub position: Position,
 }
 
@@ -142,9 +143,9 @@ pub struct ResolvableProfile {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()
@@ -207,7 +208,7 @@ mod test {
 				EntityMetadataEntry { index: 12, value: EntityMetadataValue::VillagerData(VarInt(1), VarInt(2), VarInt(3)) },
 				EntityMetadataEntry {
 					index: 13,
-					value: EntityMetadataValue::OptionalGlobalPosition(PrefixedOptional::new(Some(GlobalPosition { dimension: "minecraft:overworld".into(), position: Position::new(0, 64, 0) }))),
+					value: EntityMetadataValue::OptionalGlobalPosition(PrefixedOptional::new(Some(GlobalPosition { dimension: "minecraft:overworld".parse().unwrap(), position: Position::new(0, 64, 0) }))),
 				},
 				EntityMetadataEntry { index: 14, value: EntityMetadataValue::Quaternion(0.0, 0.0, 0.0, 1.0) },
 				EntityMetadataEntry {

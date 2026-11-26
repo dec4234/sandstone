@@ -10,7 +10,7 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
-use crate::protocol_types::datatypes::internal_types::IDorX;
+use crate::protocol_types::datatypes::internal_types::{IDorX, Identifier};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
@@ -249,7 +249,7 @@ impl McDefault for IdOrInstrument {
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Banner_Pattern>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct BannerPatternDef {
-	pub asset_id: String,
+	pub asset_id: Identifier,
 	pub translation_key: String,
 }
 

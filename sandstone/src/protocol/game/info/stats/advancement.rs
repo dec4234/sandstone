@@ -8,6 +8,7 @@ use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOp
 use crate::protocol::serialization::{McDeserialize, McSerialize};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
+use crate::protocol_types::datatypes::internal_types::Identifier;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, VarIntEnum};
 use sandstone_derive::{McDeserialize, McSerialize};
@@ -19,7 +20,7 @@ bitflag!(AdvancementFlags: i32 {
 
 #[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
 pub struct Advancement {
-	pub parent_id: PrefixedOptional<String>,
+	pub parent_id: PrefixedOptional<Identifier>,
 	pub display_data: PrefixedOptional<AdvancementDisplay>,
 	pub nested_requirements: PrefixedArray<PrefixedArray<String>>,
 	pub sends_telemetry_data: bool,
@@ -33,7 +34,7 @@ pub struct AdvancementDisplay {
 	pub frame_type: AdvancementFrameType,
 	pub flags: AdvancementFlags,
 	#[mc(deserialize_if = flags.has_background_texture())]
-	pub background_texture: Option<String>,
+	pub background_texture: Option<Identifier>,
 	pub x: f32,
 	pub y: f32,
 }
@@ -69,7 +70,7 @@ mod test {
 			icon: SlotData { item_count: VarInt(0), item_id: None, components_to_add: vec![], components_to_remove: vec![] },
 			frame_type: AdvancementFrameType::Challenge,
 			flags,
-			background_texture: background.map(|s| s.to_string()),
+			background_texture: background.map(|s| s.parse().unwrap()),
 			x: 1.0,
 			y: 2.0,
 		}
@@ -104,7 +105,7 @@ mod test {
 			sends_telemetry_data: false,
 		});
 		round_trip(Advancement {
-			parent_id: PrefixedOptional::new(Some("minecraft:story/root".into())),
+			parent_id: PrefixedOptional::new(Some("minecraft:story/root".parse().unwrap())),
 			display_data: PrefixedOptional::new(Some(display(AdvancementFlags::new(true, true, true), Some("minecraft:bg")))),
 			nested_requirements: PrefixedArray::new(vec![PrefixedArray::new(vec!["a".into(), "b".into()]), PrefixedArray::new(vec![])]),
 			sends_telemetry_data: true,

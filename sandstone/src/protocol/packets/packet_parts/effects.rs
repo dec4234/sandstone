@@ -85,9 +85,9 @@ pub enum ConsumeEffect {
 }
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()
@@ -128,10 +128,10 @@ mod test {
 	fn consume_effects_round_trip() {
 		round_trip(ConsumeEffect::ApplyEffects(PrefixedArray::new(vec![PotionEffect::mc_default()]), 0.5));
 		round_trip(ConsumeEffect::RemoveEffects(IDSet { typ: VarInt(3), tag_name: None, ids: Some(vec![VarInt(1), VarInt(2)]) }));
-		round_trip(ConsumeEffect::RemoveEffects(IDSet { typ: VarInt(0), tag_name: Some("minecraft:harmful".into()), ids: None }));
+		round_trip(ConsumeEffect::RemoveEffects(IDSet { typ: VarInt(0), tag_name: Some("minecraft:harmful".parse().unwrap()), ids: None }));
 		round_trip(ConsumeEffect::ClearAllEffects);
 		round_trip(ConsumeEffect::TeleportRandomly(8.0));
-		round_trip(ConsumeEffect::PlaySound(IDorX::Inline(SoundEvent { name: "minecraft:entity.player.burp".into(), has_fixed_range: false, fixed_range: None })));
+		round_trip(ConsumeEffect::PlaySound(IDorX::Inline(SoundEvent { name: "minecraft:entity.player.burp".parse().unwrap(), has_fixed_range: false, fixed_range: None })));
 	}
 
 	#[test]

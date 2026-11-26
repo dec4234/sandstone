@@ -23,7 +23,7 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::game_types::EquipmentSlot;
-use crate::protocol_types::datatypes::internal_types::IDSet;
+use crate::protocol_types::datatypes::internal_types::{IDSet, Identifier};
 use crate::protocol_types::datatypes::nbt::NbtCompound;
 use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, TypeEnum, VarIntEnum};
@@ -66,7 +66,7 @@ pub struct AddResourcePackSpec {
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct LoginCookieResponseSpec {
-	key: String,
+	key: Identifier,
 	has_payload: bool,
 	payload_length: VarInt,
 	#[mc(deserialize_if = has_payload)]
@@ -82,7 +82,7 @@ pub struct ResourcePackEntry {
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct Tag {
-	pub identifier: String,
+	pub identifier: Identifier,
 	pub entries: PrefixedArray<VarInt>,
 }
 
@@ -95,7 +95,7 @@ pub struct ProtocolPropertyElement {
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PropertySet {
-	pub identifier: String,
+	pub identifier: Identifier,
 	pub items: PrefixedArray<VarInt>,
 }
 
@@ -157,7 +157,7 @@ pub struct AttributeProperty {
 
 #[derive(McSerialize, McDeserialize, McDefault, Debug, Clone, PartialEq)]
 pub struct ModifierData {
-	pub id: String,
+	pub id: Identifier,
 	pub amount: f64,
 	pub operation: ModifierOperation,
 }

@@ -8,7 +8,7 @@ use crate::protocol::serialization::SerializingResult;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::chat::TextComponent;
-use crate::protocol_types::datatypes::internal_types::IDorX;
+use crate::protocol_types::datatypes::internal_types::{IDorX, Identifier};
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
@@ -34,7 +34,7 @@ pub enum SoundSource {
 #[derive(McDefault, Debug, Clone, PartialEq)]
 pub struct StopSoundDetails {
 	source: Option<SoundSource>,
-	sound: Option<String>
+	sound: Option<Identifier>
 }
 
 impl McSerialize for StopSoundDetails {
@@ -65,7 +65,7 @@ impl McDeserialize for StopSoundDetails {
 		};
 
 		let sound = if flags.sound() {
-			Some(String::mc_deserialize(deserializer)?)
+			Some(Identifier::mc_deserialize(deserializer)?)
 		} else {
 			None
 		};
@@ -79,7 +79,7 @@ impl McDeserialize for StopSoundDetails {
 
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct InlineSoundEvent {
-	pub name: String,
+	pub name: Identifier,
 	pub has_fixed_range: bool,
 	#[mc(deserialize_if = has_fixed_range)]
 	pub fixed_range: Option<f32>,
@@ -156,26 +156,26 @@ mod test {
 		// only written when its flag is set, else the client reads the wrong bytes.
 		assert_eq!(ser(&StopSoundDetails { source: None, sound: None }), vec![0x00]);
 		assert_eq!(ser(&StopSoundDetails { source: Some(SoundSource::Block), sound: None }), vec![0x01, 4]);
-		assert_eq!(ser(&StopSoundDetails { source: None, sound: Some("a".into()) }), vec![0x02, 1, b'a']);
-		assert_eq!(ser(&StopSoundDetails { source: Some(SoundSource::Voice), sound: Some("a".into()) }), vec![0x03, 9, 1, b'a']);
+		assert_eq!(ser(&StopSoundDetails { source: None, sound: Some("a:b".parse().unwrap()) }), vec![0x02, 3, b'a', b':', b'b']);
+		assert_eq!(ser(&StopSoundDetails { source: Some(SoundSource::Voice), sound: Some("a:b".parse().unwrap()) }), vec![0x03, 9, 3, b'a', b':', b'b']);
 	}
 
 	#[test]
 	fn stop_sound_round_trips_each_combination() {
 		round_trip(StopSoundDetails { source: None, sound: None });
 		round_trip(StopSoundDetails { source: Some(SoundSource::Master), sound: None });
-		round_trip(StopSoundDetails { source: None, sound: Some("minecraft:ambient.cave".into()) });
-		round_trip(StopSoundDetails { source: Some(SoundSource::Ambient), sound: Some("minecraft:ambient.cave".into()) });
+		round_trip(StopSoundDetails { source: None, sound: Some("minecraft:ambient.cave".parse().unwrap()) });
+		round_trip(StopSoundDetails { source: Some(SoundSource::Ambient), sound: Some("minecraft:ambient.cave".parse().unwrap()) });
 	}
 
 	#[test]
 	fn inline_sound_event_range_only_when_flag_set() {
-		let without = InlineSoundEvent { name: "a".into(), has_fixed_range: false, fixed_range: None };
-		assert_eq!(ser(&without), vec![1, b'a', 0]);
+		let without = InlineSoundEvent { name: "a:b".parse().unwrap(), has_fixed_range: false, fixed_range: None };
+		assert_eq!(ser(&without), vec![3, b'a', b':', b'b', 0]);
 		round_trip(without);
 
-		let with = InlineSoundEvent { name: "a".into(), has_fixed_range: true, fixed_range: Some(16.0) };
-		let mut expected = vec![1, b'a', 1];
+		let with = InlineSoundEvent { name: "a:b".parse().unwrap(), has_fixed_range: true, fixed_range: Some(16.0) };
+		let mut expected = vec![3, b'a', b':', b'b', 1];
 		expected.extend_from_slice(&16.0f32.to_be_bytes());
 		assert_eq!(ser(&with), expected);
 		round_trip(with);

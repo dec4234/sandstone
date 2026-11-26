@@ -6,14 +6,14 @@
 
 #[cfg(test)]
 mod test {
-	use sandstone::game::command::{ArgumentValue, CommandGraph, CommandGraphError, CommandNodeKind, CommandParseErrorKind, NodeId};
-	use sandstone::protocol::packets::CommandsGraphPacket;
-	use sandstone::protocol::serialization::serializer_types::PrefixedArray;
-	use sandstone::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use sandstone::protocol_types::datatypes::command::{Node, NodeFlags, NodeType, Parser};
-	use sandstone::protocol_types::datatypes::var_types::VarInt;
+    use sandstone::game::command::{ArgumentValue, CommandGraph, CommandGraphError, CommandNodeKind, CommandParseErrorKind, NodeId};
+    use sandstone::protocol::packets::CommandsGraphPacket;
+    use sandstone::protocol::serialization::serializer_types::PrefixedArray;
+    use sandstone::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use sandstone::protocol_types::datatypes::command::{Node, NodeFlags, NodeType, Parser};
+    use sandstone::protocol_types::datatypes::var_types::VarInt;
 
-	/// The nodes of [sample] that the tests compare against.
+    /// The nodes of [sample] that the tests compare against.
 	struct Ids {
 		tp_z: NodeId,
 		tp_target: NodeId,
@@ -79,7 +79,7 @@ mod test {
 		let toggle = g.add_literal(root, "toggle");
 		let toggle_value = g.add_argument(toggle, "value", Parser::BrigadierBool);
 		g.set_executable(toggle_value, true);
-		g.set_suggestions(toggle_value, Some("minecraft:ask_server".to_string()));
+		g.set_suggestions(toggle_value, Some("minecraft:ask_server".parse().unwrap()));
 
 		// The argument is added first, so the literal must win by priority, not by order.
 		let kill = g.add_literal(root, "kill");
@@ -143,7 +143,7 @@ mod test {
 
 		let toggle = &nodes[ids.toggle_value.0];
 		assert!(toggle.flags.has_suggestions && toggle.flags.is_executable);
-		assert_eq!(toggle.suggestions.as_deref(), Some("minecraft:ask_server"));
+		assert_eq!(toggle.suggestions, Some("minecraft:ask_server".parse().unwrap()));
 
 		assert!(nodes[ids.kill_all.0].flags.is_restricted);
 		assert!(!nodes[ids.kill_target.0].flags.is_restricted);

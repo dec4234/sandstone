@@ -2,7 +2,9 @@ use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
+use regex::Regex;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
+use std::sync::LazyLock;
 
 /// Represents a packed i64 (long) that contains block or biome data. See
 /// https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Data_Array_format for more info. This
@@ -63,7 +65,7 @@ impl McSerialize for PackedEntries {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IDSet {
 	pub typ: VarInt,
-	pub tag_name: Option<String>,
+	pub tag_name: Option<Identifier>,
 	pub ids: Option<Vec<VarInt>>,
 }
 
@@ -114,7 +116,7 @@ impl McDeserialize for IDSet {
 	{
 		let typ = VarInt::mc_deserialize(deserializer)?;
 		if typ.0 == 0 {
-			let tag_name = String::mc_deserialize(deserializer)?;
+			let tag_name = Identifier::mc_deserialize(deserializer)?;
 			Ok(Self {
 				typ,
 				tag_name: Some(tag_name),
@@ -143,7 +145,7 @@ impl McDeserialize for IDSet {
 
 /// Used when representing a data record of type T or by reference to a registry.
 ///
-/// [Doc Link](https://minecraft.wiki/w/Java_Edition_protocol/Packets#ID_or_X)
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#ID_or_X>
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IDorX<T: McSerialize + McDeserialize + Clone + PartialEq> {
 	Registry(VarInt),
@@ -403,6 +405,125 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq + McDefault> McDefault f
 	}
 }
 
+/// The full format of an identifier: an optional `namespace:` and then the value. The namespace
+/// may hold `a-z 0-9 . - _` and the value may also hold `/`.
+static IDENTIFIER_FORMAT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(?:([a-z0-9._-]+):)?([a-z0-9._/-]+)$").unwrap());
+
+/// A namespaced location, such as `minecraft:stone`. Construction checks the format, so a value of
+/// this type is always valid.
+///
+/// The namespace may hold `a-z`, `0-9`, `.`, `-` and `_`. The value may hold the same characters
+/// and `/`. Text with no `:` gets the `minecraft` namespace.
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Identifier>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Identifier {
+	namespace: String,
+	value: String,
+}
+
+impl Identifier {
+	/// The namespace used when the text has no `:`.
+	pub const DEFAULT_NAMESPACE: &'static str = "minecraft";
+	/// The maximum length of the full `namespace:value` string.
+	pub const MAX_LENGTH: usize = 32767;
+
+	/// Make an identifier from a namespace and a value. Gives an error if either part is not valid.
+	pub fn new(namespace: &str, value: &str) -> Result<Self, SerializingErr> {
+		format!("{namespace}:{value}").parse()
+	}
+
+	/// Make an identifier in the `minecraft` namespace.
+	pub fn minecraft(value: &str) -> Result<Self, SerializingErr> {
+		Self::new(Self::DEFAULT_NAMESPACE, value)
+	}
+
+	pub fn namespace(&self) -> &str {
+		&self.namespace
+	}
+
+	pub fn value(&self) -> &str {
+		&self.value
+	}
+}
+
+impl std::str::FromStr for Identifier {
+	type Err = SerializingErr;
+
+	/// Checks `s` against [IDENTIFIER_FORMAT]. Text with no `:` gets the `minecraft` namespace.
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		// Check the length first, so the regex never runs on very long input.
+		if s.len() > Self::MAX_LENGTH {
+			return Err(SerializingErr::OutOfBounds(format!("Identifier length {} is more than {}", s.len(), Self::MAX_LENGTH)));
+		}
+		let captures = IDENTIFIER_FORMAT
+			.captures(s)
+			.ok_or_else(|| SerializingErr::OutOfBounds(format!("'{s}' is not a valid identifier. Expected 'namespace:value' with namespace [a-z0-9._-] and value [a-z0-9._/-]")))?;
+		let namespace = captures.get(1).map_or(Self::DEFAULT_NAMESPACE, |m| m.as_str());
+		let value = &captures[2];
+
+		// "stone" is stored as "minecraft:stone", so the full length can be more than s.len().
+		let length = namespace.len() + 1 + value.len();
+		if length > Self::MAX_LENGTH {
+			return Err(SerializingErr::OutOfBounds(format!("Identifier length {length} is more than {}", Self::MAX_LENGTH)));
+		}
+
+		Ok(Self {
+			namespace: namespace.to_string(),
+			value: value.to_string(),
+		})
+	}
+}
+
+impl TryFrom<&str> for Identifier {
+	type Error = SerializingErr;
+
+	fn try_from(s: &str) -> Result<Self, Self::Error> {
+		s.parse()
+	}
+}
+
+/// Compares with text such as `"minecraft:stone"`. Text that is not a valid identifier is never equal.
+impl PartialEq<str> for Identifier {
+	fn eq(&self, other: &str) -> bool {
+		other.parse::<Identifier>().is_ok_and(|o| o == *self)
+	}
+}
+
+impl PartialEq<&str> for Identifier {
+	fn eq(&self, other: &&str) -> bool {
+		*self == **other
+	}
+}
+
+impl std::fmt::Display for Identifier {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}:{}", self.namespace, self.value)
+	}
+}
+
+impl McSerialize for Identifier {
+	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
+		self.to_string().mc_serialize(serializer)
+	}
+}
+
+impl McDeserialize for Identifier {
+	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
+	where
+		Self: Sized,
+	{
+		String::mc_deserialize(deserializer)?.parse()
+	}
+}
+
+impl McDefault for Identifier {
+	#[cfg(any(test, feature = "testing"))]
+	fn mc_default() -> Self {
+		Identifier::minecraft("stone").unwrap()
+	}
+}
+
 /// A struct of 3 doubles that could be used for position or velocity.
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct TripleDouble {
@@ -423,6 +544,51 @@ mod test {
 		let mut serializer = McSerializer::new();
 		value.mc_serialize(&mut serializer).unwrap();
 		serializer.output
+	}
+
+	/// The wire format is a plain String, so a valid identifier must read back the same.
+	#[test]
+	fn identifier_round_trip() {
+        use crate::protocol_types::datatypes::internal_types::Identifier;
+
+        let id: Identifier = "custom.ns:block/oak_log".parse().unwrap();
+		let bytes = to_bytes(&id);
+		assert_eq!(bytes, to_bytes(&"custom.ns:block/oak_log".to_string()));
+		assert_eq!(Identifier::mc_deserialize(&mut McDeserializer::new(&bytes)).unwrap(), id);
+	}
+
+	/// The wiki says text with no ':' is in the minecraft namespace. Vanilla compares "stone" and
+	/// "minecraft:stone" as the same, so they must be equal here too.
+	#[test]
+	fn identifier_without_namespace_is_minecraft() {
+        use crate::protocol_types::datatypes::internal_types::Identifier;
+
+        let id: Identifier = "stone".parse().unwrap();
+		assert_eq!(id.namespace(), "minecraft");
+		assert_eq!(id.to_string(), "minecraft:stone");
+		assert_eq!(id, Identifier::minecraft("stone").unwrap());
+	}
+
+	/// Bad text must fail when it is read, not later when a packet that holds it is used.
+	/// '/' is legal in the value but not in the namespace, and uppercase is never legal.
+	#[test]
+	fn identifier_rejects_bad_format() {
+        use crate::protocol_types::datatypes::internal_types::Identifier;
+
+        // The regex is anchored, so a valid identifier with extra text before or after it must fail.
+        for bad in ["Minecraft:stone", "minecraft:Stone", "a/b:stone", "minecraft:", ":stone", "minecraft:a:b", "minecraft:st one", "", "minecraft:stone
+", " minecraft:stone", "#minecraft:logs"] {
+			assert!(bad.parse::<Identifier>().is_err(), "'{bad}' was accepted");
+		}
+
+		let bytes = to_bytes(&"minecraft:BAD".to_string());
+		assert!(Identifier::mc_deserialize(&mut McDeserializer::new(&bytes)).is_err());
+
+		let too_long = "a".repeat(Identifier::MAX_LENGTH);
+		assert!(Identifier::new("minecraft", &too_long).is_err());
+		// Without a namespace, "minecraft:" is added, so this text is too long once it is stored.
+		assert!(too_long.parse::<Identifier>().is_err());
+		assert!(Identifier::new("minecraft", &"a".repeat(Identifier::MAX_LENGTH - "minecraft:".len())).is_ok());
 	}
 
 	/// Either is a bool then X (true) or Y (false). The Waypoint packet uses Either<Uuid, String>,
@@ -493,7 +659,7 @@ mod test {
 	fn test_idset_tag_round_trip() {
 		let id_set = IDSet {
 			typ: VarInt(0),
-			tag_name: Some("minecraft:planks".to_string()),
+			tag_name: Some("minecraft:planks".parse().unwrap()),
 			ids: None,
 		};
 		let mut serializer = McSerializer::new();
@@ -525,7 +691,7 @@ mod test {
 	fn test_idset_followed_by_data() {
 		let id_set = IDSet {
 			typ: VarInt(0),
-			tag_name: Some("minecraft:stone".to_string()),
+			tag_name: Some("minecraft:stone".parse().unwrap()),
 			ids: None,
 		};
 		let mut serializer = McSerializer::new();
@@ -547,7 +713,7 @@ mod test {
         let recipe = StonecutterRecipe {
 			id_set: IDSet {
 				typ: VarInt(0),
-				tag_name: Some("minecraft:stone_crafting_materials".to_string()),
+				tag_name: Some("minecraft:stone_crafting_materials".parse().unwrap()),
 				ids: None,
 			},
 			slot_display: SlotDisplay::Item(VarInt(45)),

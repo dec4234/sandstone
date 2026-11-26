@@ -1,6 +1,7 @@
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
 use crate::protocol::testing::McDefault;
+use crate::protocol_types::datatypes::internal_types::Identifier;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McSerialize};
 use std::hash::{Hash, Hasher};
@@ -17,7 +18,7 @@ pub struct Node {
 	pub name: Option<String>,
 	pub parser: Option<Parser>,
 	/// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Suggestions_Types>
-	pub suggestions: Option<String>,
+	pub suggestions: Option<Identifier>,
 }
 
 impl McDeserialize for Node {
@@ -52,7 +53,7 @@ impl McDeserialize for Node {
 		};
 
 		let suggestions = if flags.has_suggestions {
-			Some(String::mc_deserialize(deserializer)?)
+			Some(Identifier::mc_deserialize(deserializer)?)
 		} else {
 			None
 		};
@@ -89,7 +90,7 @@ impl McDefault for Node {
 			redirect_node: Some(VarInt::mc_default()),
 			name: Some(String::mc_default()),
 			parser: Some(Parser::mc_default()),
-			suggestions: Some(String::mc_default()),
+			suggestions: Some(Identifier::mc_default()),
 		}
 	}
 }
@@ -219,11 +220,11 @@ pub enum Parser {
 	MinecraftDimension,
 	MinecraftGamemode,
 	MinecraftTime(i32),
-	MinecraftResourceOrTag(String),
-	MinecraftResourceOrTagKey(String),
-	MinecraftResource(String),
-	MinecraftResourceKey(String),
-	MinecraftResourceSelector(String),
+	MinecraftResourceOrTag(Identifier),
+	MinecraftResourceOrTagKey(Identifier),
+	MinecraftResource(Identifier),
+	MinecraftResourceKey(Identifier),
+	MinecraftResourceSelector(Identifier),
 	MinecraftTemplateMirror,
 	MinecraftTemplateRotation,
 	MinecraftHeightmap,
@@ -547,11 +548,11 @@ impl McDeserialize for Parser {
 			41 => Ok(Parser::MinecraftDimension),
 			42 => Ok(Parser::MinecraftGamemode),
 			43 => Ok(Parser::MinecraftTime(i32::mc_deserialize(deserializer)?)),
-			44 => Ok(Parser::MinecraftResourceOrTag(String::mc_deserialize(deserializer)?)),
-			45 => Ok(Parser::MinecraftResourceOrTagKey(String::mc_deserialize(deserializer)?)),
-			46 => Ok(Parser::MinecraftResource(String::mc_deserialize(deserializer)?)),
-			47 => Ok(Parser::MinecraftResourceKey(String::mc_deserialize(deserializer)?)),
-			48 => Ok(Parser::MinecraftResourceSelector(String::mc_deserialize(deserializer)?)),
+			44 => Ok(Parser::MinecraftResourceOrTag(Identifier::mc_deserialize(deserializer)?)),
+			45 => Ok(Parser::MinecraftResourceOrTagKey(Identifier::mc_deserialize(deserializer)?)),
+			46 => Ok(Parser::MinecraftResource(Identifier::mc_deserialize(deserializer)?)),
+			47 => Ok(Parser::MinecraftResourceKey(Identifier::mc_deserialize(deserializer)?)),
+			48 => Ok(Parser::MinecraftResourceSelector(Identifier::mc_deserialize(deserializer)?)),
 			49 => Ok(Parser::MinecraftTemplateMirror),
 			50 => Ok(Parser::MinecraftTemplateRotation),
 			51 => Ok(Parser::MinecraftHeightmap),
@@ -726,8 +727,8 @@ mod tests {
 			Parser::MinecraftEntity(1),
 			Parser::MinecraftEntity(2),
 			Parser::MinecraftTime(5),
-			Parser::MinecraftResource("a".to_string()),
-			Parser::MinecraftResource("b".to_string()),
+			Parser::MinecraftResource("a".parse().unwrap()),
+			Parser::MinecraftResource("b".parse().unwrap()),
 		]
 	}
 
@@ -754,7 +755,7 @@ mod tests {
 	#[test]
 	fn same_payload_different_variant_is_not_equal() {
 		assert_ne!(Parser::BrigadierInteger { flags: 0, min: None, max: None }, Parser::BrigadierLong { flags: 0, min: None, max: None });
-		assert_ne!(Parser::MinecraftResource("x".to_string()), Parser::MinecraftResourceKey("x".to_string()));
+		assert_ne!(Parser::MinecraftResource("x".parse().unwrap()), Parser::MinecraftResourceKey("x".parse().unwrap()));
 		assert_ne!(Parser::BrigadierBool, Parser::MinecraftBlockPos);
 	}
 }
