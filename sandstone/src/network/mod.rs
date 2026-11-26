@@ -342,7 +342,7 @@ impl CraftConnection {
 
 		let frame = std::mem::take(&mut self.pending_frame);
 
-		trace!("Received from {} : {:?}", self, &frame);
+		trace!("Received from {} : {:?}", self, frame);
 
 		let deser_buf = self.build_deserializer_buffer(&frame[var_len..])?;
 		let mut deserializer = McDeserializer::new(&deser_buf);
@@ -388,7 +388,7 @@ impl CraftConnection {
 		if let Err(e) = length {
 			return Err(NetworkError::IOError(e));
 		}
-		trace!("Received direct from {} : {:?}", self, &buffer);
+		trace!("Received direct from {} : {:?}", self, buffer);
 		let mut deserializer = McDeserializer::new(&buffer);
 		let packet = T::mc_deserialize(&mut deserializer)?;
 		Ok(packet)
@@ -445,7 +445,7 @@ impl CraftConnection {
 			}
 		};
 
-		trace!("Peeked from {} : {:?}", self, &buffer);
+		trace!("Peeked from {} : {:?}", self, buffer);
 
 		if length == 0 {
 			self.close().await;
@@ -478,7 +478,7 @@ impl CraftConnection {
 
 		let length = length?;
 
-		trace!("Peeked from {} : {:?}", self, &buffer);
+		trace!("Peeked from {} : {:?}", self, buffer);
 
 		if length == 0 {
 			// connection closed

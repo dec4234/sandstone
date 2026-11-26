@@ -499,6 +499,7 @@ pub const SYNCED_REGISTRIES: &[(&str, &[&str])] = &[
 
 /// `(registry ID, [(tag ID, entry numeric IDs)])` for every vanilla tag of a registry that the
 /// client knows. Nested tags are already resolved.
+#[allow(clippy::type_complexity)]
 pub const VANILLA_TAGS: &[(&str, &[(&str, &[i32])])] = &[
 	("minecraft:banner_pattern", &[
 		("minecraft:no_item_required", &[1, 3, 5, 7, 8, 9, 10, 14, 15, 17, 18, 19, 20, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42]),

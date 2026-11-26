@@ -107,9 +107,7 @@ impl BitSet {
 
 	/// Set all bits in the BitSet to true (1)
 	pub fn set_all(&mut self) {
-		for byte in &mut self.bits {
-			*byte = u64::MAX;
-		}
+		self.bits.fill(u64::MAX);
 	}
 
 	/// Flip all bits in the BitSet (0 becomes 1, 1 becomes 0)
@@ -131,9 +129,7 @@ impl BitSet {
 
 	/// Clear all bits in the BitSet (set all bits to false)
 	pub fn clear_all(&mut self) {
-		for byte in &mut self.bits {
-			*byte = 0;
-		}
+		self.bits.fill(0);
 	}
 
 	/// Clear a specific bit in the BitSet (set it to false)
@@ -212,9 +208,9 @@ impl From<BitSet> for Vec<u8> {
 
 #[cfg(test)]
 mod test {
-	use crate::util::java::bitset::BitSet;
+    use crate::util::java::bitset::BitSet;
 
-	#[test]
+    #[test]
 	fn test_bitset() {
 		let mut bitset = BitSet::new(128);
 
@@ -238,8 +234,8 @@ mod test {
 	/// chunk packets use this, so a wrong layout puts light data in the wrong sections.
 	#[test]
 	fn wire_format_round_trip() {
-		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-		let mut bitset = BitSet::new(128);
+        use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+        let mut bitset = BitSet::new(128);
 		bitset.set_bit(0, true);
 		bitset.set_bit(127, true);
 
@@ -256,9 +252,9 @@ mod test {
 	/// negative count panicked and a very large count aborted the process.
 	#[test]
 	fn bad_count_errors() {
-		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-		use crate::protocol_types::datatypes::var_types::VarInt;
-		for count in [-1, i32::MAX] {
+        use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+        use crate::protocol_types::datatypes::var_types::VarInt;
+        for count in [-1, i32::MAX] {
 			let mut serializer = McSerializer::new();
 			VarInt(count).mc_serialize(&mut serializer).unwrap();
 			assert!(BitSet::mc_deserialize(&mut McDeserializer::new(&serializer.output)).is_err(), "count {count}");
@@ -442,8 +438,8 @@ mod test {
 	/// the BitSet it was made from, or a round trip of light masks fails.
 	#[test]
 	fn equality_ignores_trailing_zero_longs() {
-		use std::hash::{DefaultHasher, Hash, Hasher};
-		let hash = |b: &BitSet| {
+        use std::hash::{DefaultHasher, Hash, Hasher};
+        let hash = |b: &BitSet| {
 			let mut h = DefaultHasher::new();
 			b.hash(&mut h);
 			h.finish()

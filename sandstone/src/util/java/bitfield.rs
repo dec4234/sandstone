@@ -191,25 +191,25 @@ mod test {
 		let mut bitfield = BitField::new(0);
 
 		bitfield.set_bit(0, true);
-		assert_eq!(bitfield.get_bit(0), true);
+		assert!(bitfield.get_bit(0));
 
 		bitfield.set_bit(1, true);
-		assert_eq!(bitfield.get_bit(1), true);
+		assert!(bitfield.get_bit(1));
 
 		bitfield.set_bit(0, false);
-		assert_eq!(bitfield.get_bit(0), false);
+		assert!(!bitfield.get_bit(0));
 
 		bitfield.set_all();
-		assert_eq!(bitfield.get_bit(0), true);
-		assert_eq!(bitfield.get_bit(1), true);
+		assert!(bitfield.get_bit(0));
+		assert!(bitfield.get_bit(1));
 
 		bitfield.clear_all();
-		assert_eq!(bitfield.get_bit(0), false);
-		assert_eq!(bitfield.get_bit(1), false);
+		assert!(!bitfield.get_bit(0));
+		assert!(!bitfield.get_bit(1));
 
 		bitfield.flip();
-		assert_eq!(bitfield.get_bit(0), true);
-		assert_eq!(bitfield.get_bit(1), true);
+		assert!(bitfield.get_bit(0));
+		assert!(bitfield.get_bit(1));
 	}
 
 	// The generated getters/setters must map each flag to its declaration-order bit index;
@@ -222,20 +222,20 @@ mod test {
 
 		// `new` assigns flags to bits 0, 1, 2 in order.
 		let f = TestFlags::new(true, false, true);
-		assert_eq!(f.flags.get_bit(0), true);
-		assert_eq!(f.flags.get_bit(1), false);
-		assert_eq!(f.flags.get_bit(2), true);
+		assert!(f.flags.get_bit(0));
+		assert!(!f.flags.get_bit(1));
+		assert!(f.flags.get_bit(2));
 
-		assert_eq!(f.a(), true);
-		assert_eq!(f.b(), false);
-		assert_eq!(f.c(), true);
+		assert!(f.a());
+		assert!(!f.b());
+		assert!(f.c());
 
 		// Setters target the matching bit.
 		let mut f = TestFlags::new(false, false, false);
 		f.set_b(true);
-		assert_eq!(f.flags.get_bit(1), true);
-		assert_eq!(f.b(), true);
-		assert_eq!(f.a(), false);
-		assert_eq!(f.c(), false);
+		assert!(f.flags.get_bit(1));
+		assert!(f.b());
+		assert!(!f.a());
+		assert!(!f.c());
 	}
 }

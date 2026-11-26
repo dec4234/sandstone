@@ -109,7 +109,7 @@ impl McDefault for i128 {
 impl McDefault for f32 {
 	#[cfg(any(test, feature = "testing"))]
 	fn mc_default() -> Self {
-		1387137.48347
+		1387137.5
 	}
 }
 

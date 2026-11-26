@@ -612,9 +612,7 @@ mod test {
         // 4 distinct block states spread across the 4096 entries, plus a single-valued biome.
 		let palette = vec![VarInt(0), VarInt(1), VarInt(10), VarInt(9)];
 		let mut indices = vec![0u16; 4096];
-		for i in 0..256 {
-			indices[i] = 1; // bottom layer -> palette index 1
-		}
+		indices[..256].fill(1); // bottom layer -> palette index 1
 		let block_states = PalletedContainer::indirect(palette, &indices, PaletteFormatType::BLOCKS).unwrap();
 		let biomes = PalletedContainer::single_valued(VarInt(40));
 
@@ -862,6 +860,6 @@ mod test {
 		light_array.set(3, 0x00).unwrap();
 		assert_eq!(light_array.get(3).unwrap(), 0x00);
 
-		assert_eq!(light_array.get(4).is_err(), false);
+		assert!(light_array.get(4).is_ok());
 	}
 }

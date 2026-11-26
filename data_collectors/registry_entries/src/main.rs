@@ -8,6 +8,8 @@
 //! The tool does not depend on sandstone. If the generated file does not compile, you can still run
 //! this tool to write it again.
 
+#![allow(clippy::type_complexity)]
+
 use std::collections::{BTreeMap, HashMap};
 use std::error::Error;
 use std::fs;
@@ -232,6 +234,7 @@ fn generate(registries: &[(&str, Vec<String>)], tags: &[(String, Vec<(String, Ve
 		"];\n\n\
 		 /// `(registry ID, [(tag ID, entry numeric IDs)])` for every vanilla tag of a registry that the\n\
 		 /// client knows. Nested tags are already resolved.\n\
+		 #[allow(clippy::type_complexity)]\n\
 		 pub const VANILLA_TAGS: &[(&str, &[(&str, &[i32])])] = &[\n",
 	);
 	for (registry, registry_tags) in tags {
@@ -248,9 +251,9 @@ fn generate(registries: &[(&str, Vec<String>)], tags: &[(String, Vec<(String, Ve
 
 #[cfg(test)]
 mod tests {
-	use super::*;
+    use super::*;
 
-	fn ids(registry: &str, entries: &[(&str, i32)]) -> Ids {
+    fn ids(registry: &str, entries: &[(&str, i32)]) -> Ids {
 		let mut ids = Ids::new();
 		ids.insert(registry.to_string(), entries.iter().map(|(n, i)| (n.to_string(), *i)).collect());
 		ids

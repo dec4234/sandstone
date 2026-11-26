@@ -236,13 +236,12 @@ impl TryFrom<NbtTag> for TextComponent {
 
 impl From<TextComponent> for NbtTag {
 	fn from(component: TextComponent) -> Self {
-		if component.is_plain() {
-			if let ComponentType::Text {
+		if component.is_plain()
+			&& let ComponentType::Text {
 				text,
 			} = component.content
-			{
-				return NbtTag::String(text);
-			}
+		{
+			return NbtTag::String(text);
 		}
 
 		let mut compound = NbtCompound::new_no_name();
