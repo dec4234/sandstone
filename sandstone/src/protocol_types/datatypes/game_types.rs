@@ -47,7 +47,7 @@ impl Position {
 	}
 }
 
-#[derive(TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy)]
 #[type_enum(u8)]
 pub enum GameDifficulty {
 	Peaceful = 0,
@@ -63,7 +63,7 @@ impl McDefault for GameDifficulty {
 	}
 }
 
-#[derive(McDefault, TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy)]
 #[type_enum(u8)]
 pub enum EquipmentSlot {
 	MainHand = 0,
@@ -76,7 +76,7 @@ pub enum EquipmentSlot {
 	Saddle = 7,
 }
 
-#[derive(McDefault, TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy)]
 #[type_enum(i32)]
 pub enum WorldEventType {
 	DispenserDispenses = 1000,
@@ -165,7 +165,7 @@ pub enum WorldEventType {
 /// Packed i64 for coordinates of the affected chunk.
 ///
 /// 22 bits for x, z and 20 bits for y
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct ChunkSectionPosition {
 	data: i64,
 }
@@ -195,7 +195,7 @@ impl ChunkSectionPosition {
 }
 
 /// Packed VarLong of block state id, and local x, y, z coords
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct SectionBlockEntry {
 	data: VarLong,
 }
@@ -225,7 +225,7 @@ impl SectionBlockEntry {
 	}
 }
 
-#[derive(TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
+#[derive(TypeEnum, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy)]
 #[type_enum(i32)]
 pub enum SmokeDirection {
 	Down = 0,
@@ -236,7 +236,7 @@ pub enum SmokeDirection {
 	East = 5,
 }
 
-#[derive(McDefault, McSerialize, McDeserialize, Debug, PartialOrd, PartialEq, Clone)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, PartialOrd, PartialEq, Clone, Copy)]
 pub struct SourcePosition {
 	x: f64,
 	y: f64,
@@ -245,9 +245,9 @@ pub struct SourcePosition {
 
 #[cfg(test)]
 mod test {
-	use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, Position, SectionBlockEntry};
+    use crate::protocol_types::datatypes::game_types::{ChunkSectionPosition, Position, SectionBlockEntry};
 
-	#[test]
+    #[test]
 	fn test_position() {
 		let pos = Position::new(1, 2, 3);
 		assert_eq!(pos.x(), 1);

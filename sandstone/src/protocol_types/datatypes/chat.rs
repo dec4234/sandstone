@@ -850,7 +850,7 @@ pub struct PlayerChatSignature {
 	signature: Option<[u8; 256]>,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum PlayerChatFilter {
 	PassThrough = 0,
 	FullyFiltered = 1,
@@ -859,9 +859,9 @@ pub enum PlayerChatFilter {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
+    use super::*;
 
-	/// Serialize via the NBT wire path and read it back. The content type must survive the round
+    /// Serialize via the NBT wire path and read it back. The content type must survive the round
 	/// trip, since the receiving client relies on it to know how to render the component.
 	fn nbt_round_trip(component: &TextComponent) -> TextComponent {
 		let mut serializer = McSerializer::new();

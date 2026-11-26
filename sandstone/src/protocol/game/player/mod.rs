@@ -8,7 +8,7 @@ pub mod player_action;
 pub mod interface;
 pub mod inventory;
 
-#[derive(McDefault, VarIntEnum, Debug, Clone, PartialEq)]
+#[derive(McDefault, VarIntEnum, Debug, Clone, Copy, PartialEq)]
 pub enum ClientStatusAction {
 	PerformRespawn = 0,
 	RequestStats = 1,
@@ -17,7 +17,7 @@ pub enum ClientStatusAction {
 /// Data kept after a respawn.
 ///
 /// [Doc link](https://minecraft.wiki/w/Java_Edition_protocol/Packets#Respawn)
-#[derive(McDefault, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McDefault, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RespawnKeptData {
 	pub keep_attributes: bool,
 	pub keep_metadata: bool,
@@ -52,9 +52,9 @@ impl McDeserialize for RespawnKeptData {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

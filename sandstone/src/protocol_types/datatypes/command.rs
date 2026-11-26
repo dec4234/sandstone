@@ -97,7 +97,7 @@ impl McDefault for Node {
 /// Internal node flags represented as a byte with masking
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Flags>
-#[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(McDefault, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct NodeFlags {
 	pub typ: NodeType,
 	pub is_executable: bool,
@@ -162,7 +162,7 @@ impl McDeserialize for NodeFlags {
 }
 
 /// Type of node in a graph
-#[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(McDefault, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum NodeType {
 	Root = 0,
 	Literal = 1,
@@ -682,11 +682,11 @@ impl Eq for Parser {}
 
 #[cfg(test)]
 mod tests {
-	use super::Parser;
-	use std::collections::hash_map::DefaultHasher;
-	use std::hash::{Hash, Hasher};
+    use super::Parser;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
 
-	fn hash_of(p: &Parser) -> u64 {
+    fn hash_of(p: &Parser) -> u64 {
 		let mut h = DefaultHasher::new();
 		p.hash(&mut h);
 		h.finish()

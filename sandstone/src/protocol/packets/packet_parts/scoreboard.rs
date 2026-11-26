@@ -24,14 +24,14 @@ pub enum ObjectiveNumberFormat {
 	Fixed(TextComponent) = 2,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[repr(i32)]
 pub enum ObjectiveType {
 	Integer = 0,
 	Hearts = 1,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[repr(i32)]
 pub enum NameTagVisibility {
 	Always = 0,
@@ -40,7 +40,7 @@ pub enum NameTagVisibility {
 	HideForOwnTeams = 3,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[repr(i32)]
 pub enum CollisionRule {
 	Always = 0,
@@ -49,7 +49,7 @@ pub enum CollisionRule {
 	PushOwnTeam = 3,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[repr(i32)]
 pub enum TeamColor {
 	Black = 0,
@@ -164,9 +164,9 @@ pub enum UpdateScoreFormat {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()
@@ -246,10 +246,10 @@ mod test {
 			team_display_name: info.team_display_name.clone(),
 			team_prefix: info.team_prefix.clone(),
 			team_suffix: info.team_suffix.clone(),
-			name_tag_visibility: info.name_tag_visibility.clone(),
-			collision_rule: info.collision_rule.clone(),
-			team_color: info.team_color.clone(),
-			friendly_flags: info.friendly_flags.clone(),
+			name_tag_visibility: info.name_tag_visibility,
+			collision_rule: info.collision_rule,
+			team_color: info.team_color,
+			friendly_flags: info.friendly_flags,
 			entities: names(&["Steve"]),
 		};
 		expected.extend(ser(&create.entities));

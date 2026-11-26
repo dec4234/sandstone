@@ -108,7 +108,7 @@ pub struct EntityPathDebugData {
 	pub max_node_distance: f32,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum EntityBlockIntersectionType {
 	InBlock = 0,
 	InFluid = 1,
@@ -164,7 +164,7 @@ pub struct DebugPathNode {
 	pub f: f32,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum DebugPathNodeType {
 	Blocked = 0,
 	Open = 1,
@@ -211,7 +211,7 @@ pub struct DebugStructurePiece {
 
 /// The type of a debug sample, determining how the accompanying `Prefixed Array of Long` is
 /// interpreted.
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum DebugSampleType {
 	/// Four tick-related metrics in nanoseconds: full tick time, server tick time, tasks time,
 	/// and idle time.
@@ -226,9 +226,9 @@ pub struct CustomReportDetail {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

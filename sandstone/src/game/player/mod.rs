@@ -13,7 +13,7 @@ use sandstone_derive::McDefault;
 /// `UNDEFINED` is only valid on the wire inside [PreviousGamemode]. It is written as VarInt -1 here.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Login_(play)>
-#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Copy, Hash, PartialEq)]
 #[repr(i8)]
 pub enum PlayerGamemode {
 	UNDEFINED = -1,
@@ -38,7 +38,7 @@ impl PlayerGamemode {
 
 impl McSerialize for PlayerGamemode {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		VarInt(self.clone() as i32).mc_serialize(serializer)
+		VarInt(*self as i32).mc_serialize(serializer)
 	}
 }
 
@@ -56,12 +56,12 @@ impl McDeserialize for PlayerGamemode {
 /// undefined, and any other value is the gamemode ID plus 1.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Login_(play)>
-#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Copy, Hash, PartialEq)]
 pub struct PreviousGamemode(pub PlayerGamemode);
 
 impl McSerialize for PreviousGamemode {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		VarInt(self.0.clone() as i32 + 1).mc_serialize(serializer)
+		VarInt(self.0 as i32 + 1).mc_serialize(serializer)
 	}
 }
 

@@ -9,7 +9,7 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, VarIntEnum};
 
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Dye_Color>
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[repr(i32)]
 pub enum DyeColor {
 	White = 0,
@@ -31,9 +31,9 @@ pub enum DyeColor {
 }
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	#[test]
+    #[test]
 	fn dye_color_ids_match_wiki() {
 		let ser = |c: DyeColor| {
 			let mut s = McSerializer::new();

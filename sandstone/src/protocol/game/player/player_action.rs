@@ -10,7 +10,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 use uuid::Uuid;
 
 /// Only used for Player Info Updates.
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct EnumSet {
 	field: BitField<u8>,
 }
@@ -251,9 +251,9 @@ impl McDefault for PlayerInfoUpdateData {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

@@ -17,7 +17,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 /// code to keep them unambiguous.
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq)]
 #[repr(i8)]
 pub enum EntityStatusEnum {
 	/// Arrow
@@ -159,7 +159,7 @@ impl McDefault for EntityStatusEnum {
 
 impl McSerialize for EntityStatusEnum {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		(self.clone() as i8).mc_serialize(serializer)
+		(*self as i8).mc_serialize(serializer)
 	}
 }
 
@@ -240,7 +240,7 @@ impl McDeserialize for EntityStatusEnum {
 	}
 }
 
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct MinecartMoveStep {
 	pub x: f64,
 	pub y: f64,
@@ -257,7 +257,7 @@ pub struct MinecartMoveStep {
 /// One absolute position in a stepped position path.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Position_Step>
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct PositionStep {
 	pub x: f64,
 	pub y: f64,
@@ -282,7 +282,7 @@ pub enum PositionPath {
 /// One step of a stepped entity movement. Deltas are fixed-point with 12 fractional bits.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Entity_Position>
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct EntityDeltaStep {
 	pub tick_offset: VarInt,
 	pub delta_x: i16,
@@ -381,7 +381,7 @@ impl McDefault for EntityPositionDelta {
 /// # Swing Animation Type (Packet Part)
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Swing_Animation>
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum SwingAnimationType {
 	None = 0,
 	Whack = 1,
@@ -390,9 +390,9 @@ pub enum SwingAnimationType {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()
@@ -475,7 +475,7 @@ mod test {
 	fn entity_status_table_matches_discriminants_and_names() {
 		for code in 0i8..=63 {
 			let status = EntityStatusEnum::mc_deserialize(&mut McDeserializer::new(&[code as u8])).unwrap_or_else(|e| panic!("code {code}: {e:?}"));
-			assert_eq!(status.clone() as i8, code, "{status:?}");
+			assert_eq!(status as i8, code, "{status:?}");
 
 			let name = format!("{status:?}");
 			let suffix: String = name.chars().rev().take_while(|c| c.is_ascii_digit()).collect::<Vec<_>>().into_iter().rev().collect();

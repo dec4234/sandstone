@@ -38,7 +38,7 @@ pub struct AdvancementDisplay {
 	pub y: f32,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum AdvancementFrameType {
 	Task = 0,
 	Challenge = 1,
@@ -47,9 +47,9 @@ pub enum AdvancementFrameType {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

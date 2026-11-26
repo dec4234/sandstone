@@ -129,7 +129,7 @@ impl McDefault for StonecutterRecipe {
 	}
 }
 
-#[derive(TypeEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(TypeEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[type_enum(u8)]
 pub enum GameEventType {
 	NoRespawnBlockAvailable = 0,
@@ -162,7 +162,7 @@ pub struct ModifierData {
 	pub operation: ModifierOperation,
 }
 
-#[derive(TypeEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(TypeEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[type_enum(u8)]
 pub enum ModifierOperation {
 	AddSubtractAmount = 0,
@@ -170,7 +170,7 @@ pub enum ModifierOperation {
 	MultiplyPercentage = 2,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum ClientStatusAction {
 	PerformRespawn = 0,
 	RequestStats = 1,
@@ -190,7 +190,7 @@ pub struct EquipmentList {
 impl McSerialize for EquipmentList {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
 		for (i, entry) in self.entries.iter().enumerate() {
-			let mut slot_byte = entry.slot.clone() as u8;
+			let mut slot_byte = entry.slot as u8;
 			if i < self.entries.len() - 1 {
 				slot_byte |= 0x80;
 			}
@@ -252,7 +252,7 @@ impl McDefault for EquipmentEntry {
 	}
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum PlayerCommandAction {
 	LeaveBed = 0,
 	StartSprinting = 1,
@@ -263,7 +263,7 @@ pub enum PlayerCommandAction {
 	StartFlyingWithElytra = 6,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum InteractHand {
 	Main = 0,
 	OffHand = 1,
@@ -288,7 +288,7 @@ pub struct ServerLink {
 	pub url: String,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum ServerLinkStandardLabel {
 	#[doc = "Displayed on connection error screen; included as a comment in the disconnection report."]
 	BugReport = 0,
@@ -329,7 +329,7 @@ pub enum BossBarUpdateAction {
 	} = 5,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum BossBarColor {
 	Pink = 0,
 	Blue = 1,
@@ -340,7 +340,7 @@ pub enum BossBarColor {
 	White = 6,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum BossBarDivisions {
 	NoDivision = 0,
 	SixNotches = 1,
@@ -379,7 +379,7 @@ pub struct ChatTypeEntry {
 	style: NbtCompound,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum ChatTypeParemeter {
 	Sender = 0,
 	Target = 1,
@@ -390,7 +390,7 @@ pub enum ChatTypeParemeter {
 /// Controls how the Particle packet randomizes each particle when it spawns.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Particle>
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum ParticleRandomizationType {
 	Default = 0,
 	Alternative = 1,
@@ -401,7 +401,7 @@ pub enum ParticleRandomizationType {
 /// One clock entry of the Update Time packet.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Time>
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct WorldClock {
 	#[doc = "ID in the minecraft:world_clock registry"]
 	pub clock_id: VarInt,
@@ -415,9 +415,9 @@ pub struct WorldClock {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

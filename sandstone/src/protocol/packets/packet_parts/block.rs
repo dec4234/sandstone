@@ -34,7 +34,7 @@ pub struct BlockParticleAlternative {
 /// The side of a sign, used by Open Sign Editor and Update Sign.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Open_Sign_Editor>
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum SignTextSlot {
 	Back = 0,
 	Front = 1,
@@ -149,7 +149,7 @@ impl McDefault for BlockProperty {
 /// The mode for a command block
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Command_Block
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum CommandBlockMode {
 	Chain = 0,
 	Repeating = 1,
@@ -160,7 +160,7 @@ pub enum CommandBlockMode {
 /// The action being undertaken by the stucture block
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum StructureBlockAction {
 	UpdateData = 0,
 	SaveStructure = 1,
@@ -172,7 +172,7 @@ pub enum StructureBlockAction {
 /// The mode of the structure block
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum StructureBlockMode {
 	Save = 0,
 	Load = 1,
@@ -184,7 +184,7 @@ pub enum StructureBlockMode {
 /// The mirror state of the structure block
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum StructureBlockMirror {
 	None = 0,
 	LeftRight = 1,
@@ -196,7 +196,7 @@ pub enum StructureBlockMirror {
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block <br>
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum SpecialBlockRotation {
 	None = 0,
 	Clockwise90 = 1,
@@ -208,7 +208,7 @@ pub enum SpecialBlockRotation {
 /// The mode of the test block
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Test_Block
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum TestBlockMode {
 	Start = 0,
 	Log = 1,
@@ -220,7 +220,7 @@ pub enum TestBlockMode {
 /// Describes the current attempted action for a Test Instance Block
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum TestInstanceBlockActionAction {
 	Init = 0,
 	Query = 1,
@@ -235,7 +235,7 @@ pub enum TestInstanceBlockActionAction {
 /// The status of the test instance.
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum TestInstanceStatus {
 	Cleared = 0,
 	Running = 1,
@@ -246,7 +246,7 @@ pub enum TestInstanceStatus {
 /// The face of a block
 ///
 /// As seen here: https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action
-#[derive(TypeEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(TypeEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[type_enum(i8)]
 pub enum BlockFace {
 	Bottom = 0,
@@ -259,9 +259,9 @@ pub enum BlockFace {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

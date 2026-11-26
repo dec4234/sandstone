@@ -1,7 +1,6 @@
 # TODO
 - [ ] Automatatic tests using McDefault
 - [ ] Identifier struct that verifies "minecraft:item" format
-- [ ] Begin basic login procedure handler?
 - [ ] Documentation
     - [ ] Document all public functions
         - [ ] Better examples and documentation for packet reading
@@ -14,5 +13,4 @@
 - [ ] Fixed range VarInt
 - [ ] Change #[mc(deserialize_if)] to a more applicable "include_if" that applies for serialization and deserialization?
 - [ ] Chat message signatures
-- [ ] Investigate no-std support
 - [ ] Serde wrapper?

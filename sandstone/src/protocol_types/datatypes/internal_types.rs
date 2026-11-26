@@ -7,7 +7,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 /// Represents a packed i64 (long) that contains block or biome data. See
 /// https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Data_Array_format for more info. This
 /// matches the spec for packed data after 1.16
-#[derive(McDefault, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(McDefault, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct PackedEntries {
 	data: i64,
 	/// The number of bits allocated to each entry
@@ -144,7 +144,7 @@ impl McDeserialize for IDSet {
 /// Used when representing a data record of type T or by reference to a registry.
 ///
 /// [Doc Link](https://minecraft.wiki/w/Java_Edition_protocol/Packets#ID_or_X)
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IDorX<T: McSerialize + McDeserialize + Clone + PartialEq> {
 	Registry(VarInt),
 	Inline(T),
@@ -189,7 +189,7 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDefault for IDorX<T> 
 /// A union type of either X or Y, determined by a leading boolean. Order of generics matters.
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Type:Either
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Either<X, Y>
 where
 	X: McSerialize + McDeserialize + Clone + PartialEq,
@@ -237,7 +237,7 @@ impl<X: McSerialize + McDeserialize + Clone + PartialEq + McDefault, Y: McSerial
 }
 
 /// A rotation angle in steps of 1/256 of a full turn
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Angle {
 	pub angle: u8,
 }
@@ -246,7 +246,7 @@ pub struct Angle {
 /// small motion vectors. Wire format is 1 byte for zero vectors, 6-7+ bytes otherwise.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#LpVec3>
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LpVec3 {
 	pub x: f64,
 	pub y: f64,
@@ -359,7 +359,7 @@ impl LpVec3 {
 }
 
 /// Standard RGB color type
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct RgbColor {
 	pub red: u8,
 	pub green: u8,
@@ -404,7 +404,7 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq + McDefault> McDefault f
 }
 
 /// A struct of 3 doubles that could be used for position or velocity.
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct TripleDouble {
 	pub x: f64,
 	pub y: f64,
@@ -413,13 +413,13 @@ pub struct TripleDouble {
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::game::player::inventory::slots::SlotDisplay;
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::command::{NodeFlags, NodeType};
-	use crate::protocol_types::datatypes::internal_types::{IDSet, PackedEntries};
-	use crate::protocol_types::datatypes::var_types::VarInt;
+    use crate::protocol::game::player::inventory::slots::SlotDisplay;
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol_types::datatypes::command::{NodeFlags, NodeType};
+    use crate::protocol_types::datatypes::internal_types::{IDSet, PackedEntries};
+    use crate::protocol_types::datatypes::var_types::VarInt;
 
-	fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
+    fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
 		let mut serializer = McSerializer::new();
 		value.mc_serialize(&mut serializer).unwrap();
 		serializer.output
@@ -429,10 +429,10 @@ mod test {
 	/// so the bool must pick the right type, or the reader reads 16 UUID bytes as a string.
 	#[test]
 	fn either_bool_selects_side() {
-		use crate::protocol_types::datatypes::internal_types::Either;
-		use uuid::Uuid;
+        use crate::protocol_types::datatypes::internal_types::Either;
+        use uuid::Uuid;
 
-		let x: Either<Uuid, String> = Either::X(Uuid::from_u128(1));
+        let x: Either<Uuid, String> = Either::X(Uuid::from_u128(1));
 		let bytes = to_bytes(&x);
 		assert_eq!(bytes[0], 1);
 		assert_eq!(bytes.len(), 17);
@@ -451,8 +451,8 @@ mod test {
 	/// `typ` alone. A wrong value on the wire would shift every field after it.
 	#[test]
 	fn idset_serialize_rejects_inconsistent_fields() {
-		use crate::protocol::serialization::serializer_error::SerializingErr;
-		let mut serializer = McSerializer::new();
+        use crate::protocol::serialization::serializer_error::SerializingErr;
+        let mut serializer = McSerializer::new();
 
 		let no_tag = IDSet { typ: VarInt(0), tag_name: None, ids: None };
 		assert!(matches!(no_tag.mc_serialize(&mut serializer), Err(SerializingErr::MissingField(_))));
@@ -471,8 +471,8 @@ mod test {
 	/// returned a set that the serializer then refused, so a decoded value could not be sent again.
 	#[test]
 	fn idset_negative_type_is_rejected() {
-		use crate::protocol::serialization::serializer_error::SerializingErr;
-		let mut serializer = McSerializer::new();
+        use crate::protocol::serialization::serializer_error::SerializingErr;
+        let mut serializer = McSerializer::new();
 		VarInt(-1).mc_serialize(&mut serializer).unwrap();
 		let bytes = serializer.output;
 
@@ -542,9 +542,9 @@ mod test {
 
 	#[test]
 	fn test_stonecutter_recipe_round_trip() {
-		use crate::protocol::packets::packet_parts::StonecutterRecipe;
+        use crate::protocol::packets::packet_parts::StonecutterRecipe;
 
-		let recipe = StonecutterRecipe {
+        let recipe = StonecutterRecipe {
 			id_set: IDSet {
 				typ: VarInt(0),
 				tag_name: Some("minecraft:stone_crafting_materials".to_string()),
@@ -563,9 +563,9 @@ mod test {
 
 	#[test]
 	fn test_stonecutter_recipe_inline_ids_round_trip() {
-		use crate::protocol::packets::packet_parts::StonecutterRecipe;
+        use crate::protocol::packets::packet_parts::StonecutterRecipe;
 
-		let recipe = StonecutterRecipe {
+        let recipe = StonecutterRecipe {
 			id_set: IDSet {
 				typ: VarInt(5),
 				tag_name: None,
@@ -657,9 +657,9 @@ mod test {
 
 	#[test]
 	fn test_lpvec3_zero_round_trip() {
-		use crate::protocol_types::datatypes::internal_types::LpVec3;
+        use crate::protocol_types::datatypes::internal_types::LpVec3;
 
-		let vec = LpVec3 {
+        let vec = LpVec3 {
 			x: 0.0,
 			y: 0.0,
 			z: 0.0,
@@ -679,9 +679,9 @@ mod test {
 
 	#[test]
 	fn test_lpvec3_nonzero_round_trip() {
-		use crate::protocol_types::datatypes::internal_types::LpVec3;
+        use crate::protocol_types::datatypes::internal_types::LpVec3;
 
-		let vec = LpVec3 {
+        let vec = LpVec3 {
 			x: 0.5,
 			y: -0.3,
 			z: 0.8,
@@ -700,9 +700,9 @@ mod test {
 
 	#[test]
 	fn test_lpvec3_large_scale_round_trip() {
-		use crate::protocol_types::datatypes::internal_types::LpVec3;
+        use crate::protocol_types::datatypes::internal_types::LpVec3;
 
-		let vec = LpVec3 {
+        let vec = LpVec3 {
 			x: 5.0,
 			y: -3.0,
 			z: 8.0,

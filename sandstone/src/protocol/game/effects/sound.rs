@@ -14,7 +14,7 @@ pub struct SoundEvent {
 }
 
 /// [Doc link](https://minecraft.wiki/w/Java_Edition_protocol/Packets#Sound_Effect)
-#[derive(VarIntEnum, McDefault, Debug, PartialOrd, PartialEq, Clone)]
+#[derive(VarIntEnum, McDefault, Debug, PartialOrd, PartialEq, Clone, Copy)]
 #[repr(i32)]
 pub enum SoundCategory {
 	Master = 0,
@@ -31,9 +31,9 @@ pub enum SoundCategory {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

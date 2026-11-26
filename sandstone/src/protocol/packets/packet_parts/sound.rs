@@ -16,7 +16,7 @@ bitflag!(SoundControlFlags: u8 {
 	source, sound
 });
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[repr(i32)]
 pub enum SoundSource {
 	Master = 0,
@@ -135,9 +135,9 @@ impl McDefault for IdOrJukeboxSong {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

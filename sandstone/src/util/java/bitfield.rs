@@ -10,7 +10,7 @@ use crate::protocol::testing::McDefault;
 use std::ops::{BitAnd, BitOr, Not, Shl, Shr, Sub};
 
 /// A simple bit field internally represented by any primitive signed or unsigned integer.
-#[derive(Default, Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct BitField<T: BitFieldInteger + McSerialize + McDeserialize> {
 	bits: T,
 }
@@ -115,7 +115,7 @@ macro_rules! bitflag {
 		$crate::bitflag!($name: u8 { $($flag),* });
 	};
 	($name:ident: $repr:ty { $($flag:ident),* $(,)? }) => {
-		#[derive(Default, ::sandstone_derive::McSerialize, ::sandstone_derive::McDeserialize, Debug, Clone, PartialEq)]
+		#[derive(Default, ::sandstone_derive::McSerialize, ::sandstone_derive::McDeserialize, Debug, Clone, Copy, PartialEq)]
 		pub struct $name {
 			pub flags: $crate::util::java::bitfield::BitField<$repr>,
 		}
@@ -184,9 +184,9 @@ impl_bitfield_integer!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, 
 
 #[cfg(test)]
 mod test {
-	use crate::util::java::bitfield::BitField;
+    use crate::util::java::bitfield::BitField;
 
-	#[test]
+    #[test]
 	fn test_basic_bitfield() {
 		let mut bitfield = BitField::new(0);
 
@@ -216,9 +216,9 @@ mod test {
 	// a wrong index would silently corrupt the wire format, so assert the raw bits directly.
 	#[test]
 	fn test_bitflag_macro() {
-		use crate::protocol::serialization::serializer_error::SerializingErr;
-		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
-		crate::bitflag!(TestFlags: u8 { a, b, c });
+        use crate::protocol::serialization::serializer_error::SerializingErr;
+        use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
+        crate::bitflag!(TestFlags: u8 { a, b, c });
 
 		// `new` assigns flags to bits 0, 1, 2 in order.
 		let f = TestFlags::new(true, false, true);

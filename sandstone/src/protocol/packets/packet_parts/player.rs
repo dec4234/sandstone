@@ -20,7 +20,7 @@ bitflag!(DisplayedSkinParts: u8 {
 	cape, jacket, left_sleeve, right_sleeve, left_pants_leg, right_pants_leg, hat
 });
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[repr(i32)]
 pub enum WaypointData {
 	Empty = 0,
@@ -31,7 +31,7 @@ pub enum WaypointData {
 
 /// # Position VarInt (Packet Part)
 /// Represents a block position in the world as 3 VarInts
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct PositionVarInt {
 	pub x: VarInt,
 	pub y: VarInt,
@@ -40,13 +40,13 @@ pub struct PositionVarInt {
 
 /// # Chunk Position VarInt (Packet Part)
 /// Represents a chunk location in the world as 2 VarInts
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct ChunkPositionVarInt {
 	pub x: VarInt,
 	pub z: VarInt,
 }
 
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum WaypointOperation {
 	Track = 0,
 	Untrack = 1,
@@ -57,7 +57,7 @@ pub enum WaypointOperation {
 /// Used to communicate a change in player status.
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum PlayerActionStatus {
 	StartedDigging = 0,
 	CancelledDigging = 1,
@@ -72,7 +72,7 @@ pub enum PlayerActionStatus {
 /// Action that occurs when interacting with Advancements tab
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Seen_Advancements
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum SeenAdvancementsAction {
 	OpenedTab = 0,
 	ClosedScreen = 1,
@@ -82,7 +82,7 @@ pub enum SeenAdvancementsAction {
 /// The hand involved in an item use event
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Use_Item
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum UseItemHand {
 	MainHand = 0,
 	OffHand = 1
@@ -92,7 +92,7 @@ pub enum UseItemHand {
 /// Which chat messages the client wants to receive
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Chat#Client_chat_mode
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum ChatMode {
 	Enabled = 0,
 	CommandsOnly = 1,
@@ -103,7 +103,7 @@ pub enum ChatMode {
 /// The main hand set in the client settings. The values are not the same as [UseItemHand].
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum MainHand {
 	Left = 0,
 	Right = 1,
@@ -113,7 +113,7 @@ pub enum MainHand {
 /// The particle setting of the client
 ///
 /// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum ParticleStatus {
 	All = 0,
 	Decreased = 1,
@@ -122,9 +122,9 @@ pub enum ParticleStatus {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

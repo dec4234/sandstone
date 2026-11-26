@@ -300,7 +300,7 @@ impl<T: McSerialize + McDeserialize> From<PrefixedArray<T>> for Box<[T]> {
 /// # PrefixedOptional (Protocol Type)
 /// An Optional<T> with a bool prefix indicating if the value is present.
 /// This has started to replace most occurrences of Option<T> in the protocol, as it is more explicit.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PrefixedOptional<T: McSerialize + McDeserialize> {
 	pub(crate) is_present: bool,
 	pub(crate) value: Option<T>,
@@ -384,13 +384,13 @@ impl<T: McSerialize + McDeserialize> From<PrefixedOptional<T>> for Option<T> {
 
 #[cfg(test)]
 mod tests {
-	use crate::protocol::serialization::serializer_error::SerializingErr;
-	use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol::testing::McDefault;
-	use crate::protocol_types::datatypes::var_types::VarInt;
+    use crate::protocol::serialization::serializer_error::SerializingErr;
+    use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol::testing::McDefault;
+    use crate::protocol_types::datatypes::var_types::VarInt;
 
-	fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
+    fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
 		let mut serializer = McSerializer::new();
 		value.mc_serialize(&mut serializer).unwrap();
 		serializer.output

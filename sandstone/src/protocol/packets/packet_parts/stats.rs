@@ -8,7 +8,7 @@ use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct StatisticAward {
 	pub category: StatCategory,
 	pub stat_id: StatID,
@@ -17,7 +17,7 @@ pub struct StatisticAward {
 
 /// Statistic categories defined in the `minecraft:stat_type` registry. Each category determines
 /// which registry the associated statistic ID refers to (block, item, entity_type, or custom_stat).
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum StatCategory {
 	Mined = 0,
 	Crafted = 1,
@@ -32,7 +32,7 @@ pub enum StatCategory {
 
 /// Custom statistic IDs defined in the `minecraft:custom_stat` registry. Used when the
 /// [StatCategory] is [StatCategory::Custom].
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum StatID {
 	LeaveGame = 0,
 	PlayTime = 1,
@@ -113,9 +113,9 @@ pub enum StatID {
 }
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

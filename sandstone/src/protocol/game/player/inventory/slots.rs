@@ -155,7 +155,7 @@ pub struct ComponentHashed {
 // TODO: Map valid mode and button combinations?
 /// # Inventory Operation Mode (Packet Part)
 /// Used to determine valid buttons and operations for inventory actions.
-#[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum InventoryOperationMode {
 	Pickup = 0,
 	ShiftClick = 1,
@@ -168,10 +168,10 @@ pub enum InventoryOperationMode {
 
 #[cfg(test)]
 mod test {
-	use super::*;
-	use crate::protocol::packets::packet_parts::RecipeBookEntry;
+    use super::*;
+    use crate::protocol::packets::packet_parts::RecipeBookEntry;
 
-	fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn ser<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

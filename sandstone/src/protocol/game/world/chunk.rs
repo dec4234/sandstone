@@ -344,7 +344,7 @@ impl PalletedContainer {
 		match palette.len() {
 			0 => Err(SerializingErr::OutOfBounds("A paletted container needs at least one entry".to_string())),
 			1 => Ok(Self::single_valued(VarInt(palette[0]))),
-			_ => match Self::indirect(palette.into_iter().map(VarInt).collect(), &indices, typ.clone()) {
+			_ => match Self::indirect(palette.into_iter().map(VarInt).collect(), &indices, typ) {
 				Err(SerializingErr::InvalidBitsPerEntry) => Self::direct(values, typ),
 				other => other,
 			},
@@ -439,7 +439,7 @@ impl McDefault for PalletedContainer {
 /// Used to determine which palette format to use based on the Bits Per Entry
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Palette_formats>
-#[derive(McDefault, Debug, Clone, Hash, PartialEq)]
+#[derive(McDefault, Debug, Clone, Copy, Hash, PartialEq)]
 pub enum PaletteFormatType {
 	BLOCKS,
 	BIOMES,
@@ -539,7 +539,7 @@ pub struct BlockEntity {
 }
 
 /// Relative coordinates within a chunk. Each x and z value has valid values 0-15
-#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, Copy, PartialEq)]
 pub struct PackedXZ {
 	data: u8,
 }
@@ -589,9 +589,9 @@ fn entries_per_i64(bpe: u8) -> u8 {
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::game::world::chunk::entries_per_i64;
+    use crate::protocol::game::world::chunk::entries_per_i64;
 
-	#[test]
+    #[test]
 	fn test_entries_per_i64() {
 		assert_eq!(entries_per_i64(1), 64);
 		assert_eq!(entries_per_i64(2), 32);
@@ -605,11 +605,11 @@ mod test {
 
 	#[test]
 	fn test_paletted_container_builders_round_trip() {
-		use crate::protocol::game::world::chunk::{ChunkSection, PaletteFormatType, PalletedContainer};
-		use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-		use crate::protocol_types::datatypes::var_types::VarInt;
+        use crate::protocol::game::world::chunk::{ChunkSection, PaletteFormatType, PalletedContainer};
+        use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+        use crate::protocol_types::datatypes::var_types::VarInt;
 
-		// 4 distinct block states spread across the 4096 entries, plus a single-valued biome.
+        // 4 distinct block states spread across the 4096 entries, plus a single-valued biome.
 		let palette = vec![VarInt(0), VarInt(1), VarInt(10), VarInt(9)];
 		let mut indices = vec![0u16; 4096];
 		for i in 0..256 {
@@ -637,13 +637,13 @@ mod test {
 		assert!(deserializer.is_at_end());
 	}
 
-	use crate::protocol::game::world::chunk::{BiomeByteData, BiomeSection, ChunkSection, PackedXZ, PaletteFormatType, PalleteFormat, PalletedContainer};
-	use crate::protocol::serialization::serializer_error::SerializingErr;
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::internal_types::PackedEntries;
-	use crate::protocol_types::datatypes::var_types::VarInt;
+    use crate::protocol::game::world::chunk::{BiomeByteData, BiomeSection, ChunkSection, PackedXZ, PaletteFormatType, PalleteFormat, PalletedContainer};
+    use crate::protocol::serialization::serializer_error::SerializingErr;
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol_types::datatypes::internal_types::PackedEntries;
+    use crate::protocol_types::datatypes::var_types::VarInt;
 
-	fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
+    fn to_bytes<T: McSerialize>(value: &T) -> Vec<u8> {
 		let mut serializer = McSerializer::new();
 		value.mc_serialize(&mut serializer).unwrap();
 		serializer.output
@@ -706,7 +706,7 @@ mod test {
 			(PaletteFormatType::BIOMES, 8),
 		] {
 			let bytes = [bpe, 0, 0, 0];
-			let result = PalletedContainer::mc_deserialize(&mut McDeserializer::new(&bytes), 64, typ.clone());
+			let result = PalletedContainer::mc_deserialize(&mut McDeserializer::new(&bytes), 64, typ);
 			assert!(matches!(result, Err(SerializingErr::InvalidBitsPerEntry)), "{typ:?} bpe {bpe}: {result:?}");
 		}
 	}
@@ -730,9 +730,9 @@ mod test {
 	/// wrong number of light arrays, and some chunk packets fail with "Input ended prematurely".
 	#[test]
 	fn light_data_reads_byte_array_masks_from_wire() {
-		use crate::protocol::game::world::chunk::LightData;
+        use crate::protocol::game::world::chunk::LightData;
 
-		let mut bytes = vec![2, 0x00, 0x06, 1, 0xFE, 2, 0xFF, 0x01, 2, 0x01, 0x07];
+        let mut bytes = vec![2, 0x00, 0x06, 1, 0xFE, 2, 0xFF, 0x01, 2, 0x01, 0x07];
 		for count in [2, 7] {
 			bytes.push(count);
 			for _ in 0..count {
