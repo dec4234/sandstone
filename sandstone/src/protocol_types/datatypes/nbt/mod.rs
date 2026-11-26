@@ -16,7 +16,6 @@ use std::ops::Index;
 
 pub mod nbt_error;
 pub mod nbt_utils;
-mod snbt_testing;
 
 primvalue_nbtvalue!((i8, Byte), (i16, Short), (i32, Int), (i64, Long), (f32, Float), (f64, Double));
 
@@ -737,12 +736,12 @@ impl McDefault for NbtList {
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::nbt::NbtError;
-	use crate::protocol_types::datatypes::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
-	use sandstone_derive::{AsNbt, FromNbt};
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol_types::datatypes::nbt::NbtError;
+    use crate::protocol_types::datatypes::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtList, NbtLongArray, NbtTag};
+    use sandstone_derive::{AsNbt, FromNbt};
 
-	/// Regression: a bare `NbtTag` (Block Entity Data, Tag Query Response, the Lock component) is
+    /// Regression: a bare `NbtTag` (Block Entity Data, Tag Query Response, the Lock component) is
 	/// network NBT, so it starts with a type id. Serialize used to write only the payload, while
 	/// deserialize read a type id. The two sides did not agree, and peers read the wrong bytes.
 	#[test]

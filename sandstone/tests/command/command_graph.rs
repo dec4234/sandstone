@@ -6,11 +6,11 @@
 
 #[cfg(test)]
 mod test {
-	use sandstone::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use sandstone::protocol_types::datatypes::command::{Node, NodeFlags, NodeType, Parser};
-	use sandstone::protocol_types::datatypes::var_types::VarInt;
+    use sandstone::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use sandstone::protocol_types::datatypes::command::{Node, NodeFlags, NodeType, Parser};
+    use sandstone::protocol_types::datatypes::var_types::VarInt;
 
-	fn to_bytes<T: McSerialize>(v: &T) -> Vec<u8> {
+    fn to_bytes<T: McSerialize>(v: &T) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		v.mc_serialize(&mut s).unwrap();
 		s.output
@@ -165,7 +165,7 @@ mod test {
 	#[test]
 	fn every_parser_id_round_trips_to_identical_bytes() {
 		// If serialize and deserialize disagree on any ID, the client reads garbage for the rest of the graph.
-		for id in 0..=56 {
+		for id in 0..=61 {
 			let mut bytes = to_bytes(&VarInt(id));
 			bytes.extend(parser_payload(id));
 
@@ -199,8 +199,29 @@ mod test {
 
 	#[test]
 	fn unknown_parser_id_is_rejected() {
-		let bytes = to_bytes(&VarInt(57));
+		let bytes = to_bytes(&VarInt(62));
 		let mut d = McDeserializer::new(&bytes);
 		assert!(Parser::mc_deserialize(&mut d).is_err());
+	}
+
+	#[test]
+	fn parser_ids_match_vanilla_26_3_registry() {
+		// From the 26.3 data generator (registries.json, minecraft:command_argument_type). From ID 55
+		// this is different from the wiki. With the wiki IDs, the full graph that vanilla sends to an
+		// operator fails to read at parser ID 59, and a server that sends Dialog or Uuid sends a
+		// different parser.
+		let expected = [
+			(54, Parser::MinecraftLootModifier),
+			(55, Parser::MinecraftContextFloatProvider),
+			(56, Parser::MinecraftContextIntProvider),
+			(57, Parser::MinecraftSlotSource),
+			(58, Parser::MinecraftDialog),
+			(59, Parser::MinecraftFeature),
+			(60, Parser::MinecraftSwingAnimation),
+			(61, Parser::MinecraftUuid),
+		];
+		for (id, parser) in expected {
+			assert_eq!(to_bytes(&parser), to_bytes(&VarInt(id)), "{parser:?}");
+		}
 	}
 }

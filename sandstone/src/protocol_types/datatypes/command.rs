@@ -170,6 +170,9 @@ pub enum NodeType {
 }
 
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Command_data#Parsers>
+///
+/// The IDs follow the `minecraft:command_argument_type` registry of the vanilla 26.3 server
+/// (data generator `--reports`). From ID 55 they are different from the wiki list.
 #[derive(Debug, Clone)]
 pub enum Parser {
 	BrigadierBool,
@@ -227,7 +230,12 @@ pub enum Parser {
 	MinecraftLootTable,
 	MinecraftLootPredicate,
 	MinecraftLootModifier,
+	MinecraftContextFloatProvider,
+	MinecraftContextIntProvider,
+	MinecraftSlotSource,
 	MinecraftDialog,
+	MinecraftFeature,
+	MinecraftSwingAnimation,
 	MinecraftUuid,
 }
 
@@ -448,8 +456,13 @@ impl McSerialize for Parser {
 			Parser::MinecraftLootTable => VarInt(52).mc_serialize(serializer)?,
 			Parser::MinecraftLootPredicate => VarInt(53).mc_serialize(serializer)?,
 			Parser::MinecraftLootModifier => VarInt(54).mc_serialize(serializer)?,
-			Parser::MinecraftDialog => VarInt(55).mc_serialize(serializer)?,
-			Parser::MinecraftUuid => VarInt(56).mc_serialize(serializer)?,
+			Parser::MinecraftContextFloatProvider => VarInt(55).mc_serialize(serializer)?,
+			Parser::MinecraftContextIntProvider => VarInt(56).mc_serialize(serializer)?,
+			Parser::MinecraftSlotSource => VarInt(57).mc_serialize(serializer)?,
+			Parser::MinecraftDialog => VarInt(58).mc_serialize(serializer)?,
+			Parser::MinecraftFeature => VarInt(59).mc_serialize(serializer)?,
+			Parser::MinecraftSwingAnimation => VarInt(60).mc_serialize(serializer)?,
+			Parser::MinecraftUuid => VarInt(61).mc_serialize(serializer)?,
 		}
 		Ok(())
 	}
@@ -545,8 +558,13 @@ impl McDeserialize for Parser {
 			52 => Ok(Parser::MinecraftLootTable),
 			53 => Ok(Parser::MinecraftLootPredicate),
 			54 => Ok(Parser::MinecraftLootModifier),
-			55 => Ok(Parser::MinecraftDialog),
-			56 => Ok(Parser::MinecraftUuid),
+			55 => Ok(Parser::MinecraftContextFloatProvider),
+			56 => Ok(Parser::MinecraftContextIntProvider),
+			57 => Ok(Parser::MinecraftSlotSource),
+			58 => Ok(Parser::MinecraftDialog),
+			59 => Ok(Parser::MinecraftFeature),
+			60 => Ok(Parser::MinecraftSwingAnimation),
+			61 => Ok(Parser::MinecraftUuid),
 			_ => Err(SerializingErr::DeserializationError(format!("Invalid parser ID: '{}'", id))),
 		}
 	}
