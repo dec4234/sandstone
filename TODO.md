@@ -8,7 +8,6 @@
 - [ ] sNBT
 - [ ] Command parsing
 - [ ] World generation?
-- [ ] Feature flags
 - [ ] Lots of packets are repeated across multiple states with different ids = deduplicate
 - [ ] Add Copy to a lot more things
 - [ ] Max size string (variable, usually 32767)

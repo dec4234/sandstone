@@ -41,25 +41,32 @@ cfb8 = { version = "0.9.1", optional = true }
 rsa = { version = "0.10.0", features = ["std", "pkcs1v15"], optional = true }
 # Used only by the `dns` feature (SRV record lookup in CraftConnection::connect).
 hickory-resolver = { version = "0.26.4", optional = true }
+# Renders the `##` feature comments below into the crate docs.
+document-features = "0.2.12"
 
 [features]
+## Enables all features except `testing`.
 default = ["client", "server", "anvil", "favicon", "dns", "encryption", "online"]
-# Client-side handlers in `network::client` (for example DefaultClientStatusHandler).
+## Client-side handlers in `network::client` (for example `DefaultClientStatusHandler`).
 client = []
-# Server-side handlers in `network::server` (handshake, status, ping, login and encryption handlers).
+## Server-side handlers in `network::server` (handshake, status, ping, login and encryption handlers).
 server = ["dep:rand", "dep:smart-default"]
-# Read and write Anvil region files (.mca) and convert chunks to and from chunk packets.
+## Read and write Anvil region files (.mca) and convert chunks to and from chunk packets.
 anvil = ["dep:lz4_flex", "dep:xxhash-rust"]
-# Set the server list icon from an `image::DynamicImage` (StatusResponseSpec::set_favicon_image).
+## Set the server list icon from an `image::DynamicImage` (`StatusResponseSpec::set_favicon_image`).
 favicon = ["dep:image", "dep:base64"]
-# Used for dns lookup for server addresses
+## DNS SRV lookup for server addresses in `CraftConnection::connect`.
 dns = ["dep:hickory-resolver"]
-# Enables connection encryption
+## Connection encryption (AES/CFB8 with an RSA key exchange).
 encryption = ["dep:rand", "dep:aes", "dep:cfb8", "dep:rsa"]
-# Enables online server authentication for real Minecraft accounts
+## Online server authentication for real Minecraft accounts. Enables `server` and `encryption`.
 online = ["server", "encryption", "mojang-api/http"]
-# Enables testing functions
+## Enables testing functions
 testing = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dev-dependencies]
 tokio = { version = "1.54.1", features = ["net", "io-util", "rt", "macros", "time"] }
