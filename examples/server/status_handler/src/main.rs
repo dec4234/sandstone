@@ -18,7 +18,7 @@ use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 ///
 /// OPTIONAL: Run with --nocapture to see the debug output in real time
 ///
-/// The status procedure can be found [here](https://wiki.vg/Server_List_Ping)
+/// The status procedure can be found [here](https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping)
 #[tokio::main]
 async fn main() {
 	SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();

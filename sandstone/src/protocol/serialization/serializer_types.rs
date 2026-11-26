@@ -119,7 +119,7 @@ mod macros {
 }
 
 impl<T: McSerialize> McSerialize for Vec<T> {
-	/// Serialize the contents of the Vec<T> to the serializer without any length prefix.
+	/// Serialize the contents of the `Vec<T>` to the serializer without any length prefix.
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()>
 	where
 		T: McSerialize,
@@ -133,7 +133,7 @@ impl<T: McSerialize> McSerialize for Vec<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Vec<T> {
-	/// Deserializes a Vec<T> from the deserializer until the end of the input is reached.
+	/// Deserializes a `Vec<T>` from the deserializer until the end of the input is reached.
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
 	where
 		Self: Sized,
@@ -150,7 +150,7 @@ impl<T: McDeserialize> McDeserialize for Vec<T> {
 }
 
 impl<T: McSerialize> McSerialize for Option<T> {
-	/// Ensure that you mean to use this rather than a [PrefixedOptional<T>] This is a simple serialization
+	/// Ensure that you mean to use this rather than a [`PrefixedOptional<T>`] This is a simple serialization
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()>
 	where
 		T: McSerialize,
@@ -164,7 +164,7 @@ impl<T: McSerialize> McSerialize for Option<T> {
 }
 
 impl<T: McDeserialize> McDeserialize for Option<T> {
-	/// Ensure that you mean to use this rather than a [PrefixedOptional<T>].
+	/// Ensure that you mean to use this rather than a [`PrefixedOptional<T>`].
 	fn mc_deserialize<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, Self>
 	where
 		Self: Sized,
@@ -220,7 +220,7 @@ impl<const N: usize> McDeserialize for [u8; N] {
 }
 
 /// # PrefixedArray (Protocol Type)
-/// A PrefixedArray is a Vec<T> with a VarInt prefix indicating the length of the array.
+/// A PrefixedArray is a `Vec<T>` with a VarInt prefix indicating the length of the array.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Prefixed_Array>
 #[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Clone)]
@@ -298,8 +298,8 @@ impl<T: McSerialize + McDeserialize> From<PrefixedArray<T>> for Box<[T]> {
 }
 
 /// # PrefixedOptional (Protocol Type)
-/// An Optional<T> with a bool prefix indicating if the value is present.
-/// This has started to replace most occurrences of Option<T> in the protocol, as it is more explicit.
+/// An `Optional<T>` with a bool prefix indicating if the value is present.
+/// This has started to replace most occurrences of `Option<T>` in the protocol, as it is more explicit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PrefixedOptional<T: McSerialize + McDeserialize> {
 	pub(crate) is_present: bool,
@@ -311,7 +311,7 @@ impl<T: McDeserialize + McSerialize> PrefixedOptional<T> {
 		self.is_present
 	}
 
-	/// The equivalent Option<T>
+	/// The equivalent `Option<T>`
 	pub fn value(&self) -> Option<&T> {
 		self.value.as_ref()
 	}

@@ -77,7 +77,7 @@ pub struct ChatSessionData {
 	pub key_signature: PrefixedArray<u8>,
 }
 
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#player-info:player-actions
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#player-info:player-actions>
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlayerAction {
 	pub add_player: Option<AddPlayerData>,

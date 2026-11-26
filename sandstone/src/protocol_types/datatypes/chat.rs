@@ -1,7 +1,7 @@
 //! This file defines the TextComponent type in the Minecraft network API.
 //! Seen in books, disconnect messages, chat messages, action bar, etc.
 //!
-//! https://minecraft.wiki/w/Text_component_format
+//! <https://minecraft.wiki/w/Text_component_format>
 
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
@@ -19,7 +19,7 @@ use std::fmt;
 /// in chat messages and book messages. The only thing that is required to be included is a String
 /// representing the text to be displayed. Everything else is an optional modifier.
 ///
-/// See https://minecraft.wiki/w/Text_component_format for more information.
+/// See <https://minecraft.wiki/w/Text_component_format> for more information.
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 pub struct TextComponent {
@@ -430,7 +430,7 @@ impl McDeserialize for JsonTextComponent {
 /// (`text`, `translate`, `score`, `selector`, `keybind`, `nbt`), matching the wiki's rule that the
 /// `type` field is optional and otherwise inferred from the content fields, in that priority order.
 ///
-/// See https://minecraft.wiki/w/Text_component_format#Java_Edition
+/// See <https://minecraft.wiki/w/Text_component_format#Java_Edition>
 #[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub enum ComponentType {

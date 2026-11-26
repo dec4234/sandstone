@@ -1,5 +1,5 @@
 //! Debug subscription types. Used in certain packets to help with debugging the game.
-//! https://minecraft.wiki/w/Java_Edition_protocol
+//! <https://minecraft.wiki/w/Java_Edition_protocol>
 
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;

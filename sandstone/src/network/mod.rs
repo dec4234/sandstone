@@ -2,7 +2,7 @@
 //!
 //! This includes data types, serializers, packet implementations and client & server handlers.
 //!
-//! See the documentation for the [client](client) and [server](server) modules for more information on how to use the network API.
+//! See the documentation for the [client] and [server] modules for more information on how to use the network API.
 
 use crate::network::network_error::NetworkError;
 use crate::protocol::packets::Packet;

@@ -1,5 +1,5 @@
 //! Define the default values for the different registry entries according to the defaults generally
-//! provided by Minecraft. See the 1.21 defaults here https://gist.github.com/Mansitoh/e6c5cf8bbf17e9faf4e4e75bb3f4789d
+//! provided by Minecraft.
 
 use crate::nbt_compound;
 use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfSounds, WolfVariantAssets};

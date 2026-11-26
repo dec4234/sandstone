@@ -2,7 +2,7 @@
 
 #[macro_use]
 mod macros {
-	/// Create an [`NbtCompound`](crate::protocol_types::datatypes::nbt::nbt::NbtCompound) without a
+	/// Create an [`NbtCompound`](crate::protocol_types::datatypes::nbt::NbtCompound) without a
 	/// root name, analogous to how `map!` creates a `HashMap`. Keys are anything `Into<String>` and
 	/// values are anything `Into<NbtTag>`.
 	#[macro_export]
@@ -147,11 +147,11 @@ mod macros {
 }
 #[cfg(test)]
 mod tests {
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
-	use crate::protocol_types::datatypes::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtLongArray, NbtTag};
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+    use crate::protocol_types::datatypes::nbt::{NbtByteArray, NbtCompound, NbtIntArray, NbtLongArray, NbtTag};
 
-	/// nbt_compound! must be equal to a compound built by hand with add(), and accept a trailing comma.
+    /// nbt_compound! must be equal to a compound built by hand with add(), and accept a trailing comma.
 	#[test]
 	fn nbt_compound_macro_matches_manual_build() {
 		let from_macro = nbt_compound! {

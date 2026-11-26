@@ -14,7 +14,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 
 /// Description of a recipe ingredient slot for use for use by the client.
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Slot_Display_structure
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Slot_Display_structure>
 #[derive(VarIntEnum, McDefault, Debug, PartialEq, Clone)]
 #[repr(i32)]
 pub enum SlotDisplay {
@@ -64,7 +64,7 @@ pub struct CompositeSlotData {
 	pub options: PrefixedArray<SlotDisplay>,
 }
 
-/// https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Recipe_Display_structure
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Recipes#Recipe_Display_structure>
 #[derive(VarIntEnum, McDefault, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum RecipeDisplay {
@@ -129,7 +129,7 @@ pub struct ChangedSlot {
 /// # Hashed Slot (Packet Part)
 /// Used to communicate slot changes in an inventory.
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Hashed_format
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Hashed_format>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct HashedSlot {
 	pub has_item: bool,

@@ -148,7 +148,7 @@ impl McDefault for BlockProperty {
 /// # Command Block Mode (Packet Part)
 /// The mode for a command block
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Command_Block
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Command_Block>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum CommandBlockMode {
 	Chain = 0,
@@ -159,7 +159,7 @@ pub enum CommandBlockMode {
 /// # Structure Block Action (Packet Part)
 /// The action being undertaken by the stucture block
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum StructureBlockAction {
 	UpdateData = 0,
@@ -171,7 +171,7 @@ pub enum StructureBlockAction {
 /// # Structure Block Mode (Packet Part)
 /// The mode of the structure block
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum StructureBlockMode {
 	Save = 0,
@@ -183,7 +183,7 @@ pub enum StructureBlockMode {
 /// # Structure Block Mirror State (Packet Part)
 /// The mirror state of the structure block
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum StructureBlockMirror {
 	None = 0,
@@ -194,8 +194,8 @@ pub enum StructureBlockMirror {
 /// # Special Block Rotation (Packet Part)
 /// The rotation state of a special block
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block <br>
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Structure_Block> <br>
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum SpecialBlockRotation {
 	None = 0,
@@ -207,7 +207,7 @@ pub enum SpecialBlockRotation {
 /// # Test Block Mode (Packet Part)
 /// The mode of the test block
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Test_Block
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Test_Block>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum TestBlockMode {
 	Start = 0,
@@ -219,7 +219,7 @@ pub enum TestBlockMode {
 /// # Test Instance Block State (Packet Part)
 /// Describes the current attempted action for a Test Instance Block
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum TestInstanceBlockActionAction {
 	Init = 0,
@@ -234,7 +234,7 @@ pub enum TestInstanceBlockActionAction {
 /// # Test Instance Status (Packet Part)
 /// The status of the test instance.
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum TestInstanceStatus {
 	Cleared = 0,
@@ -245,7 +245,7 @@ pub enum TestInstanceStatus {
 /// # Block Face - Byte Enum (Packet Part)
 /// The face of a block
 ///
-/// As seen here: https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action
+/// As seen here: <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action>
 #[derive(TypeEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 #[type_enum(i8)]
 pub enum BlockFace {

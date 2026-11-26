@@ -1,6 +1,6 @@
 //! Cryptographic primitives for the Minecraft login encryption handshake.
 //!
-//! Reference: https://minecraft.wiki/w/Java_Edition_protocol/Encryption
+//! Reference: <https://minecraft.wiki/w/Java_Edition_protocol/Encryption>
 
 pub mod aes;
 pub mod rsa;
@@ -30,12 +30,12 @@ pub enum EncryptionError {
 
 #[cfg(test)]
 mod tests {
-	use super::EncryptionError;
-	use super::aes::{CraftCipher, SHARED_SECRET_LEN, generate_shared_secret};
-	use super::rsa::{RSA_KEY_BITS, VERIFY_TOKEN_LEN, decode_public_key, decrypt_with_private_key, encode_public_key, encrypt_with_public_key, generate_key_pair, generate_verify_token};
-	use ::rsa::PublicKey;
+    use super::EncryptionError;
+    use super::aes::{CraftCipher, SHARED_SECRET_LEN, generate_shared_secret};
+    use super::rsa::{RSA_KEY_BITS, VERIFY_TOKEN_LEN, decode_public_key, decrypt_with_private_key, encode_public_key, encrypt_with_public_key, generate_key_pair, generate_verify_token};
+    use ::rsa::PublicKey;
 
-	/// The DER public key must survive a round trip, because the client decodes exactly
+    /// The DER public key must survive a round trip, because the client decodes exactly
 	/// these bytes from the Encryption Request before it can encrypt anything. If encoding
 	/// and decoding disagreed, the whole handshake would silently fail.
 	#[test]

@@ -3,7 +3,7 @@ use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize,
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::var_types::VarInt;
 
-/// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data>
 #[derive(Debug, Clone, PartialEq)]
 pub struct SlotData {
 	pub item_count: VarInt,
@@ -153,12 +153,12 @@ impl McDeserialize for ItemStackTemplate {
 
 #[cfg(test)]
 mod test {
-	use super::SlotData;
-	use crate::protocol::game::player::inventory::components::StructuredComponent;
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::var_types::VarInt;
+    use super::SlotData;
+    use crate::protocol::game::player::inventory::components::StructuredComponent;
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol_types::datatypes::var_types::VarInt;
 
-	fn ser(slot: &SlotData) -> Vec<u8> {
+    fn ser(slot: &SlotData) -> Vec<u8> {
 		let mut s = McSerializer::new();
 		slot.mc_serialize(&mut s).unwrap();
 		s.as_bytes().to_vec()

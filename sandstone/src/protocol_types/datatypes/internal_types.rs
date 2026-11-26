@@ -7,7 +7,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 use std::sync::LazyLock;
 
 /// Represents a packed i64 (long) that contains block or biome data. See
-/// https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Data_Array_format for more info. This
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format#Data_Array_format> for more info. This
 /// matches the spec for packed data after 1.16
 #[derive(McDefault, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct PackedEntries {
@@ -190,7 +190,7 @@ impl<T: McSerialize + McDeserialize + Clone + PartialEq> McDefault for IDorX<T> 
 
 /// A union type of either X or Y, determined by a leading boolean. Order of generics matters.
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Type:Either
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Type:Either>
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Either<X, Y>
 where
@@ -450,7 +450,7 @@ impl Identifier {
 impl std::str::FromStr for Identifier {
 	type Err = SerializingErr;
 
-	/// Checks `s` against [IDENTIFIER_FORMAT]. Text with no `:` gets the `minecraft` namespace.
+	/// Checks `s` against the identifier format described on [Identifier]. Text with no `:` gets the `minecraft` namespace.
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		// Check the length first, so the regex never runs on very long input.
 		if s.len() > Self::MAX_LENGTH {

@@ -300,7 +300,7 @@ where
 ///
 /// Note that network compounds don't have a root name. To create a network compound, use [NbtCompound::new_no_name()]
 ///
-/// https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/NBT
+/// <https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/NBT>
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct NbtCompound {
 	#[serde(skip_serializing_if = "Option::is_none")]

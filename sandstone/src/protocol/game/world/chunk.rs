@@ -1,6 +1,6 @@
 //! A collection of internal data formats for chunk data transfer
 //!
-//! https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format
+//! <https://minecraft.wiki/w/Java_Edition_protocol/Chunk_format>
 
 use crate::protocol::game::world::block_state_table::BLOCK_STATE_COUNT;
 use crate::protocol::game::world::chunk::PaletteFormatType::{BIOMES, BLOCKS};
@@ -18,7 +18,7 @@ use crate::protocol_types::datatypes::var_types::VarInt;
 use crate::util::java::bitset::BitSet;
 use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
-/// Chunk Data field as defined in https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light
+/// Chunk Data field as defined in <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light>
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ChunkData {
 	pub heightmaps: PrefixedArray<Heightmap>,

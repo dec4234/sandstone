@@ -459,7 +459,7 @@ impl McDefault for PaintingVariantComponent {
 /// # Structured Component (Packet Part)
 /// Serializes the enum ID as a VarInt first then the body of the StructuredComponent entry
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Structured_components
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Structured_components>
 #[derive(VarIntEnum, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum StructuredComponent {

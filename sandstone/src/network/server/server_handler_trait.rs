@@ -7,7 +7,7 @@ use crate::protocol::packets::StatusResponsePacket;
 #[cfg(feature = "encryption")]
 use mojang_api::HasJoinedResponse;
 
-/// The procedure required to handle a handshake as a server. Check [DefaultHandshakeHandler] for a default implementation.
+/// The procedure required to handle a handshake as a server. Check [crate::network::server::server_handler_impl::DefaultServerHandshakeHandler] for a default implementation.
 ///
 /// If you would like to implement it yourself then check [here](https://minecraft.wiki/w/Java_Edition_protocol/Packets#Handshake)
 pub trait ServerHandshakeHandler {
@@ -16,7 +16,7 @@ pub trait ServerHandshakeHandler {
 	async fn handle_handshake(connection: &mut CraftConnection) -> Result<(), NetworkError>;
 }
 
-/// Lists the methods required to handle a status request as a server. Check [DefaultClientStatusHandler] for a default implementation.
+/// Lists the methods required to handle a status request as a server. Check [crate::network::server::server_handler_impl::DefaultServerStatusHandler] for a default implementation.
 ///
 /// The status procedure can be found [here](https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping#Status_Request)
 pub trait ServerStatusHandler {
@@ -27,7 +27,7 @@ pub trait ServerStatusHandler {
 	async fn handle_status<P: ServerPingHandler>(connection: &mut CraftConnection, status_response: StatusResponsePacket, ping_handler: P) -> Result<(), NetworkError>;
 }
 
-/// Lists the methods required to handle a ping request as a server. Check [DefaultPingHandler] for a default implementation.
+/// Lists the methods required to handle a ping request as a server. Check [crate::network::server::server_handler_impl::DefaultServerPingHandler] for a default implementation.
 ///
 /// The ping procedure can be found [here](https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping#Ping_Request)
 pub trait ServerPingHandler {
@@ -36,14 +36,14 @@ pub trait ServerPingHandler {
 	async fn handle_ping(connection: &mut CraftConnection) -> Result<(), NetworkError>;
 }
 
-/// Lists the methods required to handle a login request as a server. Check [DefaultLoginHandler] for a default implementation.
+/// Lists the methods required to handle a login request as a server. Check [crate::network::server::server_login_impl::DefaultServerLoginHandler] for a default implementation.
 pub trait ServerLoginHandler {
 	async fn handle_login(&self, connection: &mut CraftConnection) -> Result<(), NetworkError>;
 }
 
 /// Handle enabling encryption for an incoming client connections.
 ///
-/// More info here: https://minecraft.wiki/w/Java_Edition_protocol/Encryption
+/// More info here: <https://minecraft.wiki/w/Java_Edition_protocol/Encryption>
 #[cfg(feature = "encryption")]
 pub trait ServerEncryptionHandler {
 	/// ## Arguments

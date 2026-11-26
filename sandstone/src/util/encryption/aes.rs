@@ -4,12 +4,12 @@
 //! [`CraftCipher`] must be reused across every packet, never reset per packet, or the
 //! keystream will desynchronize from the peer.
 //!
-//! https://minecraft.wiki/w/Java_Edition_protocol/Encryption
+//! <https://minecraft.wiki/w/Java_Edition_protocol/Encryption>
 
+use aes::Aes128;
 use aes::cipher::array::Array;
 use aes::cipher::{Block, BlockModeDecrypt, BlockModeEncrypt, KeyIvInit};
-use aes::Aes128;
-use rand::{rng, Rng};
+use rand::{Rng, rng};
 
 use crate::util::encryption::EncryptionError;
 

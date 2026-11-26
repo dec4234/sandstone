@@ -105,7 +105,7 @@ impl From<&[u8]> for McSerializer {
 }
 
 impl From<McSerializer> for Vec<u8> {
-	/// Convert a McSerializer into a Vec<u8>. This is useful for sending the serialized data over the network.
+	/// Convert a McSerializer into a `Vec<u8>`. This is useful for sending the serialized data over the network.
 	fn from(serializer: McSerializer) -> Self {
 		serializer.output
 	}
@@ -269,10 +269,10 @@ pub trait McSerialize {
 
 #[cfg(test)]
 mod tests {
-	use crate::protocol::serialization::serializer_error::SerializingErr;
-	use crate::protocol::serialization::{McDeserializer, McSerializer};
+    use crate::protocol::serialization::serializer_error::SerializingErr;
+    use crate::protocol::serialization::{McDeserializer, McSerializer};
 
-	/// set_size must refuse to shrink below already-written data, because that would imply
+    /// set_size must refuse to shrink below already-written data, because that would imply
 	/// discarding bytes the caller has already serialized.
 	#[test]
 	fn set_size_rejects_shrink_and_reserves_growth() {

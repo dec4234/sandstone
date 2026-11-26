@@ -6,7 +6,7 @@
 //! - Provide vital information about each packet such as the packet ID, the packet state, and the packet destination
 //!
 //! All information for the packets is derived from the wiki. Consider supporting the wiki efforts.
-//! https://minecraft.wiki/w/Java_Edition_protocol
+//! <https://minecraft.wiki/w/Java_Edition_protocol>
 
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::new_without_default)] // todo: maybe needs default?
@@ -697,7 +697,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				velocity_z: f64,
 				yaw: f32,
 				pitch: f32,
-				#[doc = "See https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags for more info"]
+				#[doc = "See <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#Teleport_Flags> for more info"]
 				flags: TeleportFlags
 			},
 			PlayerRotation, 0x4A #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Rotation>"] => {

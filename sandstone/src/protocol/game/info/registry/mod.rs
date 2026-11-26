@@ -7,7 +7,7 @@
 //! This is information sent by the server to the client upon login to provide configuration details
 //! about various game elements.
 //!
-//! https://minecraft.wiki/w/Java_Edition_protocol/Registry_data
+//! <https://minecraft.wiki/w/Java_Edition_protocol/Registry_data>
 
 use crate::protocol::game::info::registry::registry_components::{BlockStateProvider, BlockTransformer, CatSounds, ChickenSounds, EnchantmentCost, ExitAction, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, SulfurCubeAttributeModifier, SulfurCubeContactDamage, SulfurCubeExplosion, SulfurCubeKnockbackModifiers, SulfurCubeSoundSettings, WolfSounds, WolfVariantAssets};
 use crate::protocol::serialization::McDeserialize;
@@ -220,7 +220,7 @@ macro_rules! registry_entry {
 }
 
 /// Used to convert a field defined for a registry structure into a `RegistryEntry`. This requires a
-/// PrefixedOptional, and we don't want to double wrap any Option<T> fields like PrefixedOptional<Option<T>>.
+/// PrefixedOptional, and we don't want to double wrap any `Option<T>` fields like `PrefixedOptional<Option<T>>`.
 #[macro_export]
 macro_rules! registry_entry_optional {
 	(Option<$t:ty>, $field:expr) => {

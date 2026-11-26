@@ -1,4 +1,4 @@
-//! Implementation of https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html
+//! Implementation of <https://docs.oracle.com/javase/8/docs/api/java/util/BitSet.html>
 
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;

@@ -56,7 +56,7 @@ pub enum WaypointOperation {
 /// # Player Action Status (Packet Part)
 /// Used to communicate a change in player status.
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum PlayerActionStatus {
 	StartedDigging = 0,
@@ -71,7 +71,7 @@ pub enum PlayerActionStatus {
 /// # Seen Advancement Action (Packet Part)
 /// Action that occurs when interacting with Advancements tab
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Seen_Advancements
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Seen_Advancements>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum SeenAdvancementsAction {
 	OpenedTab = 0,
@@ -81,7 +81,7 @@ pub enum SeenAdvancementsAction {
 /// # Hand (Packet Part)
 /// The hand involved in an item use event
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Use_Item
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Use_Item>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum UseItemHand {
 	MainHand = 0,
@@ -91,7 +91,7 @@ pub enum UseItemHand {
 /// # Chat Mode (Packet Part)
 /// Which chat messages the client wants to receive
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Chat#Client_chat_mode
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Chat#Client_chat_mode>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum ChatMode {
 	Enabled = 0,
@@ -102,7 +102,7 @@ pub enum ChatMode {
 /// # Main Hand (Packet Part)
 /// The main hand set in the client settings. The values are not the same as [UseItemHand].
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum MainHand {
 	Left = 0,
@@ -112,7 +112,7 @@ pub enum MainHand {
 /// # Particle Status (Packet Part)
 /// The particle setting of the client
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Client_Information_(configuration)>
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum ParticleStatus {
 	All = 0,

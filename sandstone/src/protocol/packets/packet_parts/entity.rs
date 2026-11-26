@@ -16,7 +16,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 /// given code differs per entity, so variants are suffixed with their numeric
 /// code to keep them unambiguous.
 ///
-/// https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_statuses>
 #[derive(Debug, Clone, Copy, Hash, PartialEq)]
 #[repr(i8)]
 pub enum EntityStatusEnum {

@@ -1,5 +1,5 @@
 //! The purpose of this file is to define the custom integer types for the Minecraft protocol, VarInt and VarLong.
-//! See more details here: https://wiki.vg/Protocol#VarInt_and_VarLong
+//! See more details here: <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#VarInt_and_VarLong>
 
 use crate::network::network_error::NetworkError;
 use crate::protocol::serialization::serializer_error::SerializingErr;
@@ -27,7 +27,7 @@ pub(crate) const CONTINUE_BYTE: u8 = 0x80; // 10000000
 pub struct VarInt(pub i32);
 
 impl VarInt {
-	/// Convert a slice of bytes into a VarInt. Reading algorithm taken from https://wiki.vg/
+	/// Convert a slice of bytes into a VarInt. Reading algorithm taken from <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#VarInt_and_VarLong>
 	pub fn from_slice(bytes: &[u8]) -> Result<Self, SerializingErr> {
 		if bytes.len() > 5 {
 			return Err(SerializingErr::VarTypeTooLong("VarInt must be a max of 5 bytes.".to_string()));
@@ -213,7 +213,7 @@ impl From<&[u8]> for VarInt {
 pub struct VarLong(pub i64);
 
 impl VarLong {
-	/// Convert a slice of bytes into a VarLong. Reading algorithm taken from https://wiki.vg/
+	/// Convert a slice of bytes into a VarLong. Reading algorithm taken from <https://minecraft.wiki/w/Java_Edition_protocol/Data_types#VarInt_and_VarLong>
 	pub fn from_slice(bytes: &[u8]) -> SerializingResult<Self> {
 		if bytes.len() > 10 {
 			return Err(SerializingErr::UniqueFailure("VarLong must be a max of 10 bytes.".to_string()));
