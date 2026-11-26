@@ -142,7 +142,7 @@ impl StatusResponseSpec {
 
 impl McSerialize for StatusResponseSpec {
 	fn mc_serialize(&self, serializer: &mut McSerializer) -> SerializingResult<()> {
-		let serialized = serde_json::to_string(self).unwrap();
+		let serialized = serde_json::to_string(self).map_err(|e| SerializingErr::FailedToSerializeJSON(e.to_string()))?;
 
 		serialized.mc_serialize(serializer)?;
 
@@ -244,17 +244,17 @@ impl PlayerSample {
 
 #[cfg(test)]
 mod test {
-	use crate::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol_types::datatypes::chat::ComponentType;
-	use crate::protocol_types::protocol_verison::ProtocolVerison;
-	use uuid::Uuid;
+    use crate::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol_types::datatypes::chat::ComponentType;
+    use crate::protocol_types::protocol_verison::ProtocolVerison;
+    use uuid::Uuid;
 
-	/// Decode the PNG inside a `data:image/png;base64,...` favicon string.
+    /// Decode the PNG inside a `data:image/png;base64,...` favicon string.
 	#[cfg(feature = "favicon")]
 	fn decode_favicon(favicon: &str) -> image::DynamicImage {
-		use base64::Engine;
-		let b64 = favicon.strip_prefix("data:image/png;base64,").expect("favicon must be a PNG data URI");
+        use base64::Engine;
+        let b64 = favicon.strip_prefix("data:image/png;base64,").expect("favicon must be a PNG data URI");
 		let bytes = base64::engine::general_purpose::STANDARD.decode(b64).unwrap();
 		image::load_from_memory_with_format(&bytes, image::ImageFormat::Png).unwrap()
 	}

@@ -1,5 +1,5 @@
 # TODO
-- [ ] Automatatic tests using McDefault
+- [ ] Automatic tests using McDefault
 - [ ] Documentation
     - [ ] Document all public functions
         - [ ] Better examples and documentation for packet reading

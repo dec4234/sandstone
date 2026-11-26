@@ -9,6 +9,7 @@ use crate::protocol::game::info::registry::SerializingResult;
 use crate::protocol::testing::McDefault;
 use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
 use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
+use crate::protocol_types::datatypes::var_types::VarInt;
 use sandstone_derive::{AsNbt, FromNbt, McDefault, McDeserialize};
 use serde::{Deserialize, Serialize};
 
@@ -186,32 +187,19 @@ pub struct DamageTag {
 	pub id: String,
 }
 
-/// Monster spawn light level can either be a single integer value or a range. This handles this disambiguation basically
-/// like a union.
+/// Monster spawn light level is either a single integer value or a range.
 #[derive(McDefault, Debug, Clone, PartialEq, McSerialize, McDeserialize)]
-pub struct MonsterSpawnLightLevel {
-	pub isRange: bool,
-	pub level: Option<i32>,
-	pub range: Option<MonsterSpawnLightLevelRange>,
-}
-
-// custom impl needed because its basically a Union<i32, MonsterSpawnLightLevelRange>
-impl From<MonsterSpawnLightLevel> for NbtCompound {
-	fn from(value: MonsterSpawnLightLevel) -> Self {
-		if value.isRange {
-			value.range.unwrap().into()
-		} else {
-			panic!("Cannot convert MonsterSpawnLightLevel to NbtCompound without range");
-		}
-	}
+#[repr(i32)]
+pub enum MonsterSpawnLightLevel {
+	Level(i32) = 0,
+	Range(MonsterSpawnLightLevelRange) = 1,
 }
 
 impl From<MonsterSpawnLightLevel> for NbtTag {
 	fn from(value: MonsterSpawnLightLevel) -> Self {
-		if value.isRange {
-			NbtTag::Compound(NbtCompound::from(value))
-		} else {
-			NbtTag::Int(value.level.unwrap_or(0))
+		match value {
+			MonsterSpawnLightLevel::Level(level) => NbtTag::Int(level),
+			MonsterSpawnLightLevel::Range(range) => NbtTag::Compound(range.into()),
 		}
 	}
 }
@@ -221,16 +209,8 @@ impl TryFrom<NbtTag> for MonsterSpawnLightLevel {
 
 	fn try_from(tag: NbtTag) -> Result<Self, Self::Error> {
 		match tag {
-			NbtTag::Int(level) => Ok(MonsterSpawnLightLevel {
-				isRange: false,
-				level: Some(level),
-				range: None,
-			}),
-			NbtTag::Compound(compound) => Ok(MonsterSpawnLightLevel {
-				isRange: true,
-				level: None,
-				range: Some(MonsterSpawnLightLevelRange::try_from(compound)?),
-			}),
+			NbtTag::Int(level) => Ok(MonsterSpawnLightLevel::Level(level)),
+			NbtTag::Compound(compound) => Ok(MonsterSpawnLightLevel::Range(MonsterSpawnLightLevelRange::try_from(compound)?)),
 			_ => Err(NbtError::InvalidType),
 		}
 	}
@@ -372,14 +352,14 @@ impl McDeserialize for BlockStateProvider {
 
 #[cfg(test)]
 mod tests {
-	use crate::nbt_compound;
-	use crate::protocol::game::info::registry::registry_components::*;
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
-	use crate::protocol::testing::McDefault;
-	use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
-	use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
+    use crate::nbt_compound;
+    use crate::protocol::game::info::registry::registry_components::*;
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol::testing::McDefault;
+    use crate::protocol_types::datatypes::nbt::nbt_error::NbtError;
+    use crate::protocol_types::datatypes::nbt::{NbtCompound, NbtTag};
 
-	/// Shape of the vanilla 26.3 "minecraft:hoe" entry: optional fields present, others absent.
+    /// Shape of the vanilla 26.3 "minecraft:hoe" entry: optional fields present, others absent.
 	fn hoe_transform() -> BlockTransform {
 		let mut provider = NbtCompound::new_no_name();
 		provider.add("type", "minecraft:rule_based");
@@ -445,21 +425,13 @@ mod tests {
 	#[test]
 	fn test_monster_light_level_format() {
 		let mut compound = NbtCompound::new_no_name();
-		let light = MonsterSpawnLightLevel {
-			isRange: true,
-			level: None,
-			range: Some(MonsterSpawnLightLevelRange {
-				min_inclusive: 0,
-				max_inclusive: 15,
-				typ: "minecraft:light_range".to_string(),
-			}),
-		};
+		let light = MonsterSpawnLightLevel::Range(MonsterSpawnLightLevelRange {
+			min_inclusive: 0,
+			max_inclusive: 15,
+			typ: "minecraft:light_range".to_string(),
+		});
 		compound.add("light".to_string(), light);
-		let light_num = MonsterSpawnLightLevel {
-			isRange: false,
-			level: Some(10),
-			range: None,
-		};
+		let light_num = MonsterSpawnLightLevel::Level(10);
 		compound.add("light_num".to_string(), light_num);
 
 		println!("{}", serde_json::to_string(&compound).unwrap());
@@ -565,34 +537,14 @@ mod tests {
 	#[test]
 	fn monster_light_level_tag_conversions() {
 		let single = MonsterSpawnLightLevel::try_from(NbtTag::Int(7)).unwrap();
-		assert!(!single.isRange);
-		assert_eq!(single.level, Some(7));
+		assert_eq!(single, MonsterSpawnLightLevel::Level(7));
 		assert_eq!(NbtTag::from(single), NbtTag::Int(7));
 
 		let range = MonsterSpawnLightLevelRange::mc_default();
 		let ranged = MonsterSpawnLightLevel::try_from(NbtTag::Compound(range.as_nbt())).unwrap();
-		assert!(ranged.isRange);
-		assert_eq!(ranged.range, Some(range.clone()));
-		assert_eq!(NbtTag::from(ranged.clone()), NbtTag::Compound(range.as_nbt()));
-		assert_eq!(NbtCompound::from(ranged), range.as_nbt());
+		assert_eq!(ranged, MonsterSpawnLightLevel::Range(range.clone()));
+		assert_eq!(NbtTag::from(ranged), NbtTag::Compound(range.as_nbt()));
 
 		assert!(matches!(MonsterSpawnLightLevel::try_from(NbtTag::String("7".into())), Err(NbtError::InvalidType)));
-	}
-
-	#[test]
-	fn monster_light_level_without_level_writes_zero() {
-		let level = MonsterSpawnLightLevel {
-			isRange: false,
-			level: None,
-			range: None,
-		};
-		assert_eq!(NbtTag::from(level), NbtTag::Int(0));
-	}
-
-	/// A single level has no compound form. The conversion panics on purpose.
-	#[test]
-	#[should_panic(expected = "without range")]
-	fn monster_light_level_single_to_compound_panics() {
-		let _ = NbtCompound::from(MonsterSpawnLightLevel::try_from(NbtTag::Int(7)).unwrap());
 	}
 }

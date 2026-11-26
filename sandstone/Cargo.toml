@@ -2,6 +2,7 @@
 name = "sandstone"
 version = "0.2.0"
 edition = "2024"
+rust-version = "1.100"
 license = "MIT"
 description = "Networking library for Minecraft: Java Edition servers"
 repository = "https://github.com/dec4234/sandstone"

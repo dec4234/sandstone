@@ -94,11 +94,14 @@ mod macros {
                             }
                         }
 
-                        impl From<Packet> for [<$name Packet>] {
-                            fn from(p: Packet) -> Self {
+                        /// Returns the original packet as the error if it is a different variant.
+                        impl TryFrom<Packet> for [<$name Packet>] {
+                            type Error = Packet;
+
+                            fn try_from(p: Packet) -> Result<Self, Self::Error> {
                                 match p {
-                                    Packet::$name(p) => p,
-                                    _ => panic!("Invalid conversion")
+                                    Packet::$name(p) => Ok(p),
+                                    other => Err(other)
                                 }
                             }
                         }
@@ -288,13 +291,13 @@ mod macros {
 
 #[cfg(test)]
 mod tests {
-	use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
-	use crate::protocol::packets::{Packet, PingRequestPacket, PingResponsePacket, StatusRequestPacket};
-	use crate::protocol::serialization::serializer_error::SerializingErr;
-	use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
-	use crate::protocol_types::datatypes::var_types::VarInt;
+    use crate::protocol::packets::packet_definer::{PacketDirection, PacketState};
+    use crate::protocol::packets::{Packet, PingRequestPacket, PingResponsePacket, StatusRequestPacket};
+    use crate::protocol::serialization::serializer_error::SerializingErr;
+    use crate::protocol::serialization::{McDeserializer, McSerialize, McSerializer, StateBasedDeserializer};
+    use crate::protocol_types::datatypes::var_types::VarInt;
 
-	/// The handshake `next_state` field uses 1 = STATUS, 2 = LOGIN, 3 = TRANSFER.
+    /// The handshake `next_state` field uses 1 = STATUS, 2 = LOGIN, 3 = TRANSFER.
 	#[test]
 	fn packet_state_handshake_ids() {
 		for (id, state) in [(1u8, PacketState::STATUS), (2, PacketState::LOGIN), (3, PacketState::TRANSFER)] {
@@ -340,14 +343,14 @@ mod tests {
 		let body = PingRequestPacket::new(42);
 		let packet: Packet = body.clone().into();
 		assert_eq!(packet, Packet::PingRequest(body.clone()));
-		assert_eq!(PingRequestPacket::from(packet), body);
+		assert_eq!(PingRequestPacket::try_from(packet), Ok(body));
 	}
 
+	/// A wrong variant must not panic. The caller gets the original packet back so it can handle it.
 	#[test]
-	#[should_panic(expected = "Invalid conversion")]
-	fn packet_enum_wrong_conversion_panics() {
+	fn packet_enum_wrong_conversion_returns_packet() {
 		let packet: Packet = StatusRequestPacket::new().into();
-		let _ = PingRequestPacket::from(packet);
+		assert_eq!(PingRequestPacket::try_from(packet.clone()), Err(packet));
 	}
 
 	/// The same id means different packets in different directions. Direction must pick the packet.

@@ -21,7 +21,6 @@ use log::{debug, error, trace};
 use mojang_api::HasJoinedResponse;
 #[cfg(feature = "online")]
 use mojang_api::{generate_server_id, has_joined};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The default server-list status handler. No reason to really override this but you could if you wanted to.
 ///
@@ -85,15 +84,16 @@ impl ServerPingHandler for DefaultServerPingHandler {
 
 		let ping_request = connection.receive_packet().await?;
 
-		match ping_request {
-			Packet::PingRequest(_) => {}
+		let request_payload = match ping_request {
+			Packet::PingRequest(p) => p.payload,
 			_ => return Err(NetworkError::ExpectedDifferentPacket("Expected ping request packet".to_string())),
-		}
+		};
 
 		trace!("Received ping request from {}", connection);
 
+		// The Pong Response must echo the payload of the Ping Request.
 		let packed = Packet::PingResponse(PingResponsePacket {
-			payload: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64,
+			payload: request_payload as u64,
 		});
 
 		connection.send_packet(packed).await?;

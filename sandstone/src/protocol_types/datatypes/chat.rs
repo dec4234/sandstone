@@ -780,7 +780,8 @@ impl HoverEvent {
 		Self::new("show_text", HoverComponent::String(text.into()))
 	}
 
-	pub fn show_item<T: Into<String>>(id: String, count: i32, tag: Option<String>) -> Self {
+	/// Returns an error if the item cannot be encoded as JSON.
+	pub fn show_item<T: Into<String>>(id: String, count: i32, tag: Option<String>) -> Result<Self, serde_json::Error> {
 		let s = {
 			if let Some(compound) = tag {
 				compound
@@ -795,7 +796,7 @@ impl HoverEvent {
 			tag: Some(s),
 		};
 
-		Self::new("show_item", HoverComponent::String(serde_json::to_string(&item).unwrap()))
+		Ok(Self::new("show_item", HoverComponent::String(serde_json::to_string(&item)?)))
 	}
 
 	pub fn show_entity<T: Into<String>>(entity: T) -> Self {

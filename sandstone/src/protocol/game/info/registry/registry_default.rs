@@ -4,8 +4,8 @@
 use crate::nbt_compound;
 use crate::protocol::game::info::registry::registry_components::{CatSounds, ChickenSounds, MonsterSpawnLightLevel, NbtTranslateColor, PigSounds, WolfSounds, WolfVariantAssets};
 use crate::protocol::game::info::registry::{
-	BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
-	WolfVariant, ZombieNautilusVariant,
+    BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
+    WolfVariant, ZombieNautilusVariant,
 };
 use crate::protocol_types::datatypes::nbt::NbtCompound;
 
@@ -147,11 +147,7 @@ impl Default for FrogVariant {
 
 impl Default for MonsterSpawnLightLevel {
 	fn default() -> Self {
-		Self {
-			isRange: false,
-			level: Some(7),
-			range: None,
-		}
+		Self::Level(7)
 	}
 }
 
@@ -257,14 +253,14 @@ impl Default for ZombieNautilusVariant {
 
 #[cfg(test)]
 mod tests {
-	use crate::protocol::game::info::registry::registry_components::MonsterSpawnLightLevel;
-	use crate::protocol::game::info::registry::{
-		BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
-		WolfVariant, ZombieNautilusVariant,
-	};
-	use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
+    use crate::protocol::game::info::registry::registry_components::MonsterSpawnLightLevel;
+    use crate::protocol::game::info::registry::{
+        BannerPattern, Biome, CatSoundVariant, CatVariant, ChickenSoundVariant, ChickenVariant, CowVariant, DimensionType, FrogVariant, PaintingVariant, PigSoundVariant, PigVariant, WolfSoundVariant,
+        WolfVariant, ZombieNautilusVariant,
+    };
+    use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer};
 
-	/// A server can send these defaults as registry data. Each one must survive the real wire path
+    /// A server can send these defaults as registry data. Each one must survive the real wire path
 	/// (NBT serialize, then deserialize) with no change.
 	macro_rules! assert_default_round_trip {
 		($($t:ty),* $(,)?) => {
@@ -319,9 +315,7 @@ mod tests {
 	#[test]
 	fn default_monster_spawn_light_level_is_single_value() {
 		let level = MonsterSpawnLightLevel::default();
-		assert!(!level.isRange);
-		assert!(level.range.is_none());
-		assert!(matches!(level.level, Some(0..=15)));
+		assert!(matches!(level, MonsterSpawnLightLevel::Level(0..=15)));
 	}
 
 	/// Baby and adult sounds must not be swapped or mixed.
