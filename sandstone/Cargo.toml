@@ -1,6 +1,6 @@
 [package]
 name = "sandstone"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 description = "Networking library for Minecraft: Java Edition servers"
@@ -28,9 +28,10 @@ regex = "1.13.2"
 # Used only by the `server` feature.
 smart-default = { version = "0.7.1", optional = true }
 
-sandstone-derive = { path = "src/sandstone-derive" }
+sandstone-derive = { version = "0.2.0", path = "src/sandstone-derive" }
 # Always used for the HasJoinedResponse and HttpError types. The `auth` feature adds its HTTP client.
-mojang-api = { path = "src/util/mojang-api", default-features = false }
+# Published as sandstone-mojang-api. The name mojang-api on crates.io is a different crate.
+mojang-api = { package = "sandstone-mojang-api", version = "0.1.0", path = "src/util/sandstone-mojang-api", default-features = false }
 # Used only by the `anvil` feature (LZ4 compressed chunks).
 lz4_flex = { version = "0.14.2", optional = true }
 xxhash-rust = { version = "0.8.21", features = ["xxh32"], optional = true }

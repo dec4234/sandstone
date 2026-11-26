@@ -82,10 +82,10 @@ pub struct SkinMetadata {
 
 #[cfg(all(test, feature = "http"))]
 mod tests {
-	use super::*;
-	use mockito::Matcher;
+    use super::*;
+    use mockito::Matcher;
 
-	/// `unsigned=false` tells Mojang to include the textures signature. Without it, clients
+    /// `unsigned=false` tells Mojang to include the textures signature. Without it, clients
 	/// that need signed textures do not show the player's skin.
 	#[tokio::test]
 	async fn player_details_requests_signed_profile() {

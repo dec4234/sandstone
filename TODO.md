@@ -1,6 +1,5 @@
 # TODO
 - [ ] Automatatic tests using McDefault
-- [ ] Identifier struct that verifies "minecraft:item" format
 - [ ] Documentation
     - [ ] Document all public functions
         - [ ] Better examples and documentation for packet reading

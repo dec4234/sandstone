@@ -1280,24 +1280,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mojang-api"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.1",
- "log",
- "mockito",
- "rand_chacha 0.10.0",
- "reqwest",
- "rsa",
- "serde",
- "serde_json",
- "sha1",
- "thiserror 2.0.21",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "moka"
 version = "0.12.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1760,11 +1742,11 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.13.4"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
+checksum = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "bytes",
  "futures-core",
  "http",
@@ -1952,7 +1934,7 @@ dependencies = [
 
 [[package]]
 name = "sandstone"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "aes",
  "base64 0.23.1",
@@ -1964,12 +1946,12 @@ dependencies = [
  "image",
  "log",
  "lz4_flex",
- "mojang-api",
  "paste",
  "rand 0.10.4",
  "regex",
  "rsa",
  "sandstone-derive",
+ "sandstone-mojang-api",
  "serde",
  "serde_json",
  "smart-default",
@@ -1981,10 +1963,28 @@ dependencies = [
 
 [[package]]
 name = "sandstone-derive"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "quote",
  "syn 3.0.10",
+]
+
+[[package]]
+name = "sandstone-mojang-api"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "log",
+ "mockito",
+ "rand_chacha 0.10.0",
+ "reqwest",
+ "rsa",
+ "serde",
+ "serde_json",
+ "sha1",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

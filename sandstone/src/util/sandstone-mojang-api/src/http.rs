@@ -156,11 +156,11 @@ pub enum HttpError {
 
 #[cfg(all(test, feature = "http"))]
 mod tests {
-	use super::*;
-	use mockito::Matcher;
-	use serde::Deserialize;
+    use super::*;
+    use mockito::Matcher;
+    use serde::Deserialize;
 
-	/// Query values such as a username or server ID must arrive URL-encoded. If they are not,
+    /// Query values such as a username or server ID must arrive URL-encoded. If they are not,
 	/// a value with `&` or a space would split into wrong parameters and Mojang would check
 	/// the wrong player.
 	#[tokio::test]

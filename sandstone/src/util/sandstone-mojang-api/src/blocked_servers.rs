@@ -30,9 +30,9 @@ pub(crate) fn parse_blocked_servers(response: &str) -> HashSet<String> {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
+    use super::*;
 
-	/// A server checks joins against this set, so blank or padded lines must not become
+    /// A server checks joins against this set, so blank or padded lines must not become
 	/// entries and real hashes must match exactly (no whitespace).
 	#[test]
 	fn parse_blocked_servers_fixture() {

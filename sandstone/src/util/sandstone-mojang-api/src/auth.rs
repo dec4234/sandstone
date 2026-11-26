@@ -181,10 +181,10 @@ pub(crate) async fn get_mojang_public_keys_at(base_url: &str) -> Result<MojangPu
 
 #[cfg(all(test, feature = "http"))]
 mod tests {
-	use super::*;
-	use mockito::Matcher;
+    use super::*;
+    use mockito::Matcher;
 
-	const FIXTURE_PROFILE: &str = include_str!("../tests/fixtures/profile_dec4234.json");
+    const FIXTURE_PROFILE: &str = include_str!("../tests/fixtures/profile_dec4234.json");
 
 	/// The client join request must use the exact field names Mojang expects and send the
 	/// UUID without dashes. With any other shape Mojang rejects the join and the player

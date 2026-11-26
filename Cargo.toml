@@ -2,7 +2,7 @@
 members = [
     "sandstone",
     "sandstone/src/sandstone-derive",
-    "sandstone/src/util/mojang-api",
+    "sandstone/src/util/sandstone-mojang-api",
     "examples/server/status_handler",
     "examples/server/server_login_handler", "examples/client/client_login",
     "data_collectors/registry_data", "data_collectors/chunk_data", "data_collectors/block_states", "data_collectors/registry_entries",

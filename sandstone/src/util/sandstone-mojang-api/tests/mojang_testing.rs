@@ -3,15 +3,15 @@
 //! Offline tests parse saved real responses from `tests/fixtures/` and run with a plain
 //! `cargo test`. The `#[ignore]` tests call the live Mojang API, which is rate limited.
 //! Run them only when needed, one at a time:
-//! `cargo test -p mojang-api -- --ignored --test-threads=1`
+//! `cargo test -p sandstone-mojang-api -- --ignored --test-threads=1`
 
 /// Tests against saved Mojang responses. These need no network and cannot be rate limited.
 /// Each checks that a real response shape still deserializes into our public types.
 #[cfg(test)]
 mod offline {
-	use mojang_api::{MojangPublicKeysResponse, PlayerDetailsResponse, UuidRequestResponse};
+    use sandstone_mojang_api::{MojangPublicKeysResponse, PlayerDetailsResponse, UuidRequestResponse};
 
-	#[test]
+    #[test]
 	fn uuid_from_username_fixture() {
 		let resp: UuidRequestResponse = serde_json::from_str(include_str!("fixtures/uuid_notch.json")).unwrap();
 
@@ -65,13 +65,13 @@ mod offline {
 
 #[cfg(all(test, feature = "http"))]
 mod test {
-	use mojang_api::{generate_server_id, get_blocked_servers, get_mojang_public_keys, get_player_details, get_uuid_from_username, get_uuids_from_usernames, has_joined, join_server};
-	use rand_chacha::rand_core::SeedableRng;
-	use rsa::pkcs8::EncodePublicKey;
-	use rsa::{PrivateKey, PublicKey};
-	use uuid::Uuid;
+    use rand_chacha::rand_core::SeedableRng;
+    use rsa::pkcs8::EncodePublicKey;
+    use rsa::{PrivateKey, PublicKey};
+    use sandstone_mojang_api::{generate_server_id, get_blocked_servers, get_mojang_public_keys, get_player_details, get_uuid_from_username, get_uuids_from_usernames, has_joined, join_server};
+    use uuid::Uuid;
 
-	/// Generates static, deterministic fake credentials for tests that need an RSA public key
+    /// Generates static, deterministic fake credentials for tests that need an RSA public key
 	/// and an AES secret key (e.g. the encryption handshake / server ID hash). The RNG is
 	/// seeded with a fixed value so the same key pair is produced on every run, which keeps
 	/// any derived value (such as the server ID) stable and assertable.

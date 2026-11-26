@@ -1,14 +1,18 @@
 [package]
-name = "mojang-api"
+name = "sandstone-mojang-api"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Mojang API client used by the sandstone Minecraft networking library"
+repository = "https://github.com/dec4234/sandstone"
+keywords = ["minecraft", "mojang", "api"]
 
 [dependencies]
 base64 = "0.23.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 thiserror = "2.0.19"
-reqwest = { version = "0.13.4", default-features = false, features = ["rustls", "query"], optional = true }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "query"], optional = true }
 log = "0.4.33"
 sha1 = { version = "0.11.0", optional = true }
 tokio = { version = "1.53.1", features = ["sync", "macros"], optional = true }

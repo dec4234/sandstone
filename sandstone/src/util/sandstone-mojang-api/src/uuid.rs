@@ -49,10 +49,10 @@ pub(crate) async fn get_uuids_from_usernames_at(base_url: &str, names: Vec<Strin
 
 #[cfg(all(test, feature = "http"))]
 mod tests {
-	use super::*;
-	use mockito::Matcher;
+    use super::*;
+    use mockito::Matcher;
 
-	/// The username goes in the path. A wrong path returns another player's UUID or none.
+    /// The username goes in the path. A wrong path returns another player's UUID or none.
 	#[tokio::test]
 	async fn uuid_from_username_requests_profile_path() {
 		let mut server = mockito::Server::new_async().await;
