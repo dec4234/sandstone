@@ -167,6 +167,131 @@ impl TextComponent {
 		self.hover_event = Some(Box::new(event));
 	}
 
+	/// An empty literal component. Use it as a parent for children with different styles.
+	pub fn empty() -> Self {
+		Self::new(String::new())
+	}
+
+	/// A translatable component with arguments. Each `%s` in the translation is replaced with the
+	/// next argument.
+	pub fn translatable_with<T: Into<String>>(translate: T, args: impl IntoIterator<Item = TextComponent>) -> Self {
+		let args: Vec<TextComponent> = args.into_iter().collect();
+		Self::from_content(ComponentType::Translatable(Box::new(TranslatableContent {
+			translate: translate.into(),
+			fallback: None,
+			with: (!args.is_empty()).then_some(args),
+		})))
+	}
+
+	/// Set the color. Builder form of the `color` field.
+	pub fn color(mut self, color: TextColor) -> Self {
+		self.color = Some(color.protocol_name());
+		self
+	}
+
+	/// Set or clear bold. Builder form of the `bold` field.
+	pub fn bold(mut self, bold: bool) -> Self {
+		self.bold = Some(bold);
+		self
+	}
+
+	/// Set or clear italic. The client shows custom item names and lore in italics, so use
+	/// `italic(false)` for upright text there.
+	pub fn italic(mut self, italic: bool) -> Self {
+		self.italic = Some(italic);
+		self
+	}
+
+	pub fn underlined(mut self, underlined: bool) -> Self {
+		self.underlined = Some(underlined);
+		self
+	}
+
+	pub fn strikethrough(mut self, strikethrough: bool) -> Self {
+		self.strikethrough = Some(strikethrough);
+		self
+	}
+
+	pub fn obfuscated(mut self, obfuscated: bool) -> Self {
+		self.obfuscated = Some(obfuscated);
+		self
+	}
+
+	/// Text put into the chat input when the player shift-clicks this text.
+	pub fn insertion<T: Into<String>>(mut self, text: T) -> Self {
+		self.insertion = Some(text.into());
+		self
+	}
+
+	/// What happens when the player clicks this text.
+	pub fn click(mut self, event: ClickEvent) -> Self {
+		self.set_click_event(event);
+		self
+	}
+
+	/// Show `text` in a tooltip when the player puts the mouse on this text.
+	pub fn hover<T: Into<TextComponent>>(self, text: T) -> Self {
+		self.hover_with(HoverEvent::show_text_component(text.into()))
+	}
+
+	/// Show any hover event (text, item or entity). For text, `hover` is shorter.
+	pub fn hover_with(mut self, event: HoverEvent) -> Self {
+		self.set_hover_event(event);
+		self
+	}
+
+	/// Add a child after this text. The child gets the style of this text, unless it sets its own
+	/// value.
+	pub fn append<T: Into<TextComponent>>(mut self, child: T) -> Self {
+		self.extra.get_or_insert_with(Vec::new).push(child.into());
+		self
+	}
+
+	/// The text with no style, for logs and the console. The server has no language files, so a
+	/// translatable component shows its fallback, or else its key and arguments. The vanilla chat
+	/// format `chat.type.text` shows as `<name> message`.
+	pub fn to_plain(&self) -> String {
+		let mut out = String::new();
+		self.write_plain(&mut out);
+		out
+	}
+
+	fn write_plain(&self, out: &mut String) {
+		match &self.content {
+			ComponentType::Text {
+				text,
+			} => out.push_str(text),
+			ComponentType::Keybind {
+				keybind,
+			} => out.push_str(keybind),
+			ComponentType::Translatable(t) => match (&t.fallback, t.with.as_deref().unwrap_or_default()) {
+				(Some(fallback), _) => out.push_str(fallback),
+				(None, [name, message]) if t.translate == "chat.type.text" => {
+					out.push('<');
+					name.write_plain(out);
+					out.push_str("> ");
+					message.write_plain(out);
+				}
+				(None, []) => out.push_str(&t.translate),
+				(None, args) => {
+					out.push_str(&t.translate);
+					out.push_str(" [");
+					for (i, arg) in args.iter().enumerate() {
+						if i > 0 {
+							out.push_str(", ");
+						}
+						arg.write_plain(out);
+					}
+					out.push(']');
+				}
+			},
+			_ => {}
+		}
+		for child in self.extra.iter().flatten() {
+			child.write_plain(out);
+		}
+	}
+
 	/// True if this TextComponent is just plain literal text with no modifiers.
 	pub fn is_plain(&self) -> bool {
 		matches!(self.content, ComponentType::Text { .. })
@@ -366,6 +491,74 @@ impl McDeserialize for TextComponent {
 impl From<String> for TextComponent {
 	fn from(s: String) -> Self {
 		Self::new(s)
+	}
+}
+
+impl From<&str> for TextComponent {
+	fn from(s: &str) -> Self {
+		Self::new(s)
+	}
+}
+
+impl From<&String> for TextComponent {
+	fn from(s: &String) -> Self {
+		Self::new(s.clone())
+	}
+}
+
+/// The plain text. See [`TextComponent::to_plain`].
+impl fmt::Display for TextComponent {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str(&self.to_plain())
+	}
+}
+
+/// A text color: one of the 16 named colors, or an RGB color. The `color` field of a
+/// [`TextComponent`] holds its [`protocol_name`](TextColor::protocol_name).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TextColor {
+	Black,
+	DarkBlue,
+	DarkGreen,
+	DarkAqua,
+	DarkRed,
+	DarkPurple,
+	Gold,
+	Gray,
+	DarkGray,
+	Blue,
+	Green,
+	Aqua,
+	Red,
+	LightPurple,
+	Yellow,
+	White,
+	Rgb(u8, u8, u8),
+}
+
+impl TextColor {
+	/// The name in the text component format, for example `dark_red` or `#FF8800`.
+	pub fn protocol_name(&self) -> String {
+		let name = match self {
+			Self::Black => "black",
+			Self::DarkBlue => "dark_blue",
+			Self::DarkGreen => "dark_green",
+			Self::DarkAqua => "dark_aqua",
+			Self::DarkRed => "dark_red",
+			Self::DarkPurple => "dark_purple",
+			Self::Gold => "gold",
+			Self::Gray => "gray",
+			Self::DarkGray => "dark_gray",
+			Self::Blue => "blue",
+			Self::Green => "green",
+			Self::Aqua => "aqua",
+			Self::Red => "red",
+			Self::LightPurple => "light_purple",
+			Self::Yellow => "yellow",
+			Self::White => "white",
+			Self::Rgb(r, g, b) => return format!("#{r:02X}{g:02X}{b:02X}"),
+		};
+		name.to_string()
 	}
 }
 
@@ -1389,6 +1582,68 @@ pub enum PlayerChatFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A component with no style must stay plain, so that it goes on the wire as a String tag.
+	#[test]
+	fn builder_plain_text_is_plain() {
+		assert!(TextComponent::from("hi").is_plain());
+		assert!(!TextComponent::from("hi").append("x").is_plain());
+	}
+
+	/// The builder must write the protocol names, and a child keeps only its own style.
+	#[test]
+	fn builder_style_goes_to_the_fields() {
+		let c = TextComponent::new("a")
+			.color(TextColor::Rgb(255, 136, 0))
+			.bold(true)
+			.italic(false)
+			.insertion("x")
+			.append(TextComponent::new("b").color(TextColor::Red));
+		assert_eq!(c.color.as_deref(), Some("#FF8800"));
+		assert_eq!(c.bold, Some(true));
+		assert_eq!(c.italic, Some(false));
+		assert_eq!(c.underlined, None);
+		assert_eq!(c.insertion.as_deref(), Some("x"));
+		let extra = c.extra.unwrap();
+		assert_eq!(extra[0].color.as_deref(), Some("red"));
+		assert_eq!(extra[0].bold, None);
+	}
+
+	#[test]
+	fn builder_click_and_hover() {
+		let c = TextComponent::new("a").click(ClickEvent::run_command("/list")).hover(TextComponent::new("tip").color(TextColor::Gold));
+		assert_eq!(c.click_event.as_deref(), Some(&ClickEvent::run_command("/list")));
+		let Some(HoverEvent::ShowText {
+			value,
+		}) = c.hover_event.as_deref()
+		else {
+			panic!("expected a text hover, got {:?}", c.hover_event)
+		};
+		assert_eq!(value.color.as_deref(), Some("gold"));
+
+		let uuid = Uuid::from_u128(7);
+		let event = HoverEvent::show_entity("minecraft:pig", uuid, Some(TextComponent::new("Bob")));
+		let c = TextComponent::new("b").hover_with(event.clone());
+		assert_eq!(c.hover_event.as_deref(), Some(&event));
+	}
+
+	/// The console shows chat in the usual `<name> message` form, and a translation with no
+	/// fallback keeps its arguments so that the log is not empty.
+	#[test]
+	fn plain_text_of_children_and_translations() {
+		let t = TextComponent::new("a").append(TextComponent::new("b").bold(true)).append("c");
+		assert_eq!(t.to_plain(), "abc");
+		assert_eq!(t.to_string(), "abc");
+		let chat = TextComponent::translatable_with("chat.type.text", ["Steve".into(), "hello".into()]);
+		assert_eq!(chat.to_plain(), "<Steve> hello");
+		assert_eq!(TextComponent::translatable_with("x.y", ["1".into(), "2".into()]).to_plain(), "x.y [1, 2]");
+		assert_eq!(TextComponent::translatable("x.y").to_plain(), "x.y");
+		let mut fallback = TextComponent::translatable("x.y");
+		if let ComponentType::Translatable(t) = &mut fallback.content {
+			t.fallback = Some("English".into());
+		}
+		assert_eq!(fallback.to_plain(), "English");
+	}
 
     /// Serialize via the NBT wire path and read it back. The content type must survive the round
 	/// trip, since the receiving client relies on it to know how to render the component.

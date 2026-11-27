@@ -1,6 +1,8 @@
 use crate::protocol::game::effects::particle::Particle;
 use crate::protocol::game::player::inventory::slotdata::SlotData;
 use crate::protocol::packets::packet_parts::item::IdOrPaintingVariant;
+use crate::protocol::packets::packet_parts::item_modifiers::DyeColor;
+use crate::protocol::packets::packet_parts::player::MainHand;
 use crate::protocol::serialization::serializer_error::SerializingErr;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
 use crate::protocol::serialization::{McDeserialize, McDeserializer, McSerialize, McSerializer, SerializingResult};
@@ -12,6 +14,10 @@ use crate::protocol_types::datatypes::var_types::{VarInt, VarLong};
 use sandstone_derive::{McDefault, McDeserialize, McSerialize, VarIntEnum};
 use uuid::Uuid;
 
+/// The type IDs are the registration order in `EntityDataSerializers` (verified against the 26.3
+/// server jar).
+///
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_metadata#Entity_Metadata_Format>
 #[derive(VarIntEnum, Debug, Clone, PartialEq)]
 #[repr(i32)]
 pub enum EntityMetadataValue {
@@ -24,36 +30,60 @@ pub enum EntityMetadataValue {
 	OptionalTextComponent(PrefixedOptional<TextComponent>) = 6,
 	Slot(SlotData) = 7,
 	Boolean(bool) = 8,
+	/// Rotation on x, y, z.
 	Rotations(f32, f32, f32) = 9,
 	Position(Position) = 10,
 	OptionalPosition(PrefixedOptional<Position>) = 11,
-	Direction(VarInt) = 12,
+	Direction(Direction) = 12,
 	OptionalLivingEntityRef(PrefixedOptional<Uuid>) = 13,
+	/// An ID in the block state registry.
 	BlockState(VarInt) = 14,
+	/// 0 for absent (air cannot be sent); otherwise, an ID in the block state registry.
 	OptionalBlockState(VarInt) = 15,
 	Particle(Particle) = 16,
 	Particles(PrefixedArray<Particle>) = 17,
-	VillagerData(VarInt, VarInt, VarInt) = 18,
+	VillagerData(VillagerData) = 18,
+	/// 0 for absent; otherwise 1 + the value. Used for entity IDs.
 	OptionalVarInt(VarInt) = 19,
-	Pose(VarInt) = 20,
+	Pose(Pose) = 20,
+	/// An ID in the `minecraft:cat_variant` registry.
 	CatVariant(VarInt) = 21,
-	CowVariant(VarInt) = 22,
-	WolfVariant(VarInt) = 23,
-	WolfSoundVariant(VarInt) = 24,
-	FrogVariant(VarInt) = 25,
-	PigVariant(VarInt) = 26,
-	ChickenVariant(VarInt) = 27,
-	ZombieNautilusVariant(VarInt) = 28,
-	OptionalGlobalPosition(PrefixedOptional<GlobalPosition>) = 29,
-	PaintingVariant(IdOrPaintingVariant) = 30,
-	SnifferState(VarInt) = 31,
-	ArmadilloState(VarInt) = 32,
-	CopperGolemState(VarInt) = 33,
-	WeatheringCopperState(VarInt) = 34,
-	Vector3(f32, f32, f32) = 35,
-	Quaternion(f32, f32, f32, f32) = 36,
-	ResolvableProfile(ResolvableProfile) = 37,
-	HumanoidArm(VarInt) = 38,
+	/// An ID in the `minecraft:cat_sound_variant` registry.
+	CatSoundVariant(VarInt) = 22,
+	/// An ID in the `minecraft:cow_variant` registry.
+	CowVariant(VarInt) = 23,
+	/// An ID in the `minecraft:cow_sound_variant` registry.
+	CowSoundVariant(VarInt) = 24,
+	/// An ID in the `minecraft:wolf_variant` registry.
+	WolfVariant(VarInt) = 25,
+	/// An ID in the `minecraft:wolf_sound_variant` registry.
+	WolfSoundVariant(VarInt) = 26,
+	/// An ID in the `minecraft:frog_variant` registry.
+	FrogVariant(VarInt) = 27,
+	/// An ID in the `minecraft:pig_variant` registry.
+	PigVariant(VarInt) = 28,
+	/// An ID in the `minecraft:pig_sound_variant` registry.
+	PigSoundVariant(VarInt) = 29,
+	/// An ID in the `minecraft:chicken_variant` registry.
+	ChickenVariant(VarInt) = 30,
+	/// An ID in the `minecraft:chicken_sound_variant` registry.
+	ChickenSoundVariant(VarInt) = 31,
+	/// An ID in the `minecraft:zombie_nautilus_variant` registry.
+	ZombieNautilusVariant(VarInt) = 32,
+	OptionalGlobalPosition(PrefixedOptional<GlobalPosition>) = 33,
+	PaintingVariant(IdOrPaintingVariant) = 34,
+	SnifferState(SnifferState) = 35,
+	ArmadilloState(ArmadilloState) = 36,
+	CopperGolemState(CopperGolemState) = 37,
+	WeatheringCopperState(WeatheringCopperState) = 38,
+	/// x, y, z
+	Vector3(f32, f32, f32) = 39,
+	/// x, y, z, w
+	Quaternion(f32, f32, f32, f32) = 40,
+	ResolvableProfile(ResolvableProfile) = 41,
+	/// The wire values are the same as the client setting, so this uses [MainHand].
+	HumanoidArm(MainHand) = 42,
+	DyeColor(DyeColor) = 43,
 }
 
 impl McDefault for EntityMetadataValue {
@@ -68,6 +98,90 @@ impl McDefault for EntityMetadataValue {
 pub struct GlobalPosition {
 	pub dimension: Identifier,
 	pub position: Position,
+}
+
+/// The data carried by [EntityMetadataValue::VillagerData].
+#[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
+pub struct VillagerData {
+	/// An ID in the `minecraft:villager_type` registry.
+	pub villager_type: VarInt,
+	/// An ID in the `minecraft:villager_profession` registry.
+	pub profession: VarInt,
+	pub level: VarInt,
+}
+
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_metadata#Entity_Metadata_Format>
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
+pub enum Direction {
+	Down = 0,
+	Up = 1,
+	North = 2,
+	South = 3,
+	West = 4,
+	East = 5,
+}
+
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_metadata#Entity_Metadata_Format>
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
+pub enum Pose {
+	Standing = 0,
+	FallFlying = 1,
+	Sleeping = 2,
+	Swimming = 3,
+	SpinAttack = 4,
+	Sneaking = 5,
+	LongJumping = 6,
+	Dying = 7,
+	Croaking = 8,
+	UsingTongue = 9,
+	Sitting = 10,
+	Roaring = 11,
+	Sniffing = 12,
+	Emerging = 13,
+	Digging = 14,
+	Sliding = 15,
+	Shooting = 16,
+	Inhaling = 17,
+}
+
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_metadata#Entity_Metadata_Format>
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
+pub enum SnifferState {
+	Idling = 0,
+	FeelingHappy = 1,
+	Scenting = 2,
+	Sniffing = 3,
+	Searching = 4,
+	Digging = 5,
+	Rising = 6,
+}
+
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_metadata#Entity_Metadata_Format>
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
+pub enum ArmadilloState {
+	Idle = 0,
+	Rolling = 1,
+	Scared = 2,
+	Unrolling = 3,
+}
+
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_metadata#Entity_Metadata_Format>
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
+pub enum CopperGolemState {
+	Idle = 0,
+	GettingItem = 1,
+	GettingNoItem = 2,
+	DroppingItem = 3,
+	DroppingNoItem = 4,
+}
+
+/// <https://minecraft.wiki/w/Java_Edition_protocol/Entity_metadata#Entity_Metadata_Format>
+#[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
+pub enum WeatheringCopperState {
+	Unaffected = 0,
+	Exposed = 1,
+	Weathered = 2,
+	Oxidized = 3,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -181,11 +295,42 @@ mod test {
 	}
 
 	#[test]
-	fn value_type_ids_match_wiki() {
+	fn value_type_ids_match_vanilla() {
+		// IDs from the EntityDataSerializers registration order in the 26.3 server jar. A wrong ID
+		// makes the client read the value with the wrong type and disconnect.
 		assert_eq!(ser(&EntityMetadataValue::VarInt(VarInt(1))), vec![1, 1]);
 		assert_eq!(ser(&EntityMetadataValue::Boolean(false)), vec![8, 0]);
-		assert_eq!(ser(&EntityMetadataValue::Pose(VarInt(5))), vec![20, 5]);
-		assert_eq!(ser(&EntityMetadataValue::HumanoidArm(VarInt(1))), vec![38, 1]);
+		assert_eq!(ser(&EntityMetadataValue::Direction(Direction::East)), vec![12, 5]);
+		assert_eq!(ser(&EntityMetadataValue::Pose(Pose::Sneaking)), vec![20, 5]);
+		assert_eq!(ser(&EntityMetadataValue::CatSoundVariant(VarInt(0))), vec![22, 0]);
+		assert_eq!(ser(&EntityMetadataValue::ChickenSoundVariant(VarInt(0))), vec![31, 0]);
+		assert_eq!(ser(&EntityMetadataValue::ZombieNautilusVariant(VarInt(0))), vec![32, 0]);
+		assert_eq!(ser(&EntityMetadataValue::SnifferState(SnifferState::Rising)), vec![35, 6]);
+		assert_eq!(ser(&EntityMetadataValue::ArmadilloState(ArmadilloState::Unrolling)), vec![36, 3]);
+		assert_eq!(ser(&EntityMetadataValue::CopperGolemState(CopperGolemState::DroppingNoItem)), vec![37, 4]);
+		assert_eq!(ser(&EntityMetadataValue::WeatheringCopperState(WeatheringCopperState::Oxidized)), vec![38, 3]);
+		assert_eq!(ser(&EntityMetadataValue::HumanoidArm(MainHand::Right)), vec![42, 1]);
+		assert_eq!(ser(&EntityMetadataValue::DyeColor(DyeColor::Black)), vec![43, 15]);
+	}
+
+	#[test]
+	fn subtype_values_match_vanilla() {
+		// Values are the enum ordinals in the 26.3 server jar. The last value of each enum checks
+		// that no value is missing in the middle.
+		assert_eq!(ser(&Pose::Standing), vec![0]);
+		assert_eq!(ser(&Pose::Inhaling), vec![17]);
+		assert_eq!(ser(&Direction::Down), vec![0]);
+		assert_eq!(ser(&SnifferState::Idling), vec![0]);
+		assert_eq!(ser(&CopperGolemState::Idle), vec![0]);
+		assert_eq!(ser(&WeatheringCopperState::Unaffected), vec![0]);
+	}
+
+	#[test]
+	fn unknown_subtype_value_is_an_error() {
+		// A value past the end means the protocol changed. It must fail, not map to a wrong state.
+		assert!(Pose::mc_deserialize(&mut McDeserializer::new(&[18])).is_err());
+		assert!(Direction::mc_deserialize(&mut McDeserializer::new(&[6])).is_err());
+		assert!(EntityMetadataValue::mc_deserialize(&mut McDeserializer::new(&[44, 0])).is_err());
 	}
 
 	#[test]
@@ -205,7 +350,10 @@ mod test {
 				EntityMetadataEntry { index: 9, value: EntityMetadataValue::OptionalLivingEntityRef(PrefixedOptional::new(Some(Uuid::from_u128(7)))) },
 				EntityMetadataEntry { index: 10, value: EntityMetadataValue::Particle(Particle::Flame) },
 				EntityMetadataEntry { index: 11, value: EntityMetadataValue::Particles(PrefixedArray::new(vec![Particle::Dust(0xFF0000, 1.0)])) },
-				EntityMetadataEntry { index: 12, value: EntityMetadataValue::VillagerData(VarInt(1), VarInt(2), VarInt(3)) },
+				EntityMetadataEntry {
+					index: 12,
+					value: EntityMetadataValue::VillagerData(VillagerData { villager_type: VarInt(1), profession: VarInt(2), level: VarInt(3) }),
+				},
 				EntityMetadataEntry {
 					index: 13,
 					value: EntityMetadataValue::OptionalGlobalPosition(PrefixedOptional::new(Some(GlobalPosition { dimension: "minecraft:overworld".parse().unwrap(), position: Position::new(0, 64, 0) }))),
@@ -219,6 +367,12 @@ mod test {
 						properties: PrefixedArray::new(vec![ProfileProperty { name: "textures".into(), value: "abc".into(), signature: PrefixedOptional::new(None) }]),
 					}),
 				},
+				EntityMetadataEntry { index: 16, value: EntityMetadataValue::Pose(Pose::Swimming) },
+				EntityMetadataEntry { index: 17, value: EntityMetadataValue::Direction(Direction::West) },
+				EntityMetadataEntry { index: 18, value: EntityMetadataValue::ArmadilloState(ArmadilloState::Scared) },
+				EntityMetadataEntry { index: 19, value: EntityMetadataValue::HumanoidArm(MainHand::Left) },
+				EntityMetadataEntry { index: 20, value: EntityMetadataValue::DyeColor(DyeColor::Red) },
+				EntityMetadataEntry { index: 21, value: EntityMetadataValue::PigSoundVariant(VarInt(2)) },
 			],
 		};
 		round_trip(m);
