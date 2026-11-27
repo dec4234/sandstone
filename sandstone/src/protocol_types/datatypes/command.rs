@@ -174,13 +174,16 @@ pub enum NodeType {
 ///
 /// The IDs follow the `minecraft:command_argument_type` registry of the vanilla 26.3 server
 /// (data generator `--reports`). From ID 55 they are different from the wiki list.
+///
+/// The number parsers have no `flags` field. The serializer calculates the flags byte from `min`
+/// and `max`, so a packet cannot have flags that disagree with the bounds.
 #[derive(Debug, Clone)]
 pub enum Parser {
 	BrigadierBool,
-	BrigadierFloat { flags: u8, min: Option<f32>, max: Option<f32> },
-	BrigadierDouble { flags: u8, min: Option<f64>, max: Option<f64> },
-	BrigadierInteger { flags: u8, min: Option<i32>, max: Option<i32> },
-	BrigadierLong { flags: u8, min: Option<i64>, max: Option<i64> },
+	BrigadierFloat { min: Option<f32>, max: Option<f32> },
+	BrigadierDouble { min: Option<f64>, max: Option<f64> },
+	BrigadierInteger { min: Option<i32>, max: Option<i32> },
+	BrigadierLong { min: Option<i64>, max: Option<i64> },
 	BrigadierString(VarInt),
 	MinecraftEntity(u8),
 	MinecraftGameProfile,
@@ -240,7 +243,47 @@ pub enum Parser {
 	MinecraftUuid,
 }
 
-fn deserialize_number_range_f32<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (u8, Option<f32>, Option<f32>)> {
+/// The flags byte of a number parser: 0x01 if there is a min, 0x02 if there is a max. The
+/// serializer calculates it from the bounds, so the flags and the bounds always agree.
+fn number_range_flags(min: bool, max: bool) -> u8 {
+	u8::from(min) | (u8::from(max) << 1)
+}
+
+impl Parser {
+	/// `brigadier:integer` with optional bounds.
+	pub fn integer(min: Option<i32>, max: Option<i32>) -> Self {
+		Parser::BrigadierInteger {
+			min,
+			max,
+		}
+	}
+
+	/// `brigadier:long` with optional bounds.
+	pub fn long(min: Option<i64>, max: Option<i64>) -> Self {
+		Parser::BrigadierLong {
+			min,
+			max,
+		}
+	}
+
+	/// `brigadier:float` with optional bounds.
+	pub fn float(min: Option<f32>, max: Option<f32>) -> Self {
+		Parser::BrigadierFloat {
+			min,
+			max,
+		}
+	}
+
+	/// `brigadier:double` with optional bounds.
+	pub fn double(min: Option<f64>, max: Option<f64>) -> Self {
+		Parser::BrigadierDouble {
+			min,
+			max,
+		}
+	}
+}
+
+fn deserialize_number_range_f32<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (Option<f32>, Option<f32>)> {
 	let flags = u8::mc_deserialize(deserializer)?;
 	let min = if flags & 0x01 != 0 {
 		Some(f32::mc_deserialize(deserializer)?)
@@ -252,11 +295,11 @@ fn deserialize_number_range_f32<'a>(deserializer: &'a mut McDeserializer) -> Ser
 	} else {
 		None
 	};
-	Ok((flags, min, max))
+	Ok((min, max))
 }
 
-fn serialize_number_range_f32(flags: u8, min: &Option<f32>, max: &Option<f32>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
-	flags.mc_serialize(serializer)?;
+fn serialize_number_range_f32(min: &Option<f32>, max: &Option<f32>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
+	number_range_flags(min.is_some(), max.is_some()).mc_serialize(serializer)?;
 	if let Some(v) = min {
 		v.mc_serialize(serializer)?;
 	}
@@ -266,7 +309,7 @@ fn serialize_number_range_f32(flags: u8, min: &Option<f32>, max: &Option<f32>, s
 	Ok(())
 }
 
-fn deserialize_number_range_f64<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (u8, Option<f64>, Option<f64>)> {
+fn deserialize_number_range_f64<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (Option<f64>, Option<f64>)> {
 	let flags = u8::mc_deserialize(deserializer)?;
 	let min = if flags & 0x01 != 0 {
 		Some(f64::mc_deserialize(deserializer)?)
@@ -278,11 +321,11 @@ fn deserialize_number_range_f64<'a>(deserializer: &'a mut McDeserializer) -> Ser
 	} else {
 		None
 	};
-	Ok((flags, min, max))
+	Ok((min, max))
 }
 
-fn serialize_number_range_f64(flags: u8, min: &Option<f64>, max: &Option<f64>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
-	flags.mc_serialize(serializer)?;
+fn serialize_number_range_f64(min: &Option<f64>, max: &Option<f64>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
+	number_range_flags(min.is_some(), max.is_some()).mc_serialize(serializer)?;
 	if let Some(v) = min {
 		v.mc_serialize(serializer)?;
 	}
@@ -292,7 +335,7 @@ fn serialize_number_range_f64(flags: u8, min: &Option<f64>, max: &Option<f64>, s
 	Ok(())
 }
 
-fn deserialize_number_range_i32<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (u8, Option<i32>, Option<i32>)> {
+fn deserialize_number_range_i32<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (Option<i32>, Option<i32>)> {
 	let flags = u8::mc_deserialize(deserializer)?;
 	let min = if flags & 0x01 != 0 {
 		Some(i32::mc_deserialize(deserializer)?)
@@ -304,11 +347,11 @@ fn deserialize_number_range_i32<'a>(deserializer: &'a mut McDeserializer) -> Ser
 	} else {
 		None
 	};
-	Ok((flags, min, max))
+	Ok((min, max))
 }
 
-fn serialize_number_range_i32(flags: u8, min: &Option<i32>, max: &Option<i32>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
-	flags.mc_serialize(serializer)?;
+fn serialize_number_range_i32(min: &Option<i32>, max: &Option<i32>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
+	number_range_flags(min.is_some(), max.is_some()).mc_serialize(serializer)?;
 	if let Some(v) = min {
 		v.mc_serialize(serializer)?;
 	}
@@ -318,7 +361,7 @@ fn serialize_number_range_i32(flags: u8, min: &Option<i32>, max: &Option<i32>, s
 	Ok(())
 }
 
-fn deserialize_number_range_i64<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (u8, Option<i64>, Option<i64>)> {
+fn deserialize_number_range_i64<'a>(deserializer: &'a mut McDeserializer) -> SerializingResult<'a, (Option<i64>, Option<i64>)> {
 	let flags = u8::mc_deserialize(deserializer)?;
 	let min = if flags & 0x01 != 0 {
 		Some(i64::mc_deserialize(deserializer)?)
@@ -330,11 +373,11 @@ fn deserialize_number_range_i64<'a>(deserializer: &'a mut McDeserializer) -> Ser
 	} else {
 		None
 	};
-	Ok((flags, min, max))
+	Ok((min, max))
 }
 
-fn serialize_number_range_i64(flags: u8, min: &Option<i64>, max: &Option<i64>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
-	flags.mc_serialize(serializer)?;
+fn serialize_number_range_i64(min: &Option<i64>, max: &Option<i64>, serializer: &mut McSerializer) -> SerializingResult<'static, ()> {
+	number_range_flags(min.is_some(), max.is_some()).mc_serialize(serializer)?;
 	if let Some(v) = min {
 		v.mc_serialize(serializer)?;
 	}
@@ -349,36 +392,32 @@ impl McSerialize for Parser {
 		match self {
 			Parser::BrigadierBool => VarInt(0).mc_serialize(serializer)?,
 			Parser::BrigadierFloat {
-				flags,
 				min,
 				max,
 			} => {
 				VarInt(1).mc_serialize(serializer)?;
-				serialize_number_range_f32(*flags, min, max, serializer)?;
+				serialize_number_range_f32(min, max, serializer)?;
 			}
 			Parser::BrigadierDouble {
-				flags,
 				min,
 				max,
 			} => {
 				VarInt(2).mc_serialize(serializer)?;
-				serialize_number_range_f64(*flags, min, max, serializer)?;
+				serialize_number_range_f64(min, max, serializer)?;
 			}
 			Parser::BrigadierInteger {
-				flags,
 				min,
 				max,
 			} => {
 				VarInt(3).mc_serialize(serializer)?;
-				serialize_number_range_i32(*flags, min, max, serializer)?;
+				serialize_number_range_i32(min, max, serializer)?;
 			}
 			Parser::BrigadierLong {
-				flags,
 				min,
 				max,
 			} => {
 				VarInt(4).mc_serialize(serializer)?;
-				serialize_number_range_i64(*flags, min, max, serializer)?;
+				serialize_number_range_i64(min, max, serializer)?;
 			}
 			Parser::BrigadierString(behavior) => {
 				VarInt(5).mc_serialize(serializer)?;
@@ -478,33 +517,29 @@ impl McDeserialize for Parser {
 		match id {
 			0 => Ok(Parser::BrigadierBool),
 			1 => {
-				let (flags, min, max) = deserialize_number_range_f32(deserializer)?;
+				let (min, max) = deserialize_number_range_f32(deserializer)?;
 				Ok(Parser::BrigadierFloat {
-					flags,
 					min,
 					max,
 				})
 			}
 			2 => {
-				let (flags, min, max) = deserialize_number_range_f64(deserializer)?;
+				let (min, max) = deserialize_number_range_f64(deserializer)?;
 				Ok(Parser::BrigadierDouble {
-					flags,
 					min,
 					max,
 				})
 			}
 			3 => {
-				let (flags, min, max) = deserialize_number_range_i32(deserializer)?;
+				let (min, max) = deserialize_number_range_i32(deserializer)?;
 				Ok(Parser::BrigadierInteger {
-					flags,
 					min,
 					max,
 				})
 			}
 			4 => {
-				let (flags, min, max) = deserialize_number_range_i64(deserializer)?;
+				let (min, max) = deserialize_number_range_i64(deserializer)?;
 				Ok(Parser::BrigadierLong {
-					flags,
 					min,
 					max,
 				})
@@ -583,38 +618,30 @@ impl Hash for Parser {
 		core::mem::discriminant(self).hash(state);
 		match self {
 			Parser::BrigadierFloat {
-				flags,
 				min,
 				max,
 			} => {
-				flags.hash(state);
 				min.map(|v| v.to_bits()).hash(state);
 				max.map(|v| v.to_bits()).hash(state);
 			}
 			Parser::BrigadierDouble {
-				flags,
 				min,
 				max,
 			} => {
-				flags.hash(state);
 				min.map(|v| v.to_bits()).hash(state);
 				max.map(|v| v.to_bits()).hash(state);
 			}
 			Parser::BrigadierInteger {
-				flags,
 				min,
 				max,
 			} => {
-				flags.hash(state);
 				min.hash(state);
 				max.hash(state);
 			}
 			Parser::BrigadierLong {
-				flags,
 				min,
 				max,
 			} => {
-				flags.hash(state);
 				min.hash(state);
 				max.hash(state);
 			}
@@ -637,52 +664,44 @@ impl PartialEq for Parser {
 		match (self, other) {
 			(
 				Parser::BrigadierFloat {
-					flags: f1,
 					min: mn1,
 					max: mx1,
 				},
 				Parser::BrigadierFloat {
-					flags: f2,
 					min: mn2,
 					max: mx2,
 				},
-			) => f1 == f2 && mn1.map(|v| v.to_bits()) == mn2.map(|v| v.to_bits()) && mx1.map(|v| v.to_bits()) == mx2.map(|v| v.to_bits()),
+			) => mn1.map(|v| v.to_bits()) == mn2.map(|v| v.to_bits()) && mx1.map(|v| v.to_bits()) == mx2.map(|v| v.to_bits()),
 			(
 				Parser::BrigadierDouble {
-					flags: f1,
 					min: mn1,
 					max: mx1,
 				},
 				Parser::BrigadierDouble {
-					flags: f2,
 					min: mn2,
 					max: mx2,
 				},
-			) => f1 == f2 && mn1.map(|v| v.to_bits()) == mn2.map(|v| v.to_bits()) && mx1.map(|v| v.to_bits()) == mx2.map(|v| v.to_bits()),
+			) => mn1.map(|v| v.to_bits()) == mn2.map(|v| v.to_bits()) && mx1.map(|v| v.to_bits()) == mx2.map(|v| v.to_bits()),
 			(
 				Parser::BrigadierInteger {
-					flags: f1,
 					min: mn1,
 					max: mx1,
 				},
 				Parser::BrigadierInteger {
-					flags: f2,
 					min: mn2,
 					max: mx2,
 				},
-			) => f1 == f2 && mn1 == mn2 && mx1 == mx2,
+			) => mn1 == mn2 && mx1 == mx2,
 			(
 				Parser::BrigadierLong {
-					flags: f1,
 					min: mn1,
 					max: mx1,
 				},
 				Parser::BrigadierLong {
-					flags: f2,
 					min: mn2,
 					max: mx2,
 				},
-			) => f1 == f2 && mn1 == mn2 && mx1 == mx2,
+			) => mn1 == mn2 && mx1 == mx2,
 			(Parser::BrigadierString(a), Parser::BrigadierString(b)) => a == b,
 			(Parser::MinecraftEntity(a), Parser::MinecraftEntity(b)) => a == b,
 			(Parser::MinecraftScoreHolder(a), Parser::MinecraftScoreHolder(b)) => a == b,
@@ -715,15 +734,15 @@ mod tests {
 		vec![
 			Parser::BrigadierBool,
 			Parser::MinecraftBlockPos,
-			Parser::BrigadierFloat { flags: 3, min: Some(1.0), max: Some(2.0) },
-			Parser::BrigadierFloat { flags: 3, min: Some(1.0), max: Some(2.5) },
-			Parser::BrigadierFloat { flags: 1, min: Some(f32::NAN), max: None },
-			Parser::BrigadierFloat { flags: 1, min: Some(0.0), max: None },
-			Parser::BrigadierFloat { flags: 1, min: Some(-0.0), max: None },
-			Parser::BrigadierDouble { flags: 3, min: Some(1.0), max: Some(2.0) },
-			Parser::BrigadierDouble { flags: 1, min: Some(f64::NAN), max: None },
-			Parser::BrigadierInteger { flags: 3, min: Some(1), max: Some(2) },
-			Parser::BrigadierLong { flags: 3, min: Some(1), max: Some(2) },
+			Parser::BrigadierFloat { min: Some(1.0), max: Some(2.0) },
+			Parser::BrigadierFloat { min: Some(1.0), max: Some(2.5) },
+			Parser::BrigadierFloat { min: Some(f32::NAN), max: None },
+			Parser::BrigadierFloat { min: Some(0.0), max: None },
+			Parser::BrigadierFloat { min: Some(-0.0), max: None },
+			Parser::BrigadierDouble { min: Some(1.0), max: Some(2.0) },
+			Parser::BrigadierDouble { min: Some(f64::NAN), max: None },
+			Parser::BrigadierInteger { min: Some(1), max: Some(2) },
+			Parser::BrigadierLong { min: Some(1), max: Some(2) },
 			Parser::MinecraftEntity(1),
 			Parser::MinecraftEntity(2),
 			Parser::MinecraftTime(5),
@@ -754,7 +773,7 @@ mod tests {
 	/// bounds are different parsers on the wire.
 	#[test]
 	fn same_payload_different_variant_is_not_equal() {
-		assert_ne!(Parser::BrigadierInteger { flags: 0, min: None, max: None }, Parser::BrigadierLong { flags: 0, min: None, max: None });
+		assert_ne!(Parser::BrigadierInteger { min: None, max: None }, Parser::BrigadierLong { min: None, max: None });
 		assert_ne!(Parser::MinecraftResource("x".parse().unwrap()), Parser::MinecraftResourceKey("x".parse().unwrap()));
 		assert_ne!(Parser::BrigadierBool, Parser::MinecraftBlockPos);
 	}

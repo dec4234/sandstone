@@ -100,7 +100,6 @@ mod test {
 			redirect_node: Some(VarInt(9)),
 			name: Some("amount".to_string()),
 			parser: Some(Parser::BrigadierInteger {
-				flags: 0x03,
 				min: Some(1),
 				max: Some(64),
 			}),
@@ -123,7 +122,6 @@ mod test {
 			redirect_node: None,
 			name: Some("x".to_string()),
 			parser: Some(Parser::BrigadierDouble {
-				flags: 0x02,
 				min: None,
 				max: Some(1.5),
 			}),
@@ -179,7 +177,6 @@ mod test {
 	fn number_range_without_bounds_has_only_flags_byte() {
 		// Wiki: min and max are present only if their flag bit is set.
 		let parser = Parser::BrigadierLong {
-			flags: 0,
 			min: None,
 			max: None,
 		};
@@ -190,11 +187,21 @@ mod test {
 		assert_eq!(
 			Parser::mc_deserialize(&mut d).unwrap(),
 			Parser::BrigadierInteger {
-				flags: 0x02,
 				min: None,
 				max: Some(10)
 			}
 		);
+	}
+
+	/// The flags byte comes from the bounds. Before, a parser could have flags that disagree with
+	/// the bounds, and the client could not read the rest of the packet.
+	#[test]
+	fn number_flags_are_calculated_from_bounds() {
+		assert_eq!(to_bytes(&Parser::integer(Some(1), None)), [vec![3, 0x01], 1i32.to_be_bytes().to_vec()].concat());
+		assert_eq!(to_bytes(&Parser::integer(None, Some(5))), [vec![3, 0x02], 5i32.to_be_bytes().to_vec()].concat());
+		assert_eq!(to_bytes(&Parser::float(Some(0.5), Some(2.0))), [vec![1, 0x03], 0.5f32.to_be_bytes().to_vec(), 2.0f32.to_be_bytes().to_vec()].concat());
+		assert_eq!(to_bytes(&Parser::double(None, None)), vec![2, 0x00]);
+		assert_eq!(to_bytes(&Parser::long(Some(-1), None)), [vec![4, 0x01], (-1i64).to_be_bytes().to_vec()].concat());
 	}
 
 	#[test]
