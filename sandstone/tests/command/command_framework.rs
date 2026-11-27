@@ -7,17 +7,17 @@
 
 #[cfg(test)]
 mod test {
-	use sandstone::game::command::{
-		ArgumentError, ArgumentType, ArgumentValue, BlockPosArgument, CommandGraph, CommandParseErrorKind, Coordinates, CustomValue, EntityArgument, EntitySelector, EnumArgument, GameModeArgument,
-		Suggestion, Vec3Argument, WorldCoordinate, ask_server,
-	};
-	use sandstone::game::player::PlayerGamemode;
-	use sandstone::protocol::packets::CommandsGraphPacket;
-	use sandstone::protocol_types::datatypes::chat::{ComponentType, TextComponent};
-	use sandstone::protocol_types::datatypes::command::Parser;
-	use sandstone::protocol_types::datatypes::var_types::VarInt;
+    use sandstone::game::command::{
+        ArgumentError, ArgumentType, ArgumentValue, BlockPosArgument, CommandGraph, CommandParseErrorKind, CommandSource, Coordinates, CustomValue, EntityArgument, EntitySelector, EnumArgument, GameModeArgument,
+        Suggestion, Vec3Argument, WorldCoordinate, ask_server,
+    };
+    use sandstone::game::player::PlayerGamemode;
+    use sandstone::protocol::packets::CommandsGraphPacket;
+    use sandstone::protocol_types::datatypes::chat::{ComponentType, TextComponent};
+    use sandstone::protocol_types::datatypes::command::Parser;
+    use sandstone::protocol_types::datatypes::var_types::VarInt;
 
-	/// The names of the root literals in a packet.
+    /// The names of the root literals in a packet.
 	fn root_names(packet: &CommandsGraphPacket) -> Vec<String> {
 		let nodes = packet.nodes.slice();
 		let root = &nodes[packet.root_index.0 as usize];
@@ -98,9 +98,15 @@ mod test {
 
 	// ---- requirements ----
 
-	/// The sender is a permission level. The handler is a name, so the test can see which handler
-	/// the parse gives.
-	fn permission_graph() -> CommandGraph<u8, &'static str> {
+	/// The sender is a permission level.
+	struct Level;
+
+	impl CommandSource for Level {
+		type Sender<'a> = u8;
+	}
+
+	/// The handler is a name, so the test can see which handler the parse gives.
+	fn permission_graph() -> CommandGraph<Level, &'static str> {
 		let mut g = CommandGraph::new();
 		let root = g.root();
 		let help = g.add_literal(root, "help");
@@ -138,7 +144,7 @@ mod test {
 	/// no children, and the client cannot follow it.
 	#[test]
 	fn redirect_to_a_hidden_node_is_dropped_from_the_packet() {
-		let mut g: CommandGraph<u8> = CommandGraph::new();
+		let mut g: CommandGraph<Level> = CommandGraph::new();
 		let root = g.root();
 		let secret = g.add_literal(root, "secret");
 		g.set_executable(secret, true);
@@ -175,22 +181,34 @@ mod test {
 
 	// ---- suggestions ----
 
+	/// The sender borrows the names of the online players. A server keeps the graph in its game
+	/// state, so the sender must be able to borrow data that lives shorter than the graph.
+	struct Online;
+
+	impl CommandSource for Online {
+		type Sender<'a> = &'a [String];
+	}
+
+	fn names(names: &[&str]) -> Vec<String> {
+		names.iter().map(|n| n.to_string()).collect()
+	}
+
 	/// The server must be able to suggest online player names. Without a provider, the client
 	/// asks the server and gets nothing.
 	#[test]
 	fn suggestion_provider_gives_values_with_tooltips() {
-		let mut g: CommandGraph<Vec<&'static str>> = CommandGraph::new();
+		let mut g: CommandGraph<Online> = CommandGraph::new();
 		let msg = g.add_literal(g.root(), "msg");
 		let target = g.add_argument(msg, "target", Parser::BrigadierString(VarInt(0)));
-		g.set_suggestion_provider(target, |online: &Vec<&'static str>, _partial| online.iter().map(|n| Suggestion::with_tooltip(*n, TextComponent::new("online"))).collect());
+		g.set_suggestion_provider(target, |online: &&[String], _partial| online.iter().map(|n| Suggestion::with_tooltip(n.as_str(), TextComponent::new("online"))).collect());
 
 		// The client asks the server only if the node has a suggestions type.
 		let packet = g.to_packet();
 		let wire = packet.nodes.slice().iter().find(|n| n.name.as_deref() == Some("target")).unwrap();
 		assert_eq!(wire.suggestions, Some(ask_server()));
 
-		let online = vec!["Alice", "alfred", "Bob"];
-		let s = g.suggest(&online, "msg al");
+		let online = names(&["Alice", "alfred", "Bob"]);
+		let s = g.suggest(&online.as_slice(), "msg al");
 		assert_eq!(s.texts(), vec!["Alice", "alfred"], "prefix filter that ignores case, sorted");
 		assert_eq!(s.nodes, vec![target], "the node of the last word");
 		assert_eq!(s.matches[0].tooltip, Some(TextComponent::new("online")));
@@ -216,15 +234,15 @@ mod test {
 
 	// ---- argument types ----
 
-	/// A server type that accepts only online players. The sender is the list of online names.
+	/// A server type that accepts only online players.
 	struct OnlinePlayer;
 
-	impl ArgumentType<Vec<&'static str>> for OnlinePlayer {
+	impl ArgumentType<Online> for OnlinePlayer {
 		fn parser(&self) -> Parser {
 			Parser::MinecraftEntity(0x03)
 		}
 
-		fn read(&self, online: &Vec<&'static str>, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
+		fn read(&self, online: &&[String], rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
 			let word = rest.split(' ').next().unwrap_or("");
 			match online.iter().position(|n| *n == word) {
 				Some(index) => Ok((word.len(), ArgumentValue::Custom(CustomValue::new(index)))),
@@ -237,20 +255,20 @@ mod test {
 	/// next argument child, as Brigadier does.
 	#[test]
 	fn typed_argument_can_reject_and_the_next_child_is_tried() {
-		let mut g: CommandGraph<Vec<&'static str>> = CommandGraph::new();
+		let mut g: CommandGraph<Online> = CommandGraph::new();
 		let find = g.add_literal(g.root(), "find");
 		let player = g.add_typed_argument(find, "player", OnlinePlayer);
 		g.set_executable(player, true);
 		let item = g.add_argument(find, "item", Parser::BrigadierString(VarInt(0)));
 		g.set_executable(item, true);
 
-		let online = vec!["alice", "bob"];
-		let p = g.parse(&online, "find bob").unwrap();
+		let online = names(&["alice", "bob"]);
+		let p = g.parse(&online.as_slice(), "find bob").unwrap();
 		assert_eq!(p.executed(), player);
 		assert_eq!(p.custom::<usize>("player"), Some(&1));
 		assert_eq!(p.custom::<String>("player"), None, "wrong type");
 
-		let p = g.parse(&online, "find carol").unwrap();
+		let p = g.parse(&online.as_slice(), "find carol").unwrap();
 		assert_eq!(p.executed(), item);
 		assert_eq!(p.argument("item"), Some(&ArgumentValue::String("carol".to_string())));
 

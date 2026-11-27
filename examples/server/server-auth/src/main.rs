@@ -2,6 +2,7 @@ use log::{LevelFilter, debug, info};
 use sandstone::network::CraftConnection;
 use sandstone::network::server::server_handler_impl::{DefaultServerEncryptionHandler, DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
 use sandstone::network::server::server_handler_trait::{ServerEncryptionHandler, ServerHandshakeHandler, ServerStatusHandler};
+use sandstone::network::server::server_login_impl::LoginProfile;
 use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState};
 use sandstone::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::packets::{LoginSuccessPacket, Packet, SetCompressionPacket, StatusResponsePacket};
@@ -10,7 +11,6 @@ use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
 use simple_logger::SimpleLogger;
 use tokio::net::TcpListener;
-use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
@@ -51,14 +51,16 @@ async fn main() {
 			}
 		};
 
-		DefaultServerEncryptionHandler::handle_encryption(&mut client, true, username.clone(), None).await.unwrap();
+		// With Mojang authentication on, the handler returns the player's Mojang profile.
+		let auth = DefaultServerEncryptionHandler::handle_encryption(&mut client, true, username, None).await.unwrap();
+		let profile = LoginProfile::try_from(auth.expect("Mojang authentication was requested")).unwrap();
 
 		let set_compression = Packet::SetCompression(SetCompressionPacket::new(VarInt(400)));
 		client.send_packet(set_compression).await.unwrap();
 		client.enable_compression(Some(400));
 		debug!("Sent set compression to {client} and enabled compression");
 
-		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(Uuid::new_v4(), username, PrefixedArray::new(vec![]), Uuid::new_v4()));
+		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(profile.uuid, profile.username, PrefixedArray::new(profile.properties)));
 		client.send_packet(login_success).await.unwrap();
 
 		let login_ack = client.receive_packet().await.unwrap();

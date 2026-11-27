@@ -55,7 +55,7 @@ use packet_parts::stats::StatisticAward;
 use packet_parts::status::StatusResponseSpec;
 use packet_parts::{
     AddResourcePackSpec, AttributeProperty, BossBarUpdateAction, ChunkBiomeData, CustomReportDetails, EquipmentList, GameEventType, InteractHand, LoginCookieResponseSpec, LoginPluginSpec,
-    ParticleRandomizationType, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StonecutterRecipe, Tag, TooltipMatch, WorldClock,
+    ParticleRandomizationType, PlayerCommandAction, PropertySet, RecipeBookEntry, ResourcePackEntry, ServerLink, StonecutterRecipe, Tag, TooltipMatch, WorldClock,
 };
 use uuid::Uuid;
 
@@ -107,11 +107,10 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				#[doc = "Set this to false if you want encryption but want to be in offline mode"]
 				should_authenticate_with_mojang: bool
 			},
-			LoginSuccess, 0x02 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Login_Success>"] => { // todo: needs to be fixed
+			LoginSuccess, 0x02 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Login_Success>"] => {
 				uuid: Uuid,
 				username: String,
-				array: PrefixedArray<ProtocolPropertyElement>,
-				session_id: Uuid
+				properties: PrefixedArray<ProtocolPropertyElement>
 			},
 			SetCompression, 0x03 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Compression>"] => {
 				#[doc = "The threshold for compression, in bytes. If the packet size is larger than this, it will be compressed."]
@@ -1258,6 +1257,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			},
 			PlayerCommand, 0x2A #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Command>"] => {
 				entity_id: VarInt,
+				action: PlayerCommandAction,
 				#[doc = "0 to 100 for jumping on a horse"]
 				jump_boost: VarInt // todo: FixedVarInt?
 			},

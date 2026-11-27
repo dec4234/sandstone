@@ -1,4 +1,4 @@
-﻿use crate::protocol::game::effects::sound::SoundEvent;
+use crate::protocol::game::effects::sound::SoundEvent;
 use crate::protocol::game::entity::ResolvableProfile;
 use crate::protocol::game::player::inventory::slotdata::SlotData;
 use crate::protocol::packets::packet_parts::block::BlockPredicate;
@@ -459,6 +459,9 @@ impl McDefault for PaintingVariantComponent {
 /// # Structured Component (Packet Part)
 /// Serializes the enum ID as a VarInt first then the body of the StructuredComponent entry
 ///
+/// The IDs are the protocol IDs of the 26.3 `minecraft:data_component_type` registry. Components
+/// that are not in this enum (for example `use_effects` or `attack_range`) cannot be read yet.
+///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Slot_data#Structured_components>
 #[derive(VarIntEnum, Debug, Clone, PartialEq)]
 #[repr(i32)]
@@ -468,97 +471,96 @@ pub enum StructuredComponent {
 	MaxDamage(VarInt) = 2,
 	Damage(VarInt) = 3,
 	Unbreakable = 4,
-	CustomName(TextComponent) = 5,
-	ItemName(TextComponent) = 6,
-	ItemModel(Identifier) = 7,
-	Lore(PrefixedArray<TextComponent>) = 8,
-	Rarity(VarInt) = 9,
-	Enchantments(EnchantmentList) = 10,
-	CanPlaceOn(PrefixedArray<BlockPredicate>) = 11,
-	CanBreak(PrefixedArray<BlockPredicate>) = 12,
-	AttributeModifiers(AttributeModifierList) = 13,
-	CustomModelData(CustomModelDataComponent) = 14,
-	TooltipDisplay(TooltipDisplayComponent) = 15,
-	RepairCost(VarInt) = 16,
-	CreativeSlotLock = 17,
-	EnchantmentGlintOverride(bool) = 18,
-	IntangibleProjectile(NbtCompound) = 19,
-	Food(FoodComponent) = 20,
-	Consumable(ConsumableComponent) = 21,
-	UseRemainder(Box<SlotData>) = 22,
-	UseCooldown(UseCooldownComponent) = 23,
-	DamageResistant(String) = 24,
-	Tool(ToolComponent) = 25,
-	Weapon(WeaponComponent) = 26,
-	Enchantable(VarInt) = 27,
-	Equippable(EquippableComponent) = 28,
-	Repairable(IDSet) = 29,
-	Glider = 30,
-	TooltipStyle(Identifier) = 31,
-	DeathProtection(PrefixedArray<ConsumeEffect>) = 32,
-	BlocksAttacks(BlocksAttacksComponent) = 33,
-	StoredEnchantments(EnchantmentList) = 34,
-	DyedColor(i32) = 35,
-	MapColor(i32) = 36,
-	MapId(VarInt) = 37,
-	MapDecorations(NbtCompound) = 38,
-	MapPostProcessing(VarInt) = 39,
-	ChargedProjectiles(PrefixedArray<SlotData>) = 40,
-	BundleContents(PrefixedArray<SlotData>) = 41,
-	PotionContents(PotionContentsComponent) = 42,
-	PotionDurationScale(f32) = 43,
-	SuspiciousStewEffects(SuspiciousStewList) = 44,
-	WritableBookContent(WritableBookComponent) = 45,
-	WrittenBookContent(WrittenBookComponent) = 46,
-	Trim(TrimComponent) = 47,
-	DebugStickState(NbtCompound) = 48,
-	EntityData(EntityDataComponent) = 49,
-	BucketEntityData(NbtCompound) = 50,
-	BlockEntityData(BlockEntityDataComponent) = 51,
-	InstrumentComponent(IdOrInstrument) = 52,
-	ProvidesTrimMaterial(ProvidesTrimMaterialComponent) = 53,
-	OminousBottleAmplifier(VarInt) = 54,
-	JukeboxPlayable(JukeboxPlayableComponent) = 55,
-	ProvidesBannerPatterns(String) = 56,
-	Recipes(NbtCompound) = 57,
-	LodestoneTracker(LodestoneTrackerComponent) = 58,
-	FireworkExplosionComponent(FireworkExplosion) = 59,
-	Fireworks(FireworksComponent) = 60,
-	Profile(ResolvableProfile) = 61,
-	NoteBlockSound(Identifier) = 62,
-	BannerPatterns(BannerPatternsComponent) = 63,
-	BaseColor(DyeColor) = 64,
-	PotDecorations(PrefixedArray<VarInt>) = 65,
-	Container(PrefixedArray<SlotData>) = 66,
-	BlockState(BlockStateComponent) = 67,
-	Bees(PrefixedArray<BeeData>) = 68,
-	Lock(NbtTag) = 69,
-	ContainerLoot(NbtCompound) = 70,
-	BreakSound(IDorX<SoundEvent>) = 71,
-	VillagerVariant(VarInt) = 72,
-	WolfVariant(VarInt) = 73,
-	WolfSoundVariant(VarInt) = 74,
-	WolfCollar(DyeColor) = 75,
-	FoxVariant(VarInt) = 76,
-	SalmonSize(VarInt) = 77,
-	ParrotVariant(VarInt) = 78,
-	TropicalFishPattern(VarInt) = 79,
-	TropicalFishBaseColor(DyeColor) = 80,
-	TropicalFishPatternColor(DyeColor) = 81,
-	MooshroomVariant(VarInt) = 82,
-	RabbitVariant(VarInt) = 83,
-	PigVariant(VarInt) = 84,
-	CowVariant(VarInt) = 85,
-	ChickenVariant(ChickenVariantComponent) = 86,
-	FrogVariant(VarInt) = 87,
-	HorseVariant(VarInt) = 88,
-	PaintingVariant(PaintingVariantComponent) = 89,
-	LlamaVariant(VarInt) = 90,
-	AxolotlVariant(VarInt) = 91,
-	CatVariant(VarInt) = 92,
-	CatCollar(DyeColor) = 93,
-	SheepColor(DyeColor) = 94,
-	ShulkerColor(DyeColor) = 95,
+	CustomName(TextComponent) = 6,
+	ItemName(TextComponent) = 9,
+	ItemModel(Identifier) = 10,
+	Lore(PrefixedArray<TextComponent>) = 11,
+	Rarity(VarInt) = 12,
+	Enchantments(EnchantmentList) = 13,
+	CanPlaceOn(PrefixedArray<BlockPredicate>) = 14,
+	CanBreak(PrefixedArray<BlockPredicate>) = 15,
+	AttributeModifiers(AttributeModifierList) = 16,
+	CustomModelData(CustomModelDataComponent) = 17,
+	TooltipDisplay(TooltipDisplayComponent) = 18,
+	RepairCost(VarInt) = 19,
+	CreativeSlotLock = 20,
+	EnchantmentGlintOverride(bool) = 21,
+	IntangibleProjectile(NbtCompound) = 22,
+	Food(FoodComponent) = 23,
+	Consumable(ConsumableComponent) = 24,
+	UseRemainder(Box<SlotData>) = 25,
+	UseCooldown(UseCooldownComponent) = 26,
+	DamageResistant(String) = 27,
+	Tool(ToolComponent) = 28,
+	Weapon(WeaponComponent) = 29,
+	Enchantable(VarInt) = 31,
+	Equippable(EquippableComponent) = 32,
+	Repairable(IDSet) = 33,
+	Glider = 34,
+	TooltipStyle(Identifier) = 35,
+	DeathProtection(PrefixedArray<ConsumeEffect>) = 36,
+	BlocksAttacks(BlocksAttacksComponent) = 37,
+	StoredEnchantments(EnchantmentList) = 45,
+	DyedColor(i32) = 47,
+	MapId(VarInt) = 48,
+	MapDecorations(NbtCompound) = 49,
+	MapPostProcessing(VarInt) = 50,
+	ChargedProjectiles(PrefixedArray<SlotData>) = 51,
+	BundleContents(PrefixedArray<SlotData>) = 52,
+	PotionContents(PotionContentsComponent) = 53,
+	PotionDurationScale(f32) = 54,
+	SuspiciousStewEffects(SuspiciousStewList) = 55,
+	WritableBookContent(WritableBookComponent) = 56,
+	WrittenBookContent(WrittenBookComponent) = 57,
+	Trim(TrimComponent) = 58,
+	DebugStickState(NbtCompound) = 59,
+	EntityData(EntityDataComponent) = 60,
+	BucketEntityData(NbtCompound) = 61,
+	BlockEntityData(BlockEntityDataComponent) = 62,
+	InstrumentComponent(IdOrInstrument) = 63,
+	ProvidesTrimMaterial(ProvidesTrimMaterialComponent) = 64,
+	OminousBottleAmplifier(VarInt) = 65,
+	JukeboxPlayable(JukeboxPlayableComponent) = 66,
+	ProvidesBannerPatterns(String) = 67,
+	Recipes(NbtCompound) = 68,
+	LodestoneTracker(LodestoneTrackerComponent) = 69,
+	FireworkExplosionComponent(FireworkExplosion) = 70,
+	Fireworks(FireworksComponent) = 71,
+	Profile(ResolvableProfile) = 72,
+	NoteBlockSound(Identifier) = 73,
+	BannerPatterns(BannerPatternsComponent) = 74,
+	BaseColor(DyeColor) = 75,
+	PotDecorations(PrefixedArray<VarInt>) = 76,
+	Container(PrefixedArray<SlotData>) = 77,
+	BlockState(BlockStateComponent) = 78,
+	Bees(PrefixedArray<BeeData>) = 79,
+	Lock(NbtTag) = 81,
+	ContainerLoot(NbtCompound) = 82,
+	BreakSound(IDorX<SoundEvent>) = 83,
+	VillagerVariant(VarInt) = 88,
+	WolfVariant(VarInt) = 89,
+	WolfSoundVariant(VarInt) = 90,
+	WolfCollar(DyeColor) = 91,
+	FoxVariant(VarInt) = 92,
+	SalmonSize(VarInt) = 93,
+	ParrotVariant(VarInt) = 94,
+	TropicalFishPattern(VarInt) = 95,
+	TropicalFishBaseColor(DyeColor) = 96,
+	TropicalFishPatternColor(DyeColor) = 97,
+	MooshroomVariant(VarInt) = 98,
+	RabbitVariant(VarInt) = 99,
+	PigVariant(VarInt) = 100,
+	CowVariant(VarInt) = 102,
+	ChickenVariant(ChickenVariantComponent) = 104,
+	FrogVariant(VarInt) = 107,
+	HorseVariant(VarInt) = 108,
+	PaintingVariant(PaintingVariantComponent) = 109,
+	LlamaVariant(VarInt) = 110,
+	AxolotlVariant(VarInt) = 111,
+	CatVariant(VarInt) = 112,
+	CatCollar(DyeColor) = 114,
+	SheepColor(DyeColor) = 115,
+	ShulkerColor(DyeColor) = 116,
 }
 
 impl McDefault for StructuredComponent {
@@ -588,15 +590,20 @@ mod test {
 	#[test]
 	fn component_ids_are_pinned() {
 		// The client finds the component type from this ID. If a variant moves, every later
-		// component in the slot is read with the wrong layout. These IDs are the current values in
-		// the enum; update them only after you check the wiki Slot data page.
+		// component in the slot is read with the wrong layout. These IDs are from the 26.3
+		// `minecraft:data_component_type` registry (registries.json of the data generator).
 		assert_eq!(ser(&StructuredComponent::MaxStackSize(VarInt(64))), vec![1, 64]);
 		assert_eq!(ser(&StructuredComponent::Unbreakable), vec![4]);
-		assert_eq!(ser(&StructuredComponent::CreativeSlotLock), vec![17]);
-		assert_eq!(ser(&StructuredComponent::Glider), vec![30]);
-		assert_eq!(ser(&StructuredComponent::DyedColor(1)), vec![35, 0, 0, 0, 1]);
-		assert_eq!(ser(&StructuredComponent::VillagerVariant(VarInt(2))), vec![72, 2]);
-		assert_eq!(ser(&StructuredComponent::ShulkerColor(DyeColor::mc_default()))[0], 95);
+		assert_eq!(ser(&StructuredComponent::CustomName(TextComponent::new("")))[0], 6);
+		assert_eq!(ser(&StructuredComponent::ItemName(TextComponent::new("")))[0], 9);
+		assert_eq!(ser(&StructuredComponent::Lore(PrefixedArray::new(vec![]))), vec![11, 0]);
+		assert_eq!(ser(&StructuredComponent::CustomModelData(CustomModelDataComponent::mc_default()))[0], 17);
+		assert_eq!(ser(&StructuredComponent::CreativeSlotLock), vec![20]);
+		assert_eq!(ser(&StructuredComponent::EnchantmentGlintOverride(true)), vec![21, 1]);
+		assert_eq!(ser(&StructuredComponent::Glider), vec![34]);
+		assert_eq!(ser(&StructuredComponent::DyedColor(1)), vec![47, 0, 0, 0, 1]);
+		assert_eq!(ser(&StructuredComponent::VillagerVariant(VarInt(2))), vec![88, 2]);
+		assert_eq!(ser(&StructuredComponent::ShulkerColor(DyeColor::mc_default()))[0], 116);
 	}
 
 	#[test]

@@ -28,6 +28,8 @@ cesu8 = "1.1.0"
 regex = "1.13.2"
 # Used only by the `server` feature.
 smart-default = { version = "0.7.1", optional = true }
+# Used only by the `server` feature (offline-mode player UUIDs).
+md-5 = { version = "0.11.0", optional = true }
 
 sandstone-derive = { version = "0.2.0", path = "src/sandstone-derive" }
 # Always used for the HasJoinedResponse and HttpError types. The `auth` feature adds its HTTP client.
@@ -54,7 +56,7 @@ default = ["client", "server", "anvil", "favicon", "dns", "encryption", "online"
 ## Client-side handlers in `network::client` (for example `DefaultClientStatusHandler`).
 client = []
 ## Server-side handlers in `network::server` (handshake, status, ping, login and encryption handlers).
-server = ["dep:rand", "dep:smart-default"]
+server = ["dep:rand", "dep:smart-default", "dep:md-5"]
 ## Read and write Anvil region files (.mca) and convert chunks to and from chunk packets.
 anvil = ["dep:lz4_flex", "dep:xxhash-rust"]
 ## Set the server list icon from an `image::DynamicImage` (`StatusResponseSpec::set_favicon_image`).

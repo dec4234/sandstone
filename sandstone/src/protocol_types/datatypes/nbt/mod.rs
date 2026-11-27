@@ -350,6 +350,20 @@ impl NbtCompound {
 		}
 	}
 
+	/// The entries of the compound, in no fixed order.
+	pub fn iter(&self) -> impl Iterator<Item = (&String, &NbtTag)> {
+		self.map.iter()
+	}
+
+	/// The number of entries.
+	pub fn len(&self) -> usize {
+		self.map.len()
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.map.is_empty()
+	}
+
 	/// Get the tag mapped to the given name. Returns 'None' if the name does not exist in the compound.
 	pub fn get<T: Into<String>>(&self, name: T) -> Option<&NbtTag> {
 		self.map.get(&name.into())

@@ -6,6 +6,7 @@
 //! made with [CommandGraph::add_typed_argument](super::CommandGraph::add_typed_argument) has an
 //! [ArgumentType], which can use the sender and can reject values that are not valid in the game.
 
+use super::CommandSource;
 use crate::game::player::PlayerGamemode;
 use crate::protocol_types::datatypes::chat::TextComponent;
 use crate::protocol_types::datatypes::command::Parser;
@@ -182,20 +183,21 @@ impl<T: Into<String>> From<T> for Suggestion {
 	}
 }
 
-/// The type of an argument node. `S` is the sender type of the graph.
+/// The type of an argument node. `S` is the [CommandSource] of the graph, and `S::Sender` is the
+/// sender type.
 ///
 /// Implement it to read a value that the game must check, for example the name of an online
 /// player. If `read` fails, the parse tries the next argument child, as Brigadier does.
-pub trait ArgumentType<S>: Send + Sync {
+pub trait ArgumentType<S: CommandSource>: Send + Sync {
 	/// The parser that the client gets in the Commands packet.
 	fn parser(&self) -> Parser;
 
 	/// Reads the argument at the start of `rest`. Returns the length in bytes and the value.
-	fn read(&self, sender: &S, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError>;
+	fn read(&self, sender: &S::Sender<'_>, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError>;
 
 	/// The values for tab-complete. `partial` is the text of the last word. The graph keeps only
 	/// the values that start with `partial` (case is ignored).
-	fn suggest(&self, _sender: &S, _partial: &str) -> Vec<Suggestion> {
+	fn suggest(&self, _sender: &S::Sender<'_>, _partial: &str) -> Vec<Suggestion> {
 		Vec::new()
 	}
 
@@ -287,22 +289,22 @@ pub struct Vec3Argument;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct BlockPosArgument;
 
-impl<S> ArgumentType<S> for Vec3Argument {
+impl<S: CommandSource> ArgumentType<S> for Vec3Argument {
 	fn parser(&self) -> Parser {
 		Parser::MinecraftVec3
 	}
 
-	fn read(&self, _sender: &S, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
+	fn read(&self, _sender: &S::Sender<'_>, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
 		read_coordinates(rest, false).map(|(l, c)| (l, ArgumentValue::Coordinates(c)))
 	}
 }
 
-impl<S> ArgumentType<S> for BlockPosArgument {
+impl<S: CommandSource> ArgumentType<S> for BlockPosArgument {
 	fn parser(&self) -> Parser {
 		Parser::MinecraftBlockPos
 	}
 
-	fn read(&self, _sender: &S, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
+	fn read(&self, _sender: &S::Sender<'_>, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
 		read_coordinates(rest, true).map(|(l, c)| (l, ArgumentValue::Coordinates(c)))
 	}
 }
@@ -523,12 +525,12 @@ impl EntityArgument {
 	}
 }
 
-impl<S> ArgumentType<S> for EntityArgument {
+impl<S: CommandSource> ArgumentType<S> for EntityArgument {
 	fn parser(&self) -> Parser {
 		Parser::MinecraftEntity(self.flags())
 	}
 
-	fn read(&self, _sender: &S, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
+	fn read(&self, _sender: &S::Sender<'_>, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
 		self.read_selector(rest).map(|(l, s)| (l, ArgumentValue::Entity(s)))
 	}
 }
@@ -596,16 +598,16 @@ fn read_game_mode(rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
 	}
 }
 
-impl<S> ArgumentType<S> for GameModeArgument {
+impl<S: CommandSource> ArgumentType<S> for GameModeArgument {
 	fn parser(&self) -> Parser {
 		Parser::MinecraftGamemode
 	}
 
-	fn read(&self, _sender: &S, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
+	fn read(&self, _sender: &S::Sender<'_>, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
 		read_game_mode(rest)
 	}
 
-	fn suggest(&self, _sender: &S, _partial: &str) -> Vec<Suggestion> {
+	fn suggest(&self, _sender: &S::Sender<'_>, _partial: &str) -> Vec<Suggestion> {
 		GAME_MODES.iter().map(|(name, _)| Suggestion::new(*name)).collect()
 	}
 }
@@ -622,12 +624,12 @@ impl EnumArgument {
 	}
 }
 
-impl<S> ArgumentType<S> for EnumArgument {
+impl<S: CommandSource> ArgumentType<S> for EnumArgument {
 	fn parser(&self) -> Parser {
 		Parser::BrigadierString(VarInt(0))
 	}
 
-	fn read(&self, _sender: &S, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
+	fn read(&self, _sender: &S::Sender<'_>, rest: &str) -> Result<(usize, ArgumentValue), ArgumentError> {
 		let word = unquoted(rest);
 		match self.0.iter().find(|v| v.eq_ignore_ascii_case(word)) {
 			Some(value) => Ok((word.len(), ArgumentValue::String(value.clone()))),
@@ -635,7 +637,7 @@ impl<S> ArgumentType<S> for EnumArgument {
 		}
 	}
 
-	fn suggest(&self, _sender: &S, _partial: &str) -> Vec<Suggestion> {
+	fn suggest(&self, _sender: &S::Sender<'_>, _partial: &str) -> Vec<Suggestion> {
 		self.0.iter().map(Suggestion::new).collect()
 	}
 

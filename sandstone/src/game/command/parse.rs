@@ -12,7 +12,7 @@
 //! indices.
 
 use super::argument::{ArgumentError, ArgumentValue, Suggestion, builtin_suggestions, read_argument, translatable};
-use super::{CommandGraph, CommandNodeKind, NodeId};
+use super::{CommandGraph, CommandNodeKind, CommandSource, NodeId};
 use crate::protocol::packets::CommandSuggestionsResponsePacket;
 use crate::protocol::packets::packet_parts::TooltipMatch;
 use crate::protocol::serialization::serializer_types::{PrefixedArray, PrefixedOptional};
@@ -231,14 +231,14 @@ fn command_start(input: &str) -> usize {
 }
 
 /// The values that a parse or a suggestion needs, other than the position.
-struct Env<'a, S, H> {
+struct Env<'a, 's, S: CommandSource, H> {
 	graph: &'a CommandGraph<S, H>,
-	sender: &'a S,
+	sender: &'a S::Sender<'s>,
 	input: &'a str,
 	command_start: usize,
 }
 
-impl<S, H> Env<'_, S, H> {
+impl<S: CommandSource, H> Env<'_, '_, S, H> {
 	/// If a usable literal child matches the next word, only that literal. Otherwise all usable
 	/// argument children.
 	fn relevant_children(&self, source: NodeId, start: usize) -> Vec<NodeId> {
@@ -275,13 +275,13 @@ impl<S, H> Env<'_, S, H> {
 	}
 }
 
-impl<S, H: Clone> CommandGraph<S, H> {
+impl<S: CommandSource, H: Clone> CommandGraph<S, H> {
 	/// Reads a command, for example the text of a Chat Command packet. A `/` at the start is
 	/// optional. Nodes that `sender` cannot use are skipped.
 	///
 	/// If more than one path can match, the first path in child order that reaches an executable
 	/// node is used. If no path matches, the error is the one that is farthest in the input.
-	pub fn parse(&self, sender: &S, input: &str) -> Result<ParsedCommand<H>, CommandParseError> {
+	pub fn parse(&self, sender: &S::Sender<'_>, input: &str) -> Result<ParsedCommand<H>, CommandParseError> {
 		let env = Env {
 			graph: self,
 			sender,
@@ -305,7 +305,7 @@ impl<S, H: Clone> CommandGraph<S, H> {
 	}
 
 	/// Tries the children of `id`. `start` is the first byte of the next word.
-	fn parse_children(&self, env: &Env<S, H>, id: NodeId, start: usize, parsed: &mut ParsedCommand<H>) -> ParseResult {
+	fn parse_children(&self, env: &Env<'_, '_, S, H>, id: NodeId, start: usize, parsed: &mut ParsedCommand<H>) -> ParseResult {
 		let source = self.node(id).redirect.unwrap_or(id);
 		let mut best: Option<CommandParseError> = None;
 		for child in env.relevant_children(source, start) {
@@ -331,7 +331,7 @@ impl<S, H: Clone> CommandGraph<S, H> {
 		}))
 	}
 
-	fn parse_child(&self, env: &Env<S, H>, child: NodeId, start: usize, parsed: &mut ParsedCommand<H>) -> ParseResult {
+	fn parse_child(&self, env: &Env<'_, '_, S, H>, child: NodeId, start: usize, parsed: &mut ParsedCommand<H>) -> ParseResult {
 		let node = self.node(child);
 		let input = env.input;
 		let end = match &node.kind {
@@ -375,7 +375,7 @@ impl<S, H: Clone> CommandGraph<S, H> {
 	}
 }
 
-impl<S, H> CommandGraph<S, H> {
+impl<S: CommandSource, H> CommandGraph<S, H> {
 	/// Makes tab-complete suggestions for the last word of `text`, for example the text of a
 	/// Command Suggestions Request. A `/` at the start is optional. Nodes that `sender` cannot use
 	/// are skipped.
@@ -384,7 +384,7 @@ impl<S, H> CommandGraph<S, H> {
 	/// [ArgumentType](super::ArgumentType), else from the built-in values of its parser (`true` and
 	/// `false` for a bool, the game modes for a game mode). Only values that start with the last
 	/// word are kept (case is ignored).
-	pub fn suggest(&self, sender: &S, text: &str) -> Suggestions {
+	pub fn suggest(&self, sender: &S::Sender<'_>, text: &str) -> Suggestions {
 		let env = Env {
 			graph: self,
 			sender,
@@ -410,7 +410,7 @@ impl<S, H> CommandGraph<S, H> {
 	}
 
 	/// Follows the input from `id` until `start` is the last word, then adds the matching children.
-	fn collect_suggestions(&self, env: &Env<S, H>, id: NodeId, start: usize, word_start: usize, found: &mut BTreeMap<String, Option<TextComponent>>, nodes: &mut Vec<NodeId>) {
+	fn collect_suggestions(&self, env: &Env<'_, '_, S, H>, id: NodeId, start: usize, word_start: usize, found: &mut BTreeMap<String, Option<TextComponent>>, nodes: &mut Vec<NodeId>) {
 		let text = env.input;
 		let source = self.node(id).redirect.unwrap_or(id);
 		if start == word_start {

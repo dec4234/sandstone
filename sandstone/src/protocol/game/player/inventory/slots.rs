@@ -1,4 +1,3 @@
-use crate::protocol::game::player::inventory::components::StructuredComponent;
 use crate::protocol::game::player::inventory::slotdata::ItemStackTemplate;
 use crate::protocol::serialization::McDeserialize;
 use crate::protocol::serialization::McDeserializer;
@@ -139,15 +138,18 @@ pub struct HashedSlot {
 	pub item_count: Option<VarInt>,
 	#[mc(deserialize_if = has_item)]
 	pub components: Option<PrefixedArray<ComponentHashed>>,
+	/// The IDs of the removed component types.
 	#[mc(deserialize_if = has_item)]
-	pub components_to_remove: Option<PrefixedArray<StructuredComponent>>
+	pub components_to_remove: Option<PrefixedArray<VarInt>>
 }
 
 /// # Slot Data Hash (Packet Part)
 /// Used for inventory updates.
 #[derive(McDefault, McSerialize, McDeserialize, Debug, Clone, PartialEq)]
 pub struct ComponentHashed {
-	pub component_type: StructuredComponent,
+	/// The ID of the component type (the `minecraft:data_component_type` registry). Only the ID
+	/// is on the wire, not the component data.
+	pub component_type: VarInt,
 	/// A CRC32C (note: CRC32C is not the same thing as CRC32) checksum of the component data. Currently undocumented
 	pub data_hash: i32
 }
@@ -264,10 +266,21 @@ mod test {
 				has_item: true,
 				item_id: Some(VarInt(1)),
 				item_count: Some(VarInt(64)),
-				components: Some(PrefixedArray::new(vec![ComponentHashed { component_type: StructuredComponent::Unbreakable, data_hash: -5 }])),
-				components_to_remove: Some(PrefixedArray::new(vec![])),
+				components: Some(PrefixedArray::new(vec![ComponentHashed { component_type: VarInt(6), data_hash: -5 }])),
+				components_to_remove: Some(PrefixedArray::new(vec![VarInt(11)])),
 			},
 		});
+	}
+
+	#[test]
+	fn hashed_component_is_type_and_hash_only() {
+		// A client sends a named item as: has item, ID, count, one component (type 6 and a
+		// 4-byte hash), no removed components. The component body is not on the wire.
+		let bytes = [1, 5, 1, 1, 6, 0, 0, 0, 9, 0];
+		let mut d = McDeserializer::new(&bytes);
+		let slot = HashedSlot::mc_deserialize(&mut d).unwrap();
+		assert!(d.is_at_end(), "all bytes must be used");
+		assert_eq!(slot.components.unwrap().vec, vec![ComponentHashed { component_type: VarInt(6), data_hash: 9 }]);
 	}
 
 	#[test]

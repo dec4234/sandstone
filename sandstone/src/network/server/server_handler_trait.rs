@@ -3,6 +3,7 @@
 
 use crate::network::CraftConnection;
 use crate::network::network_error::NetworkError;
+use crate::network::server::server_login_impl::LoginProfile;
 use crate::protocol::packets::StatusResponsePacket;
 #[cfg(feature = "encryption")]
 use mojang_api::HasJoinedResponse;
@@ -38,7 +39,9 @@ pub trait ServerPingHandler {
 
 /// Lists the methods required to handle a login request as a server. Check [crate::network::server::server_login_impl::DefaultServerLoginHandler] for a default implementation.
 pub trait ServerLoginHandler {
-	async fn handle_login(&self, connection: &mut CraftConnection) -> Result<(), NetworkError>;
+	/// Runs the login, configuration and play-entry steps. Returns the profile of the player
+	/// that joined (the same UUID, name and properties that were sent in Login Success).
+	async fn handle_login(&self, connection: &mut CraftConnection) -> Result<LoginProfile, NetworkError>;
 }
 
 /// Handle enabling encryption for an incoming client connections.

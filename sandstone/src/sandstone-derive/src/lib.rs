@@ -771,6 +771,7 @@ pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
 	let mut serialize_arms = Vec::new();
 	let mut deserialize_arms = Vec::new();
 	let mut from_varint_arms = Vec::new();
+	let mut id_arms = Vec::new();
 	let mut all_unit = true;
 
 	for variant in &data_enum.variants {
@@ -781,6 +782,11 @@ pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
 
 		let expr = &discriminant.1;
 		let variant_ident = &variant.ident;
+
+		id_arms.push(match &variant.fields {
+			Fields::Unit => quote! { #name::#variant_ident => #expr, },
+			_ => quote! { #name::#variant_ident(..) => #expr, },
+		});
 
 		match &variant.fields {
 			Fields::Unit => {
@@ -863,6 +869,15 @@ pub fn derive_var_int_enum(input: TokenStream) -> TokenStream {
 		}
 
 		#from_varint_impl
+
+		impl #name {
+			/// The ID that is written before the data of this variant.
+			pub fn variant_id(&self) -> i32 {
+				match self {
+					#(#id_arms)*
+				}
+			}
+		}
 	};
 
 	TokenStream::from(expanded)

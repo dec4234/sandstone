@@ -9,8 +9,10 @@
 //! - The two sides can then use [CommandGraph::parse] and [CommandGraph::suggest].
 //!
 //! The graph has two type parameters:
-//! - `S` is the sender. A requirement ([CommandGraph::set_requirement]) uses it to hide nodes from
-//!   a sender, and an [ArgumentType] and a suggestion provider get it.
+//! - `S` is a [CommandSource]. Its [CommandSource::Sender] type is the sender. A requirement
+//!   ([CommandGraph::set_requirement]) uses the sender to hide nodes from it, and an
+//!   [ArgumentType] and a suggestion provider get it. The sender type can have a lifetime, so it
+//!   can borrow the game state for one call to [CommandGraph::parse] or [CommandGraph::suggest].
 //! - `H` is the handler that the server stores on an executable node
 //!   ([CommandGraph::set_handler]). [CommandGraph::parse] returns it. It is often an
 //!   `Arc<dyn Fn(...)>` with the context type of the server.
@@ -42,11 +44,48 @@ use thiserror::Error;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct NodeId(pub usize);
 
+/// Gives the sender type of a [CommandGraph]. The graph keeps closures for all lifetimes of the
+/// sender, so the sender can borrow data that lives shorter than the graph.
+///
+/// Implement it on a marker type:
+///
+/// ```
+/// use sandstone::game::command::{CommandGraph, CommandSource};
+///
+/// struct World { op_names: Vec<String> }
+///
+/// struct Source<'a> { world: &'a World, name: &'a str }
+///
+/// struct SourceType;
+/// impl CommandSource for SourceType {
+///     type Sender<'a> = Source<'a>;
+/// }
+///
+/// let mut graph: CommandGraph<SourceType> = CommandGraph::new();
+/// let stop = graph.add_literal(graph.root(), "stop");
+/// graph.set_executable(stop, true);
+/// graph.set_requirement(stop, |s: &Source| s.world.op_names.iter().any(|n| n == s.name));
+///
+/// let world = World { op_names: vec!["Notch".into()] };
+/// assert!(graph.parse(&Source { world: &world, name: "Notch" }, "stop").is_ok());
+/// assert!(graph.parse(&Source { world: &world, name: "Steve" }, "stop").is_err());
+/// ```
+///
+/// For a sender with no lifetime, set `type Sender<'a> = Self` on the sender type.
+pub trait CommandSource {
+	type Sender<'a>;
+}
+
+/// The graph of a client, or a graph with no sender data.
+impl CommandSource for () {
+	type Sender<'a> = ();
+}
+
 /// A check on the sender. A node whose requirement is false is hidden from that sender.
-pub type Requirement<S> = Arc<dyn Fn(&S) -> bool + Send + Sync>;
+pub type Requirement<S> = Arc<dyn for<'a> Fn(&<S as CommandSource>::Sender<'a>) -> bool + Send + Sync>;
 
 /// Gives tab-complete values for an argument. It gets the sender and the text of the last word.
-pub type SuggestionProvider<S> = Arc<dyn Fn(&S, &str) -> Vec<Suggestion> + Send + Sync>;
+pub type SuggestionProvider<S> = Arc<dyn for<'a> Fn(&<S as CommandSource>::Sender<'a>, &str) -> Vec<Suggestion> + Send + Sync>;
 
 /// The type of a [CommandNode], with the data that only that type has.
 #[derive(Debug, Clone, PartialEq)]
@@ -66,7 +105,7 @@ pub enum CommandNodeKind {
 }
 
 /// One node in a [CommandGraph].
-pub struct CommandNode<S = (), H = ()> {
+pub struct CommandNode<S: CommandSource = (), H = ()> {
 	pub kind: CommandNodeKind,
 	/// The command is complete if the input stops after this node.
 	pub executable: bool,
@@ -82,7 +121,7 @@ pub struct CommandNode<S = (), H = ()> {
 	argument_type: Option<Arc<dyn ArgumentType<S>>>,
 }
 
-impl<S, H> CommandNode<S, H> {
+impl<S: CommandSource, H> CommandNode<S, H> {
 	fn new(kind: CommandNodeKind) -> Self {
 		Self {
 			kind,
@@ -122,12 +161,12 @@ impl<S, H> CommandNode<S, H> {
 	}
 
 	/// True if the node has no requirement, or if the requirement is true for `sender`.
-	pub fn can_use(&self, sender: &S) -> bool {
+	pub fn can_use(&self, sender: &S::Sender<'_>) -> bool {
 		self.requirement.as_ref().is_none_or(|r| r(sender))
 	}
 }
 
-impl<S, H: Clone> Clone for CommandNode<S, H> {
+impl<S: CommandSource, H: Clone> Clone for CommandNode<S, H> {
 	fn clone(&self) -> Self {
 		Self {
 			kind: self.kind.clone(),
@@ -143,7 +182,7 @@ impl<S, H: Clone> Clone for CommandNode<S, H> {
 	}
 }
 
-impl<S, H: Debug> Debug for CommandNode<S, H> {
+impl<S: CommandSource, H: Debug> Debug for CommandNode<S, H> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("CommandNode")
 			.field("kind", &self.kind)
@@ -161,7 +200,7 @@ impl<S, H: Debug> Debug for CommandNode<S, H> {
 
 /// Compares the data fields. Requirements, suggestion providers and argument types are equal only
 /// if they are the same allocation.
-impl<S, H: PartialEq> PartialEq for CommandNode<S, H> {
+impl<S: CommandSource, H: PartialEq> PartialEq for CommandNode<S, H> {
 	fn eq(&self, other: &Self) -> bool {
 		fn same<T: ?Sized>(a: &Option<Arc<T>>, b: &Option<Arc<T>>) -> bool {
 			match (a, b) {
@@ -197,12 +236,12 @@ pub enum CommandGraphError {
 ///
 /// All [NodeId] values that the methods return are valid for this graph. The methods panic if they
 /// get a [NodeId] that is not in this graph.
-pub struct CommandGraph<S = (), H = ()> {
+pub struct CommandGraph<S: CommandSource = (), H = ()> {
 	nodes: Vec<CommandNode<S, H>>,
 	root: NodeId,
 }
 
-impl<S, H: Clone> Clone for CommandGraph<S, H> {
+impl<S: CommandSource, H: Clone> Clone for CommandGraph<S, H> {
 	fn clone(&self) -> Self {
 		Self {
 			nodes: self.nodes.clone(),
@@ -211,25 +250,25 @@ impl<S, H: Clone> Clone for CommandGraph<S, H> {
 	}
 }
 
-impl<S, H: Debug> Debug for CommandGraph<S, H> {
+impl<S: CommandSource, H: Debug> Debug for CommandGraph<S, H> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("CommandGraph").field("nodes", &self.nodes).field("root", &self.root).finish()
 	}
 }
 
-impl<S, H: PartialEq> PartialEq for CommandGraph<S, H> {
+impl<S: CommandSource, H: PartialEq> PartialEq for CommandGraph<S, H> {
 	fn eq(&self, other: &Self) -> bool {
 		self.root == other.root && self.nodes == other.nodes
 	}
 }
 
-impl<S, H> Default for CommandGraph<S, H> {
+impl<S: CommandSource, H> Default for CommandGraph<S, H> {
 	fn default() -> Self {
 		Self::new()
 	}
 }
 
-impl<S, H> CommandGraph<S, H> {
+impl<S: CommandSource, H> CommandGraph<S, H> {
 	/// Makes a graph that has only a root node.
 	pub fn new() -> Self {
 		Self {
@@ -390,7 +429,7 @@ impl<S, H> CommandGraph<S, H> {
 	/// Only senders for which `requirement` is true can use this node and the nodes under it. The
 	/// other senders do not get the node in [Self::to_packet_for], and [Self::parse] and
 	/// [Self::suggest] skip it.
-	pub fn set_requirement(&mut self, id: NodeId, requirement: impl Fn(&S) -> bool + Send + Sync + 'static) {
+	pub fn set_requirement(&mut self, id: NodeId, requirement: impl for<'a> Fn(&S::Sender<'a>) -> bool + Send + Sync + 'static) {
 		self.nodes[id.0].requirement = Some(Arc::new(requirement));
 	}
 
@@ -404,7 +443,7 @@ impl<S, H> CommandGraph<S, H> {
 	///
 	/// # Panics
 	/// If `id` is not an argument node.
-	pub fn set_suggestion_provider(&mut self, id: NodeId, provider: impl Fn(&S, &str) -> Vec<Suggestion> + Send + Sync + 'static) {
+	pub fn set_suggestion_provider(&mut self, id: NodeId, provider: impl for<'a> Fn(&S::Sender<'a>, &str) -> Vec<Suggestion> + Send + Sync + 'static) {
 		let node = &mut self.nodes[id.0];
 		match &mut node.kind {
 			CommandNodeKind::Argument {
@@ -449,7 +488,7 @@ impl<S, H> CommandGraph<S, H> {
 
 	/// Makes the Commands packet with only the nodes that `sender` can use. Send it again when the
 	/// result of a requirement changes, for example after a change to the permission level.
-	pub fn to_packet_for(&self, sender: &S) -> CommandsGraphPacket {
+	pub fn to_packet_for(&self, sender: &S::Sender<'_>) -> CommandsGraphPacket {
 		self.packet_with(|node| node.can_use(sender))
 	}
 

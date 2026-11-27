@@ -6,32 +6,33 @@
 
 #[cfg(test)]
 mod test {
-	use sandstone::network::client::client_handlers::ClientStatusHandler;
-	use sandstone::network::client::client_status_handler::DefaultClientStatusHandler;
-	use sandstone::network::network_error::NetworkError;
-	#[cfg(feature = "encryption")]
-	use sandstone::network::server::server_handler_impl::DefaultServerEncryptionHandler;
-	use sandstone::network::server::server_handler_impl::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
-	#[cfg(feature = "encryption")]
-	use sandstone::network::server::server_handler_trait::ServerEncryptionHandler;
-	use sandstone::network::server::server_handler_trait::{ServerHandshakeHandler, ServerLoginHandler, ServerStatusHandler};
-	use sandstone::network::server::server_login_impl::DefaultServerLoginHandler;
-	use sandstone::network::{ConnectionRole, CraftConnection};
-	use sandstone::protocol::packets::packet_definer::PacketState;
-	use sandstone::protocol::packets::packet_parts::PlayerPositionFlags;
-	use sandstone::protocol::packets::packet_parts::status::StatusResponseSpec;
-	use sandstone::protocol::packets::*;
-	use sandstone::protocol::serialization::{McDeserialize, McDeserializer};
-	use sandstone::protocol_types::datatypes::var_types::VarInt;
-	use sandstone::protocol_types::protocol_verison::ProtocolVerison;
-	#[cfg(feature = "encryption")]
-	use sandstone::util::encryption::rsa::{decode_public_key, encrypt_with_public_key};
-	use std::time::Duration;
-	use tokio::net::TcpListener;
-	use uuid::Uuid;
+    use sandstone::network::client::client_handlers::ClientStatusHandler;
+    use sandstone::network::client::client_status_handler::DefaultClientStatusHandler;
+    use sandstone::network::network_error::NetworkError;
+    #[cfg(feature = "encryption")]
+    use sandstone::network::server::server_handler_impl::DefaultServerEncryptionHandler;
+    use sandstone::network::server::server_handler_impl::{DefaultServerHandshakeHandler, DefaultServerPingHandler, DefaultServerStatusHandler};
+    #[cfg(feature = "encryption")]
+    use sandstone::network::server::server_handler_trait::ServerEncryptionHandler;
+    use sandstone::network::server::server_handler_trait::{ServerHandshakeHandler, ServerLoginHandler, ServerStatusHandler};
+    use sandstone::network::server::server_login_impl::{DefaultServerLoginHandler, LoginProfile, offline_uuid};
+    use sandstone::network::{ConnectionRole, CraftConnection};
+    use sandstone::protocol::packets::packet_definer::PacketState;
+    use sandstone::protocol::packets::packet_parts::PlayerPositionFlags;
+    use sandstone::protocol::packets::packet_parts::status::StatusResponseSpec;
+    use sandstone::protocol::packets::*;
+    use sandstone::protocol::serialization::{McDeserialize, McDeserializer};
+    use sandstone::protocol_types::datatypes::chat::TextComponent;
+    use sandstone::protocol_types::datatypes::var_types::VarInt;
+    use sandstone::protocol_types::protocol_verison::ProtocolVerison;
+    #[cfg(feature = "encryption")]
+    use sandstone::util::encryption::rsa::{decode_public_key, encrypt_with_public_key};
+    use std::time::Duration;
+    use tokio::net::TcpListener;
+    use uuid::Uuid;
 
-	async fn pair() -> (CraftConnection, CraftConnection) {
-		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    async fn pair() -> (CraftConnection, CraftConnection) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
 		let addr = listener.local_addr().unwrap();
 		let (client, accepted) = tokio::join!(CraftConnection::connect(format!("127.0.0.1:{}", addr.port())), listener.accept());
 		let server = CraftConnection::from_connection(accepted.unwrap().0, ConnectionRole::SERVER).unwrap();
@@ -308,7 +309,13 @@ mod test {
 		client.enable_compression(Some(64));
 
 		match recv(&mut client).await {
-			Packet::LoginSuccess(p) => assert_eq!(p.username, "Steve"),
+			Packet::LoginSuccess(p) => {
+				assert_eq!(p.username, "Steve");
+				// Offline mode must use the vanilla offline UUID, not a random one. With a random
+				// UUID the player data, ops and bans do not match the player on the next join.
+				assert_eq!(p.uuid, offline_uuid("Steve"));
+				assert!(p.properties.slice().is_empty());
+			}
 			other => panic!("expected login success, got {other:?}"),
 		}
 		client.send_packet(Packet::LoginAcknowledged(LoginAcknowledgedPacket {})).await.unwrap();
@@ -370,7 +377,8 @@ mod test {
 			.unwrap();
 
 		let (result, server) = server_task.await.unwrap();
-		result.unwrap();
+		// The caller needs the profile that the client was given, to load the player's data.
+		assert_eq!(result.unwrap(), LoginProfile::offline("Steve".into()));
 		assert_eq!(server.packet_state, PacketState::PLAY);
 		assert_eq!(server.compression_threshold, Some(64));
 	}
@@ -396,6 +404,33 @@ mod test {
 		client.send_packet(Packet::LoginStart(LoginStartPacket { username: "Alex".into(), uuid: Uuid::nil() })).await.unwrap();
 		let err = server_task.await.unwrap().unwrap_err();
 		assert!(matches!(err, NetworkError::ExpectedDifferentPacket(_)), "got {err:?}");
+	}
+
+	#[tokio::test]
+	async fn begin_login_lets_the_caller_refuse_the_player() {
+		// A server must be able to refuse a player (ban, whitelist, full) after it knows the
+		// profile. So begin_login must send nothing after encryption. The next packet the client
+		// gets is the one the caller chooses, here Disconnect (login), and never Login Success.
+		let (mut client, mut server) = pair().await;
+		client.change_state(PacketState::LOGIN);
+		server.change_state(PacketState::LOGIN);
+		let handler = DefaultServerLoginHandler { should_authenticate_with_mojang: false, ..Default::default() };
+		let server_task = tokio::spawn(async move {
+			let profile = handler.begin_login(&mut server).await.unwrap();
+			assert_eq!(profile, LoginProfile::offline("Steve".into()));
+			server
+				.send_packet(Packet::LoginDisconnect(LoginDisconnectPacket { reason: TextComponent::new("You are banned").into() }))
+				.await
+				.unwrap();
+		});
+
+		client.send_packet(Packet::LoginStart(LoginStartPacket { username: "Steve".into(), uuid: Uuid::nil() })).await.unwrap();
+		client_login_encryption(&mut client).await;
+		match recv(&mut client).await {
+			Packet::LoginDisconnect(_) => {}
+			other => panic!("expected login disconnect, got {other:?}"),
+		}
+		server_task.await.unwrap();
 	}
 
 	#[tokio::test]

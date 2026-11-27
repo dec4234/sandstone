@@ -47,6 +47,9 @@ pub enum NetworkError {
 	/// Only returned when the `auth` feature is disabled.
 	#[error("Mojang authentication requires the `auth` feature")]
 	AuthNotEnabled,
+	/// The profile that Mojang returned for a player is not valid (for example, a bad UUID).
+	#[error("Invalid player profile: {0}")]
+	InvalidProfile(String),
 }
 
 impl PartialEq for NetworkError {
@@ -73,11 +76,11 @@ impl PartialEq for NetworkError {
 
 #[cfg(test)]
 mod tests {
-	use super::NetworkError;
-	use crate::protocol::serialization::serializer_error::SerializingErr;
-	use std::io;
+    use super::NetworkError;
+    use crate::protocol::serialization::serializer_error::SerializingErr;
+    use std::io;
 
-	/// Wrapped errors are `transparent`: the text a user sees is the inner error's text, with no
+    /// Wrapped errors are `transparent`: the text a user sees is the inner error's text, with no
 	/// extra prefix. Variants with a payload show the payload.
 	#[test]
 	fn display_messages() {

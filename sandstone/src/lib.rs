@@ -19,3 +19,6 @@ pub mod network;
 pub mod protocol;
 pub mod protocol_types;
 pub mod util;
+
+/// The Mojang API crate (`sandstone-mojang-api`), for types such as [mojang_api::HasJoinedResponse].
+pub use mojang_api;
