@@ -355,7 +355,7 @@ impl DefaultServerLoginHandler {
 
 	/// Sends Login (play) and Synchronize Player Position.
 	pub async fn enter_play(&self, connection: &mut CraftConnection) -> Result<(), NetworkError> {
-		let login =Packet::LoginInfo(LoginInfoPacket::new(
+		let login = Packet::from(LoginInfoPacket::new(
 			rand::rng().next_u32() as i32,
 			false,
 			PrefixedArray::new(vec![Identifier::minecraft("overworld")?, Identifier::minecraft("the_nether")?, Identifier::minecraft("the_end")?]),

@@ -419,7 +419,7 @@ mod test {
 			let profile = handler.begin_login(&mut server).await.unwrap();
 			assert_eq!(profile, LoginProfile::offline("Steve".into()));
 			server
-				.send_packet(Packet::LoginDisconnect(LoginDisconnectPacket { reason: TextComponent::new("You are banned").into() }))
+				.send_packet(LoginDisconnectPacket { reason: TextComponent::new("You are banned").into() })
 				.await
 				.unwrap();
 		});

@@ -72,7 +72,7 @@ pub fn test_optional_vec_serialization() {
 pub fn test_cross_serialization() {
 	let mut serializer = McSerializer::new();
 
-	let packet = Packet::LoginDisconnect(LoginDisconnectPacket {
+	let packet = Packet::from(LoginDisconnectPacket {
 		reason: JsonTextComponent::from(TextComponent::from("Hello, world!".to_string())),
 	});
 

@@ -144,9 +144,10 @@ impl CraftConnection {
 	}
 
 	/// Send a minecraft packet to the client. This will block until the packet is sent.
-	pub async fn send_packet(&mut self, packet: Packet) -> Result<(), NetworkError> {
+	/// Takes a `Packet` or a packet body (such as `PingResponsePacket`), which is converted with `Into`.
+	pub async fn send_packet(&mut self, packet: impl Into<Packet>) -> Result<(), NetworkError> {
 		#[cfg_attr(not(feature = "encryption"), allow(unused_mut))]
-		let mut frame = encode_frame(packet, self.compression_threshold)?;
+		let mut frame = encode_frame(packet.into(), self.compression_threshold)?;
 
 		trace!("Sending to {self} : {frame:?}");
 

@@ -44,7 +44,7 @@ impl ServerStatusHandler for DefaultServerStatusHandler {
 			Packet::StatusRequest(_) => {
 				trace!("Received status request from {}", connection);
 
-				let packed = Packet::StatusResponse(status_response);
+				let packed = Packet::from(status_response);
 
 				connection.send_packet(packed).await?;
 			}

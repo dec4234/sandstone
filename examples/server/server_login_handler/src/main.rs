@@ -18,7 +18,7 @@ use sandstone::protocol::packets::packet_definer::{PacketDirection, PacketState}
 use sandstone::protocol::packets::packet_parts::GameEventType;
 use sandstone::protocol::packets::packet_parts::status::{PlayerSample, StatusResponseSpec};
 use sandstone::protocol::packets::{
-	ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, GameEventPacket, Packet, SetCenterChunkPacket, StatusResponsePacket,
+    ChunkBatchFinishedPacket, ChunkBatchStartPacket, ChunkDataUpdateLightPacket, ClientboundKeepAlivePacket, GameEventPacket, Packet, SetCenterChunkPacket, StatusResponsePacket,
 };
 use sandstone::protocol_types::datatypes::var_types::VarInt;
 use sandstone::protocol_types::protocol_verison::ProtocolVerison;
@@ -96,7 +96,7 @@ async fn main() {
 					}
 					None => ChunkDataUpdateLightPacket::new(cx, cz, chunk_data.clone(), light_data.clone()),
 				};
-				client.send_packet(Packet::ChunkDataUpdateLight(packet)).await.unwrap();
+				client.send_packet(packet).await.unwrap();
 				chunk_count += 1;
 			}
 		}

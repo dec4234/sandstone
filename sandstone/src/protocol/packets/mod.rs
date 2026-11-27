@@ -79,7 +79,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 	},
 	STATUS => {
 		CLIENT => {
-			StatusResponse, 0x00 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Status_Response>"] => {
+			StatusResponse, 0x00 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Status_Response>"] => {
 				response: StatusResponseSpec
 			},
 			PingResponse, 0x01 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Pong_Response_(status)>"] => {
@@ -97,7 +97,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 	},
 	LOGIN => {
 		CLIENT => {
-			LoginDisconnect, 0x00 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disconnect_(login)>"] => {
+			LoginDisconnect, 0x00 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disconnect_(login)>"] => {
 				reason: JsonTextComponent
 			},
 			EncryptionRequest, 0x01 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Encryption_Request>"] => {
@@ -158,7 +158,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				channel: Identifier,
 				data: Vec<u8>
 			},
-			ConfigDisconnect, 0x02 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disconnect>"] => {
+			ConfigDisconnect, 0x02 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disconnect>"] => {
 				reason: TextComponent
 			},
 			FinishConfiguration, 0x03 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Finish_Configuration>"] => {
@@ -320,7 +320,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				location: Position,
 				block_id: VarInt
 			},
-			BossBar, 0x09 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Boss_Bar>"] => {
+			BossBar, 0x09 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Boss_Bar>"] => {
 				uuid: Uuid,
 				action: BossBarUpdateAction
 			},
@@ -393,20 +393,20 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				source_direct_id: VarInt,
 				source_position: PrefixedOptional<SourcePosition>
 			},
-			DebugBlockValue, 0x1A #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Block_Value>"] => {
+			DebugBlockValue, 0x1A boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Block_Value>"] => {
 				location: Position,
 				update: DebugSubscriptionUpdate
 			},
-			DebugChunkValue, 0x1B #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Chunk_Value>"] => {
+			DebugChunkValue, 0x1B boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Chunk_Value>"] => {
 				z: i32,
 				x: i32,
 				update: DebugSubscriptionUpdate
 			},
-			DebugEntityValue, 0x1C #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Entity_Value>"] => {
+			DebugEntityValue, 0x1C boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Entity_Value>"] => {
 				entity_id: VarInt,
 				update: DebugSubscriptionUpdate
 			},
-			DebugEvent, 0x1D #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Event>"] => {
+			DebugEvent, 0x1D boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Event>"] => {
 				event: DebugSubscriptionEvent
 			},
 			DebugSample, 0x1E #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Debug_Sample>"] => {
@@ -414,15 +414,15 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				sample: PrefixedArray<i64>,
 				sample_type: DebugSampleType
 			},
-			DeleteMessage, 0x1F #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Delete_Message>"] => {
+			DeleteMessage, 0x1F boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Delete_Message>"] => {
 				message_id: VarInt,
 				#[mc(deserialize_if = message_id.0 == 0)]
 				signature: Option<[u8; 256]>
 			},
-			DisconnectPlay, 0x20 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disconnect>"] => {
+			DisconnectPlay, 0x20 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disconnect>"] => {
 				reason: TextComponent
 			},
-			DisguisedChatMessage, 0x21 #[doc = "Send client a chat message without any signing information"] #[doc = ""] #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disguised_Chat_Message>"] => {
+			DisguisedChatMessage, 0x21 boxed #[doc = "Send client a chat message without any signing information"] #[doc = ""] #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Disguised_Chat_Message>"] => {
 				message: TextComponent,
 				chat_type: IDorX<Box<ChatTypeNetwork>>,
 				sender_name: TextComponent,
@@ -439,7 +439,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				pitch: f32,
 				on_ground: bool
 			},
-			Explosion, 0x24 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Explosion>"] => {
+			Explosion, 0x24 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Explosion>"] => {
 				x: f64,
 				y: f64,
 				z: f64,
@@ -496,7 +496,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			ClientboundKeepAlive, 0x2D #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Keep_Alive_(clientbound)>"] => {
 				keep_alive_id: i64
 			},
-			ChunkDataUpdateLight, 0x2E #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light>"] => {
+			ChunkDataUpdateLight, 0x2E boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Chunk_Data_and_Update_Light>"] => {
 				x: i32,
 				z: i32,
 				#[doc = "Chunk byte data"]
@@ -527,12 +527,12 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				particle_count: VarInt,
 				randomization_type: ParticleRandomizationType
 			},
-			UpdateLight, 0x31 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Light>"] => {
+			UpdateLight, 0x31 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Light>"] => {
 				x_chunk: VarInt,
 				y_chunk: VarInt,
 				data: LightData
 			},
-			LoginInfo, 0x32 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Login_(play)>"] => {
+			LoginInfo, 0x32 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Login_(play)>"] => {
 				#[doc = "The entity ID of the player. This must remain consistent throughout the session."]
 				entity_id: i32,
 				is_hardcore: bool,
@@ -567,7 +567,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			LowDiskSpaceWarning, 0x33 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Low_Disk_Space_Warning>"] => {
 				// no fields
 			},
-			MapData, 0x34 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Map_Data>"] => {
+			MapData, 0x34 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Map_Data>"] => {
 				map_id: VarInt,
 				scale: i8,
 				locked: bool,
@@ -614,7 +614,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			OpenBook, 0x3B #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Open_Book>"] => {
 				hand: VarInt
 			},
-			OpenScreen, 0x3C #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Open_Screen>"] => {
+			OpenScreen, 0x3C boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Open_Screen>"] => {
 				window_id: VarInt,
 				#[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Inventory>"]
 				window_type: VarInt,
@@ -630,7 +630,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			PingResponsePlay, 0x3F => {
 				payload: i64
 			},
-			PlaceGhostRecipe, 0x40 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Place_Ghost_Recipe>"] => {
+			PlaceGhostRecipe, 0x40 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Place_Ghost_Recipe>"] => {
 				window_id: VarInt,
 				recipe_display: RecipeDisplay
 			},
@@ -639,7 +639,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				flying_speed: f32,
 				fov_modifier: f32
 			},
-			PlayerChatMessage, 0x42 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Chat_Message>"] => {
+			PlayerChatMessage, 0x42 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Chat_Message>"] => {
 				global_index: VarInt,
 				sender: Uuid,
 				index: VarInt,
@@ -666,7 +666,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			EnterCombat, 0x44 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Enter_Combat>"] => {
 				// no fields
 			},
-			CombatDeath, 0x45 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Combat_Death>"] => {
+			CombatDeath, 0x45 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Combat_Death>"] => {
 				#[doc = "Entity ID of the player that died (should match the client's entity ID)"]
 				id: VarInt,
 				message: TextComponent
@@ -748,7 +748,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				#[doc = "Identifiers of the post effects"]
 				post_effects: PrefixedArray<Identifier>
 			},
-			Respawn, 0x54 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Respawn>"] => {
+			Respawn, 0x54 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Respawn>"] => {
 				dimension_type: VarInt,
 				dimension_name: Identifier,
 				hashed_seed: i64,
@@ -776,11 +776,11 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			SelectAdvancementsTab, 0x57 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Select_Advancements_Tab>"] => {
 				tab_id: PrefixedOptional<Identifier>
 			},
-			ServerData, 0x58 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Server_Data>"] => {
+			ServerData, 0x58 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Server_Data>"] => {
 				motd: TextComponent,
 				icon: PrefixedOptional<PrefixedArray<u8>>
 			},
-			SetActionBarText, 0x59 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Action_Bar_Text>"] => {
+			SetActionBarText, 0x59 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Action_Bar_Text>"] => {
 				action_bar_text: TextComponent
 			},
 			SetBorderCenter, 0x5A #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Border_Center>"] => {
@@ -853,7 +853,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			SetHeldItem, 0x6B #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Held_Item_(clientbound)>"] => {
 				slot: VarInt
 			},
-			UpdateObjectives, 0x6C #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Objectives>"] => {
+			UpdateObjectives, 0x6C boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Objectives>"] => {
 				objective_name: String,
 				mode: i8,
 				#[mc(deserialize_if = mode == 0 || mode == 2)]
@@ -873,11 +873,11 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				slot: VarInt,
 				item: SlotData
 			},
-			UpdateTeams, 0x6F #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Teams>"] => {
+			UpdateTeams, 0x6F boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Teams>"] => {
 				team_name: String,
 				team_details: UpdateTeamOptions
 			},
-			UpdateScore, 0x70 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Score>"] => {
+			UpdateScore, 0x70 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Score>"] => {
 				entity_name: String,
 				objective_name: String,
 				value: VarInt,
@@ -887,7 +887,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			SetSimulationDistance, 0x71 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Simulation_Distance>"] => {
 				simulation_distance: VarInt
 			},
-			SetSubtitleText, 0x72 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Subtitle_Text>"] => {
+			SetSubtitleText, 0x72 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Subtitle_Text>"] => {
 				subtitle_text: TextComponent
 			},
 			UpdateTime, 0x73 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Update_Time>"] => {
@@ -895,7 +895,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				world_age: i64,
 				clocks: PrefixedArray<WorldClock>
 			},
-			SetTitleText, 0x74 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Title_Text>"] => {
+			SetTitleText, 0x74 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Title_Text>"] => {
 				title_text: TextComponent
 			},
 			SetTitleAnimationTimes, 0x75 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Title_Animation_Times>"] => {
@@ -936,11 +936,11 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				#[doc = "Duration of the swing animation, in ticks"]
 				duration: VarInt
 			},
-			SystemChatMessage, 0x7C #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#System_Chat_Message>"] => {
+			SystemChatMessage, 0x7C boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#System_Chat_Message>"] => {
 				content: TextComponent,
 				overlay: bool
 			},
-			SetTabListHeaderAndFooter, 0x7D #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Tab_List_Header_And_Footer>"] => {
+			SetTabListHeaderAndFooter, 0x7D boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Tab_List_Header_And_Footer>"] => {
 				header: TextComponent,
 				footer: TextComponent
 			},
@@ -966,7 +966,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				flags: TeleportFlags,
 				on_ground: bool
 			},
-			TestInstanceBlockStatus, 0x81 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Status>"] => {
+			TestInstanceBlockStatus, 0x81 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Status>"] => {
 				status: TextComponent,
 				has_size: bool,
 				#[mc(deserialize_if = has_size)]
@@ -1326,7 +1326,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 				#[doc = "Game rule name (key) and value"]
 				rules: PrefixedArray<Mapping<String>>
 			},
-			ProgramJigsawBlock, 0x3B #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Jigsaw_Block>"] => {
+			ProgramJigsawBlock, 0x3B boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Program_Jigsaw_Block>"] => {
 				location: Position,
 				name: Identifier,
 				target: Identifier,
@@ -1375,7 +1375,7 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			TeleportToEntity, 0x40 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Teleport_To_Entity>"] => {
 				target_player: Uuid
 			},
-			TestInstanceBlockAction, 0x41 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action>"] => {
+			TestInstanceBlockAction, 0x41 boxed #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Test_Instance_Block_Action>"] => {
 				position: Position,
 				action: TestInstanceBlockActionAction,
 				test: PrefixedOptional<Identifier>,

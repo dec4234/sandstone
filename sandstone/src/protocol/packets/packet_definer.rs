@@ -52,13 +52,17 @@ mod macros {
 	///
 	/// Generally, this is an internal macro, but you may need to work on it in order to change packets around based on
 	/// different game versions. Needless to say, this packet is only used for a single Minecraft version at a time.
+	///
+	/// Put `boxed` after the packet ID (`UpdateTeams, 0x6F boxed => { ... }`) to store that packet
+	/// as `Box<T>` in the `Packet` enum. Use it for each packet body that is larger than 128 bytes,
+	/// else every `Packet` value gets that large. The `packet_enum_stays_small` test checks this.
 	#[macro_export]
 	macro_rules! packets {
         ($ref_ver: ident => {
             // These are split into multiple levels to allow for more efficient deserialization
             $($state: ident => {
                 $($direction: ident => {
-                   $($name: ident, $packetID: literal $(#[$struct_meta: meta])* => {
+                   $($name: ident, $packetID: literal $($boxed: ident)? $(#[$struct_meta: meta])* => {
                         $(
                             $(#[$field_meta:meta])*
                             $field: ident: $t: ty
@@ -90,7 +94,7 @@ mod macros {
 
                         impl From<[<$name Packet>]> for Packet {
                             fn from(p: [<$name Packet>]) -> Self {
-                                Packet::$name(p)
+                                Packet::$name(p.into())
                             }
                         }
 
@@ -100,7 +104,7 @@ mod macros {
 
                             fn try_from(p: Packet) -> Result<Self, Self::Error> {
                                 match p {
-                                    Packet::$name(p) => Ok(p),
+                                    Packet::$name(p) => Ok($crate::packet_variant_unwrap!(p $(, $boxed)?)),
                                     other => Err(other)
                                 }
                             }
@@ -112,7 +116,7 @@ mod macros {
             $crate::as_item!( // weird workaround from mcproto-rs
                 #[derive(Debug, Clone, PartialEq)]
                 pub enum Packet {
-                    $($($($name([<$name Packet>]),)*)*)*
+                    $($($($name($crate::packet_variant_type!([<$name Packet>] $(, $boxed)?)),)*)*)*
                 }
             );
 
@@ -176,7 +180,7 @@ mod macros {
                                                 let a = [<$name Packet>]::mc_deserialize(&mut sub);
 
                                                 if let Ok(a) = a {
-                                                    return Ok(Packet::$name(a));
+                                                    return Ok(Packet::$name(a.into()));
                                                 } else if let Err(e) = a {
                                                     return Err(SerializingErr::DeserializationError(format!("Failed to deserialize packet {:?} with id '0x{:X}' with message: '{}'", stringify!($name), packet_id.0, e)));
                                                 }
@@ -204,7 +208,7 @@ mod macros {
                 $($($(
                     #[test]
                     fn [<round_trip_ $name:snake>]() {
-                        let packet = Packet::$name([<$name Packet>]::mc_default());
+                        let packet = Packet::$name([<$name Packet>]::mc_default().into());
                         assert_eq!(packet.state(), PacketState::$state);
                         assert_eq!(packet.direction(), PacketDirection::$direction);
 
@@ -222,6 +226,25 @@ mod macros {
             } // end paste
         };
     }
+
+	/// Internal Only. The type that the `Packet` enum stores for one packet. A packet marked
+	/// `boxed` in `packets!` is stored as `Box<T>`, so that a few large packets do not make every
+	/// `Packet` value large. `Packet` is moved through channels for each packet sent, so its size
+	/// is a copy cost on the hot path.
+	#[doc(hidden)]
+	#[macro_export]
+	macro_rules! packet_variant_type {
+		($t: ty) => { $t };
+		($t: ty, boxed) => { Box<$t> };
+	}
+
+	/// Internal Only. Gets the packet body out of the value that `packet_variant_type!` gives.
+	#[doc(hidden)]
+	#[macro_export]
+	macro_rules! packet_variant_unwrap {
+		($p: expr) => { $p };
+		($p: expr, boxed) => { *$p };
+	}
 
 	#[macro_export]
 	macro_rules! pac {
@@ -344,6 +367,16 @@ mod tests {
 		let packet: Packet = body.clone().into();
 		assert_eq!(packet, Packet::PingRequest(body.clone()));
 		assert_eq!(PingRequestPacket::try_from(packet), Ok(body));
+	}
+
+	/// A server sends many `Packet` values through channels each tick (Endstone: 40 000 for each
+	/// tick with 1000 entities and 20 viewers), and each send copies the full enum. The enum is as
+	/// large as its largest variant, so one large packet body that is not `boxed` makes all packets
+	/// slow to move. Before this limit, `UpdateTeams` (600 bytes) set the size of every packet.
+	#[test]
+	fn packet_enum_stays_small() {
+		let size = std::mem::size_of::<Packet>();
+		assert!(size <= 136, "Packet is {size} bytes. Mark the packets with a body larger than 128 bytes as `boxed` in `packets!`");
 	}
 
 	/// A wrong variant must not panic. The caller gets the original packet back so it can handle it.
