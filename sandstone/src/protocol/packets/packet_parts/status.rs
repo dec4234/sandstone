@@ -39,7 +39,7 @@ pub enum FaviconError {
 /// the complicated nested structure of the status response.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Server_List_Ping#Status_Response>
-#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(McDefault, Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[allow(non_snake_case)]
 pub struct StatusResponseSpec {
 	pub version: VersionInfo,
