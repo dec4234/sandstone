@@ -3,7 +3,7 @@ This tool gets block state IDs from the vanilla Minecraft server and writes them
 `sandstone/src/protocol/game/world/block_states.rs`.
 
 Requirements:
-- `java` on `PATH`. The Java version must be one that the server jar can run on.
+- A JDK with `java` and `javac` on `PATH`. The Java version must be one that the server jar can run on.
 - Network access to `piston-meta.mojang.com` and `piston-data.mojang.com` for the first run of a version.
 
 ## Steps
@@ -23,6 +23,12 @@ The same command also reads `registries.json` from the same folder and writes
 `sandstone/src/protocol/game/world/block_state_table.rs`. That file has every block with its properties and
 state ID range, and the block entity types in protocol ID order. The Anvil module uses it to change block state
 names into state IDs. The tool checks the state order against every state in the report and stops if it changed.
+
+The reports do not have block hardness or collision shapes. After the data generator, `report` compiles
+`java/BlockPhysics.java` against the unpacked server classes and runs it. It writes
+`work/<version>/generated/reports/block_physics.json`. `generate` then adds the hardness of each block to
+`BlockInfo`, and the collision shape of each state to `COLLISION_SHAPES` and `STATE_COLLISION_SHAPES`. The
+program needs the class names of an unobfuscated server jar (26.3 is unobfuscated).
 The `work/` folder is not committed.
 
 ## Update instructions

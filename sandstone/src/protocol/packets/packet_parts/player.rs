@@ -57,15 +57,43 @@ pub enum WaypointOperation {
 /// Used to communicate a change in player status.
 ///
 /// <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Player_Action>
+///
+/// The IDs are the order of `ServerboundPlayerActionPacket.Action` in the 26.3 server jar. 26.3
+/// added `CHANGE_DESTROY_DIRECTION` (1) and `STAB` (8), so the other IDs are not the same as on
+/// older wiki pages.
 #[derive(VarIntEnum, McDefault, Debug, Clone, Copy, PartialEq)]
 pub enum PlayerActionStatus {
 	StartedDigging = 0,
-	CancelledDigging = 1,
-	FinishedDigging = 2,
-	DropItemStack = 3,
-	DropItem = 4,
-	ShootArrowOrFinishEating = 5,
-	SwapItemInHand = 6,
+	/// The player still digs the same block, but looks at another face of it.
+	ChangeDiggingDirection = 1,
+	CancelledDigging = 2,
+	FinishedDigging = 3,
+	DropItemStack = 4,
+	DropItem = 5,
+	ShootArrowOrFinishEating = 6,
+	SwapItemInHand = 7,
+	/// An attack with a spear.
+	Stab = 8,
+}
+
+#[cfg(test)]
+mod player_action_test {
+    use super::PlayerActionStatus;
+    use crate::protocol::serialization::{McSerialize, McSerializer};
+
+    #[test]
+	fn ids_match_the_26_3_jar() {
+		// A 26.3 client sends 5 for the drop key and 7 for the swap-hands key.
+		let id = |s: PlayerActionStatus| {
+			let mut ser = McSerializer::new();
+			s.mc_serialize(&mut ser).unwrap();
+			ser.as_bytes()[0]
+		};
+		assert_eq!(id(PlayerActionStatus::FinishedDigging), 3);
+		assert_eq!(id(PlayerActionStatus::DropItem), 5);
+		assert_eq!(id(PlayerActionStatus::SwapItemInHand), 7);
+		assert_eq!(id(PlayerActionStatus::Stab), 8);
+	}
 }
 
 /// # Seen Advancement Action (Packet Part)
@@ -204,7 +232,8 @@ mod test {
 	#[test]
 	fn action_enum_ids_match_wiki() {
 		assert_eq!(ser(&PlayerActionStatus::StartedDigging), vec![0]);
-		assert_eq!(ser(&PlayerActionStatus::SwapItemInHand), vec![6]);
+		// 26.3 IDs (see the PlayerActionStatus doc), not the older wiki IDs.
+		assert_eq!(ser(&PlayerActionStatus::SwapItemInHand), vec![7]);
 		assert_eq!(ser(&WaypointOperation::Update), vec![2]);
 		assert_eq!(ser(&SeenAdvancementsAction::ClosedScreen), vec![1]);
 		assert_eq!(ser(&UseItemHand::OffHand), vec![1]);
@@ -213,6 +242,7 @@ mod test {
 
 	#[test]
 	fn unknown_action_status_is_rejected() {
-		assert!(PlayerActionStatus::mc_deserialize(&mut McDeserializer::new(&[7])).is_err());
+		// 8 (Stab) is the highest ID in 26.3, so 9 is the first unknown ID.
+		assert!(PlayerActionStatus::mc_deserialize(&mut McDeserializer::new(&[9])).is_err());
 	}
 }

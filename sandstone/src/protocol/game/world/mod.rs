@@ -12,6 +12,7 @@ use sandstone_derive::{McDefault, McDeserialize, McSerialize};
 
 #[cfg(feature = "anvil")]
 pub mod anvil;
+pub mod block_physics;
 pub mod block_state_table;
 pub mod block_states;
 pub mod chunk;
@@ -70,9 +71,9 @@ impl From<BlockPos> for ChunkPos {
 
 #[cfg(test)]
 mod test {
-	use super::*;
+    use super::*;
 
-	#[test]
+    #[test]
 	fn chunk_pos_floors_negative_blocks() {
 		// Block x = -1 is in chunk -1, not chunk 0. Integer division would round toward zero and
 		// put the block in the wrong chunk.

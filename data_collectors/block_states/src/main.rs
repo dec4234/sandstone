@@ -8,6 +8,10 @@
 //!   folder and writes every block state, block entity type, item and entity type to
 //!   `sandstone/src/protocol/game/world/block_state_table.rs`.
 //!
+//! The reports do not have the hardness and the collision shapes of the blocks. For these, `report`
+//! also compiles and runs `java/BlockPhysics.java` against the server classes. It writes
+//! `generated/reports/block_physics.json`, and `generate` adds that data to the table.
+//!
 //! The tool does not depend on sandstone. If the generated file does not compile, you can still run
 //! this tool to write it again.
 
@@ -46,7 +50,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 			// The data generator writes registries.json next to blocks.json.
 			let registries = fs::read_to_string(Path::new(report).with_file_name("registries.json"))?;
-			let mut table = generate_table(&json, &registries, version)?;
+			let physics = fs::read_to_string(Path::new(report).with_file_name("block_physics.json"))?;
+			let mut table = generate_table(&json, &registries, &physics, version)?;
 			// The data generator writes the default components of each item into
 			// `minecraft/components/item/<name>.json`, next to registries.json.
 			let components_dir = Path::new(report).with_file_name("minecraft").join("components").join("item");
@@ -111,7 +116,59 @@ fn run_report(work_dir: &Path, version: &str) -> Result<PathBuf, Box<dyn Error>>
 	if !report.exists() {
 		return Err(format!("data generator finished but {} does not exist", report.display()).into());
 	}
+
+	run_block_physics(work_dir, &report.with_file_name("block_physics.json"))?;
 	Ok(report)
+}
+
+/// Compiles `java/BlockPhysics.java` against the server classes and runs it. It writes the hardness
+/// and the collision shape of every block state to `output`.
+///
+/// The data generator must run first: it unpacks the server classes into `versions/` and the
+/// libraries into `libraries/`.
+fn run_block_physics(work_dir: &Path, output: &Path) -> Result<(), Box<dyn Error>> {
+	let mut jars = Vec::new();
+	find_jars(&work_dir.join("versions"), &mut jars)?;
+	find_jars(&work_dir.join("libraries"), &mut jars)?;
+
+	let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("java").join("BlockPhysics.java");
+	let classes = work_dir.join("physics_classes");
+	fs::create_dir_all(&classes)?;
+
+	println!("compiling and running {}", source.display());
+	let status = Command::new("javac")
+		.arg("-cp")
+		.arg(std::env::join_paths(&jars)?)
+		.arg("-d")
+		.arg(&classes)
+		.arg(&source)
+		.status()
+		.map_err(|e| format!("could not start `javac` (is a JDK on PATH?): {e}"))?;
+	if !status.success() {
+		return Err(format!("javac failed with {status}").into());
+	}
+
+	let mut run_path = vec![classes];
+	run_path.extend(jars);
+	// The server classes write a `logs/` folder into the current directory, so run inside `work_dir`.
+	let status = Command::new("java").current_dir(work_dir).arg("-cp").arg(std::env::join_paths(&run_path)?).arg("BlockPhysics").arg(output).status()?;
+	if !status.success() {
+		return Err(format!("BlockPhysics failed with {status}").into());
+	}
+	Ok(())
+}
+
+/// Adds every `.jar` file under `dir` to `jars`.
+fn find_jars(dir: &Path, jars: &mut Vec<PathBuf>) -> Result<(), Box<dyn Error>> {
+	for entry in fs::read_dir(dir).map_err(|e| format!("cannot read {}: {e}", dir.display()))? {
+		let path = entry?.path();
+		if path.is_dir() {
+			find_jars(&path, jars)?;
+		} else if path.extension().is_some_and(|e| e == "jar") {
+			jars.push(path);
+		}
+	}
+	Ok(())
 }
 
 fn get(url: &str) -> Result<String, Box<dyn Error>> {
@@ -154,15 +211,16 @@ fn generate(report_json: &str, version: &str) -> Result<String, Box<dyn Error>> 
 	Ok(out)
 }
 
-/// Turns the vanilla `blocks.json` and `registries.json` reports into Rust source with every block
-/// state and every block entity type.
+/// Turns the vanilla `blocks.json` and `registries.json` reports and `block_physics.json` into Rust
+/// source with every block state, its hardness and collision shape, and every block entity type.
 ///
 /// The table keeps only the first state ID and the property values of each block. The other IDs
 /// come from the vanilla order: the properties are sorted by name and the last property changes
 /// fastest. This function checks that order against the ID of every state in the report. If the
 /// order changes, the tool stops and does not write a table with wrong IDs.
-fn generate_table(blocks_json: &str, registries_json: &str, version: &str) -> Result<String, Box<dyn Error>> {
+fn generate_table(blocks_json: &str, registries_json: &str, physics_json: &str, version: &str) -> Result<String, Box<dyn Error>> {
 	let report: serde_json::Map<String, serde_json::Value> = serde_json::from_str(blocks_json)?;
+	let physics = read_physics(physics_json)?;
 
 	struct Block {
 		name: String,
@@ -170,6 +228,8 @@ fn generate_table(blocks_json: &str, registries_json: &str, version: &str) -> Re
 		count: i64,
 		default_id: i64,
 		properties: Vec<(String, Vec<String>)>,
+		hardness: f64,
+		dynamic_shape: bool,
 	}
 
 	let mut blocks = Vec::with_capacity(report.len());
@@ -219,12 +279,24 @@ fn generate_table(blocks_json: &str, registries_json: &str, version: &str) -> Re
 			}
 		}
 
+		// The table keeps one hardness and one dynamic flag per block. Stop if a state is different.
+		let state_physics = |id: i64| physics.get(id as usize).ok_or_else(|| format!("{name}: state {id} is not in block_physics.json"));
+		let first = state_physics(first_id)?;
+		for id in &ids {
+			let state = state_physics(*id)?;
+			if state.hardness != first.hardness || state.dynamic != first.dynamic {
+				return Err(format!("{name}: state {id} has a different hardness or dynamic flag than state {first_id}").into());
+			}
+		}
+
 		blocks.push(Block {
 			name: name.clone(),
 			first_id,
 			count,
 			default_id: default_id.ok_or_else(|| format!("{name}: no default state"))?,
 			properties,
+			hardness: first.hardness,
+			dynamic_shape: first.dynamic,
 		});
 	}
 	blocks.sort_by_key(|b| b.first_id);
@@ -236,6 +308,23 @@ fn generate_table(blocks_json: &str, registries_json: &str, version: &str) -> Re
 			return Err(format!("{}: first state ID is {}, expected {next_id}", block.name, block.first_id).into());
 		}
 		next_id += block.count;
+	}
+	if physics.len() as i64 != next_id {
+		return Err(format!("block_physics.json has {} states, blocks.json has {next_id}", physics.len()).into());
+	}
+
+	// Many states have the same shape. Keep each shape one time and give each state an index.
+	let mut shapes: Vec<&Vec<[f64; 6]>> = Vec::new();
+	let mut state_shapes = Vec::with_capacity(physics.len());
+	for state in &physics {
+		let index = match shapes.iter().position(|s| **s == state.collision) {
+			Some(index) => index,
+			None => {
+				shapes.push(&state.collision);
+				shapes.len() - 1
+			}
+		};
+		state_shapes.push(u16::try_from(index).map_err(|_| "more than 65536 different collision shapes")?);
 	}
 
 	let entity_types = registry_entries(registries_json, "minecraft:block_entity_type")?;
@@ -259,6 +348,12 @@ pub struct BlockInfo {{
 	pub default_id: i32,
 	/// `(property name, values)`, sorted by property name.
 	pub properties: &'static [(&'static str, &'static [&'static str])],
+	/// The destroy time of the block. 0 breaks at once in survival. -1 cannot be broken (bedrock).
+	pub hardness: f32,
+	/// True if the true collision shape can change with the position or the entity (for example
+	/// scaffolding, powder snow, bamboo). [STATE_COLLISION_SHAPES] then has only a default shape:
+	/// for an empty collision context, and without the position offset.
+	pub dynamic_shape: bool,
 }}
 
 /// The number of block states. The direct palette of a chunk section uses `ceil(log2(BLOCK_STATE_COUNT))` bits.
@@ -275,12 +370,31 @@ pub const BLOCKS: &[BlockInfo] = &[
 			.map(|(prop, values)| format!("(\"{prop}\", &[{}])", values.iter().map(|v| format!("\"{v}\"")).collect::<Vec<_>>().join(", ")))
 			.collect();
 		out.push_str(&format!(
-			"\tBlockInfo {{ name: \"{}\", first_id: {}, default_id: {}, properties: &[{}] }},\n",
+			"\tBlockInfo {{ name: \"{}\", first_id: {}, default_id: {}, properties: &[{}], hardness: {:?}, dynamic_shape: {} }},\n",
 			block.name,
 			block.first_id,
 			block.default_id,
-			properties.join(", ")
+			properties.join(", "),
+			block.hardness as f32,
+			block.dynamic_shape
 		));
+	}
+	out.push_str(
+		"];
+
+/// The different collision shapes. Each shape is a list of boxes `[min_x, min_y, min_z, max_x, max_y, max_z]`
+/// in block coordinates (a full block is `[0, 0, 0, 1, 1, 1]`). Some boxes go out of the block, for
+/// example fences (height 1.5). An empty list means no collision.
+pub const COLLISION_SHAPES: &[&[[f64; 6]]] = &[
+",
+	);
+	for shape in &shapes {
+		let boxes: Vec<String> = shape.iter().map(|b| format!("[{}]", b.iter().map(|v| format!("{v:?}")).collect::<Vec<_>>().join(", "))).collect();
+		out.push_str(&format!("\t&[{}],\n", boxes.join(", ")));
+	}
+	out.push_str("];\n\n/// The index into [COLLISION_SHAPES] of each block state. The index of an entry is the state ID.\npub const STATE_COLLISION_SHAPES: &[u16] = &[\n");
+	for chunk in state_shapes.chunks(32) {
+		out.push_str(&format!("\t{},\n", chunk.iter().map(u16::to_string).collect::<Vec<_>>().join(", ")));
 	}
 	out.push_str("];\n\n/// Block entity type names. The index of a name is its protocol ID.\npub const BLOCK_ENTITY_TYPES: &[&str] = &[\n");
 	for name in entity_types {
@@ -296,6 +410,44 @@ pub const BLOCKS: &[BlockInfo] = &[
 	}
 	out.push_str("];\n");
 	Ok(out)
+}
+
+/// The data of one block state in `block_physics.json`.
+struct StatePhysics {
+	hardness: f64,
+	dynamic: bool,
+	collision: Vec<[f64; 6]>,
+}
+
+/// Reads `block_physics.json` (written by `java/BlockPhysics.java`). The index of an entry is its
+/// state ID. Fails if an entry is not at the index of its `id`.
+fn read_physics(physics_json: &str) -> Result<Vec<StatePhysics>, Box<dyn Error>> {
+	let states: Vec<serde_json::Value> = serde_json::from_str(physics_json)?;
+	states
+		.iter()
+		.enumerate()
+		.map(|(index, state)| {
+			if state["id"].as_u64() != Some(index as u64) {
+				return Err(format!("block_physics.json: entry {index} has id {}", state["id"]).into());
+			}
+			let hardness = state["hardness"].as_f64().ok_or_else(|| format!("state {index}: no `hardness`"))?;
+			let dynamic = state["dynamic"].as_bool().ok_or_else(|| format!("state {index}: no `dynamic`"))?;
+			let collision = state["collision"]
+				.as_array()
+				.ok_or_else(|| format!("state {index}: no `collision` array"))?
+				.iter()
+				.map(|b| {
+					let values: Vec<f64> = b.as_array().into_iter().flatten().filter_map(serde_json::Value::as_f64).collect();
+					<[f64; 6]>::try_from(values).map_err(|_| format!("state {index}: a box does not have 6 numbers"))
+				})
+				.collect::<Result<Vec<_>, _>>()?;
+			Ok(StatePhysics {
+				hardness,
+				dynamic,
+				collision,
+			})
+		})
+		.collect()
 }
 
 /// The entry names of one registry in `registries.json`, in protocol ID order. Fails if the IDs are
@@ -392,6 +544,62 @@ mod tests {
 
 	const NO_ENTITIES: &str = r#"{ "minecraft:block_entity_type": { "entries": {} }, "minecraft:item": { "entries": {} }, "minecraft:entity_type": { "entries": {} } }"#;
 
+	/// `count` states with hardness 1 and a full block shape.
+	fn physics(count: usize) -> String {
+		let states: Vec<String> = (0..count).map(|id| format!(r#"{{"id": {id}, "hardness": 1.0, "dynamic": false, "collision": [[0.0, 0.0, 0.0, 1.0, 1.0, 1.0]]}}"#)).collect();
+		format!("[{}]", states.join(", "))
+	}
+
+	const AIR_AND_SLAB: &str = r#"{
+		"minecraft:air": { "states": [ { "id": 0, "default": true } ] },
+		"minecraft:slab": { "properties": { "type": ["top", "bottom"] }, "states": [
+			{ "id": 1, "properties": { "type": "top" } },
+			{ "id": 2, "properties": { "type": "bottom" }, "default": true }
+		] }
+	}"#;
+
+	#[test]
+	fn table_has_hardness_and_one_shape_per_state() {
+		// Air and the top slab are different shapes. The bottom slab must get its own shape, not the
+		// shape of the top slab: a wrong shape puts the player inside a block.
+		let physics = r#"[
+			{"id": 0, "hardness": 0.0, "dynamic": false, "collision": []},
+			{"id": 1, "hardness": 2.0, "dynamic": false, "collision": [[0.0, 0.5, 0.0, 1.0, 1.0, 1.0]]},
+			{"id": 2, "hardness": 2.0, "dynamic": false, "collision": [[0.0, 0.0, 0.0, 1.0, 0.5, 1.0]]}
+		]"#;
+		let out = generate_table(AIR_AND_SLAB, NO_ENTITIES, physics, "test").unwrap();
+		assert!(out.contains(r#"name: "minecraft:slab", first_id: 1, default_id: 2, properties: &[("type", &["top", "bottom"])], hardness: 2.0, dynamic_shape: false },"#), "{out}");
+		assert!(out.contains("\t&[],\n\t&[[0.0, 0.5, 0.0, 1.0, 1.0, 1.0]],\n\t&[[0.0, 0.0, 0.0, 1.0, 0.5, 1.0]],\n"), "{out}");
+		assert!(out.contains("pub const STATE_COLLISION_SHAPES: &[u16] = &[\n\t0, 1, 2,\n];"), "{out}");
+	}
+
+	#[test]
+	fn table_shares_equal_shapes() {
+		let out = generate_table(AIR_AND_SLAB, NO_ENTITIES, &physics(3), "test").unwrap();
+		assert!(out.contains("pub const COLLISION_SHAPES: &[&[[f64; 6]]] = &[\n\t&[[0.0, 0.0, 0.0, 1.0, 1.0, 1.0]],\n];"), "{out}");
+		assert!(out.contains("\t0, 0, 0,\n"), "{out}");
+	}
+
+	#[test]
+	fn table_refuses_physics_that_do_not_match_the_blocks() {
+		// One state too few: the shapes of the states after it would move to the wrong IDs.
+		assert!(generate_table(AIR_AND_SLAB, NO_ENTITIES, &physics(2), "test").is_err());
+		// The table has one hardness per block, so a block with two must stop the tool.
+		let two_hardness = r#"[
+			{"id": 0, "hardness": 0.0, "dynamic": false, "collision": []},
+			{"id": 1, "hardness": 2.0, "dynamic": false, "collision": []},
+			{"id": 2, "hardness": 3.0, "dynamic": false, "collision": []}
+		]"#;
+		assert!(generate_table(AIR_AND_SLAB, NO_ENTITIES, two_hardness, "test").is_err());
+		// Entries out of ID order.
+		let swapped = r#"[
+			{"id": 1, "hardness": 0.0, "dynamic": false, "collision": []},
+			{"id": 0, "hardness": 0.0, "dynamic": false, "collision": []},
+			{"id": 2, "hardness": 0.0, "dynamic": false, "collision": []}
+		]"#;
+		assert!(generate_table(AIR_AND_SLAB, NO_ENTITIES, swapped, "test").is_err());
+	}
+
 	#[test]
 	fn table_keeps_the_vanilla_state_order() {
 		// Properties sorted by name, the last one changes fastest: a=0,b=1 is first_id + 1.
@@ -404,9 +612,9 @@ mod tests {
 				{ "id": 4, "properties": { "a": "1", "b": "1" } }
 			] }
 		}"#;
-		let out = generate_table(report, NO_ENTITIES, "test").unwrap();
+		let out = generate_table(report, NO_ENTITIES, &physics(5), "test").unwrap();
 		assert!(
-			out.contains(r#"BlockInfo { name: "minecraft:x", first_id: 1, default_id: 2, properties: &[("a", &["0", "1"]), ("b", &["0", "1"])] },"#),
+			out.contains(r#"BlockInfo { name: "minecraft:x", first_id: 1, default_id: 2, properties: &[("a", &["0", "1"]), ("b", &["0", "1"])], hardness: 1.0, dynamic_shape: false },"#),
 			"{out}"
 		);
 		assert!(out.contains("pub const BLOCK_STATE_COUNT: i32 = 5;"), "{out}");
@@ -423,7 +631,7 @@ mod tests {
 				{ "id": 3, "properties": { "a": "1", "b": "1" } }
 			] }
 		}"#;
-		assert!(generate_table(report, NO_ENTITIES, "test").is_err());
+		assert!(generate_table(report, NO_ENTITIES, &physics(4), "test").is_err());
 	}
 
 	#[test]
@@ -432,7 +640,7 @@ mod tests {
 			"minecraft:air": { "states": [ { "id": 0, "default": true } ] },
 			"minecraft:stone": { "states": [ { "id": 2, "default": true } ] }
 		}"#;
-		assert!(generate_table(report, NO_ENTITIES, "test").is_err());
+		assert!(generate_table(report, NO_ENTITIES, &physics(4), "test").is_err());
 	}
 
 	#[test]

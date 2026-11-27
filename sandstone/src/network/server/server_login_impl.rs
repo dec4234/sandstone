@@ -200,7 +200,7 @@ impl DefaultServerLoginHandler {
 			debug!("Sent set compression to {connection} and enabled compression");
 		}
 
-		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(profile.uuid, profile.username.clone(), PrefixedArray::new(profile.properties.clone())));
+		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(profile.uuid, profile.username.clone(), PrefixedArray::new(profile.properties.clone()), profile.uuid));
 		connection.send_packet(login_success).await?;
 
 		let login_ack = connection.receive_packet().await?;

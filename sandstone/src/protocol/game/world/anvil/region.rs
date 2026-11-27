@@ -93,6 +93,8 @@ pub struct RegionFile {
 	timestamps: [u32; 1024],
 	/// One entry per sector of the file. True if a chunk or the header uses it.
 	used: Vec<bool>,
+	/// The `.mcc` files written since the last [RegionFile::sync].
+	unsynced_external: Vec<PathBuf>,
 }
 
 impl RegionFile {
@@ -132,7 +134,28 @@ impl RegionFile {
 			locations,
 			timestamps,
 			used,
+			unsynced_external: Vec::new(),
 		})
+	}
+
+	/// Write all data of this region to the disk before it returns: the region file, and the `.mcc`
+	/// files written since the last sync. Without a sync, the operating system can keep written
+	/// chunks in memory, and a power loss can lose them.
+	///
+	/// This does not sync the folder, so on some file systems a new file can still be lost.
+	pub fn sync(&mut self) -> AnvilResult<()> {
+		for path in &self.unsynced_external {
+			// Windows can only flush a file that is open for writing.
+			match OpenOptions::new().write(true).open(path) {
+				Ok(file) => file.sync_all()?,
+				// A smaller chunk replaced it and the file was removed.
+				Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+				Err(e) => return Err(e.into()),
+			}
+		}
+		self.unsynced_external.clear();
+		self.file.sync_all()?;
+		Ok(())
 	}
 
 	/// True if the file has data for the chunk.
@@ -209,7 +232,11 @@ impl RegionFile {
 		let external = 5 + compressed.len() > MAX_SECTORS * SECTOR;
 		let mut data = Vec::with_capacity(SECTOR);
 		if external {
-			std::fs::write(self.external_path(chunk_x, chunk_z), &compressed)?;
+			let path = self.external_path(chunk_x, chunk_z);
+			std::fs::write(&path, &compressed)?;
+			if !self.unsynced_external.contains(&path) {
+				self.unsynced_external.push(path);
+			}
 			data.extend_from_slice(&1u32.to_be_bytes());
 			data.push(compression as u8 | EXTERNAL_FLAG);
 		} else {
@@ -284,10 +311,10 @@ fn split_location(location: u32) -> (usize, usize) {
 
 #[cfg(test)]
 mod test {
-	use super::*;
-	use crate::protocol_types::datatypes::nbt::NbtByteArray;
+    use super::*;
+    use crate::protocol_types::datatypes::nbt::NbtByteArray;
 
-	fn temp_dir(name: &str) -> PathBuf {
+    fn temp_dir(name: &str) -> PathBuf {
 		let dir = std::env::temp_dir().join(format!("sandstone_region_test_{name}_{}", std::process::id()));
 		let _ = std::fs::remove_dir_all(&dir);
 		std::fs::create_dir_all(&dir).unwrap();
@@ -311,9 +338,9 @@ mod test {
 		compound
 	}
 
-	use crate::protocol_types::datatypes::nbt::NbtTag;
+    use crate::protocol_types::datatypes::nbt::NbtTag;
 
-	#[test]
+    #[test]
 	fn region_file_names_floor_negative_chunks() {
 		assert_eq!(region_file_name(0, 31), "r.0.0.mca");
 		assert_eq!(region_file_name(32, -1), "r.1.-1.mca");
@@ -379,6 +406,30 @@ mod test {
 		region.write_chunk_nbt(-1, 2, &nbt(6, 10), Compression::Zlib).unwrap();
 		assert!(!dir.join("c.-1.2.mcc").exists());
 		assert_eq!(region.read_chunk_nbt(-1, 2).unwrap(), Some(nbt(6, 10)));
+	}
+
+	/// A loader calls sync after it saves chunks. Sync must flush the `.mcc` files too, and must not
+	/// fail because a `.mcc` file that it wrote was removed later.
+	#[test]
+	fn sync_flushes_external_files_and_skips_removed_ones() {
+		let dir = temp_dir("sync");
+		let mut region = RegionFile::open(dir.join("r.0.0.mca")).unwrap();
+		let big = nbt(7, (MAX_SECTORS + 1) * SECTOR);
+
+		region.write_chunk_nbt(0, 0, &big, Compression::None).unwrap();
+		region.write_chunk_nbt(1, 0, &big, Compression::None).unwrap();
+		assert_eq!(region.unsynced_external.len(), 2);
+		region.sync().unwrap();
+		assert!(region.unsynced_external.is_empty(), "synced files must not be flushed again");
+
+		region.write_chunk_nbt(0, 0, &big, Compression::None).unwrap();
+		// A smaller chunk removes the .mcc file before the sync.
+		region.write_chunk_nbt(0, 0, &nbt(8, 10), Compression::None).unwrap();
+		region.sync().unwrap();
+
+		let mut region = RegionFile::open(dir.join("r.0.0.mca")).unwrap();
+		assert_eq!(region.read_chunk_nbt(0, 0).unwrap(), Some(nbt(8, 10)));
+		assert_eq!(region.read_chunk_nbt(1, 0).unwrap(), Some(big));
 	}
 
 	/// Vanilla 26.3 does not pad the last chunk of a file to a full sector. A reader that reads

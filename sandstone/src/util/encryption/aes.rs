@@ -37,8 +37,38 @@ pub fn generate_shared_secret() -> [u8; SHARED_SECRET_LEN] {
 /// same instance must be reused for every packet.
 #[derive(Debug)]
 pub struct CraftCipher {
-	encryptor: Aes128Cfb8Enc,
-	decryptor: Aes128Cfb8Dec,
+	encryptor: CraftEncryptor,
+	decryptor: CraftDecryptor,
+}
+
+/// The encryption half of a [`CraftCipher`], for the write half of a split connection.
+#[derive(Debug)]
+pub struct CraftEncryptor(Aes128Cfb8Enc);
+
+/// The decryption half of a [`CraftCipher`], for the read half of a split connection.
+#[derive(Debug)]
+pub struct CraftDecryptor(Aes128Cfb8Dec);
+
+impl CraftEncryptor {
+	/// Encrypts `data` in place, advancing the encryption cipher state.
+	pub fn encrypt(&mut self, data: &mut [u8]) {
+		for byte in data.iter_mut() {
+			let mut block: Block<Aes128Cfb8Enc> = Array::from([*byte]);
+			self.0.encrypt_block(&mut block);
+			*byte = block[0];
+		}
+	}
+}
+
+impl CraftDecryptor {
+	/// Decrypts `data` in place, advancing the decryption cipher state.
+	pub fn decrypt(&mut self, data: &mut [u8]) {
+		for byte in data.iter_mut() {
+			let mut block: Block<Aes128Cfb8Dec> = Array::from([*byte]);
+			self.0.decrypt_block(&mut block);
+			*byte = block[0];
+		}
+	}
 }
 
 impl CraftCipher {
@@ -55,26 +85,24 @@ impl CraftCipher {
 		let decryptor = Aes128Cfb8Dec::new_from_slices(shared_secret, shared_secret).map_err(|_| EncryptionError::InvalidSharedSecretLength(shared_secret.len()))?;
 
 		Ok(Self {
-			encryptor,
-			decryptor,
+			encryptor: CraftEncryptor(encryptor),
+			decryptor: CraftDecryptor(decryptor),
 		})
 	}
 
 	/// Encrypts `data` in place, advancing the encryption cipher state.
 	pub fn encrypt(&mut self, data: &mut [u8]) {
-		for byte in data.iter_mut() {
-			let mut block: Block<Aes128Cfb8Enc> = Array::from([*byte]);
-			self.encryptor.encrypt_block(&mut block);
-			*byte = block[0];
-		}
+		self.encryptor.encrypt(data);
 	}
 
 	/// Decrypts `data` in place, advancing the decryption cipher state.
 	pub fn decrypt(&mut self, data: &mut [u8]) {
-		for byte in data.iter_mut() {
-			let mut block: Block<Aes128Cfb8Dec> = Array::from([*byte]);
-			self.decryptor.decrypt_block(&mut block);
-			*byte = block[0];
-		}
+		self.decryptor.decrypt(data);
+	}
+
+	/// Split into the two halves. Each half keeps its current state, so the keystreams stay in
+	/// sync with the peer.
+	pub fn split(self) -> (CraftEncryptor, CraftDecryptor) {
+		(self.encryptor, self.decryptor)
 	}
 }

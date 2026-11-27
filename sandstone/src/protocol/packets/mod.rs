@@ -110,7 +110,9 @@ packets!(v26_3 => { // version name is for reference only, has no effect
 			LoginSuccess, 0x02 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Login_Success>"] => {
 				uuid: Uuid,
 				username: String,
-				properties: PrefixedArray<ProtocolPropertyElement>
+				properties: PrefixedArray<ProtocolPropertyElement>,
+				#[doc = "Not on the wiki, but a 26.3 client cannot decode the packet without these 16 bytes (tested with a real client)."]
+				session_id: Uuid
 			},
 			SetCompression, 0x03 #[doc = "<https://minecraft.wiki/w/Java_Edition_protocol/Packets#Set_Compression>"] => {
 				#[doc = "The threshold for compression, in bytes. If the packet size is larger than this, it will be compressed."]

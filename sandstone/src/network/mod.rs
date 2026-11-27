@@ -34,6 +34,9 @@ pub mod client;
 pub mod network_error;
 #[cfg(feature = "server")]
 pub mod server;
+mod split;
+
+pub use split::{CraftReader, CraftWriter};
 
 /// A type that is an alias for [PacketDirection] to prevent some naming confusion for connection intialization.
 pub type ConnectionRole = PacketDirection;
@@ -62,9 +65,8 @@ pub struct CraftConnection {
 	pub client_type: ConnectionRole,
 	#[cfg(feature = "encryption")]
 	craft_cipher: Option<CraftCipher>,
-	/// Reusable buffer for packet reads, avoids allocating per packet
-	read_buffer: Vec<u8>,
-	/// Bytes of a frame that [CraftConnection::try_receive_packet] has received but not yet decoded
+	/// Bytes of a frame that have been received but not yet decoded. The buffer keeps its capacity
+	/// between frames.
 	pending_frame: Vec<u8>,
 }
 
@@ -137,178 +139,50 @@ impl CraftConnection {
 			client_type,
 			#[cfg(feature = "encryption")]
 			craft_cipher: None,
-			read_buffer: Vec::with_capacity(1024),
 			pending_frame: Vec::new(),
 		})
 	}
 
 	/// Send a minecraft packet to the client. This will block until the packet is sent.
 	pub async fn send_packet(&mut self, packet: Packet) -> Result<(), NetworkError> {
-		let mut serializer = McSerializer::new();
-		packet.mc_serialize(&mut serializer)?;
-		let output = &serializer.output;
+		#[cfg_attr(not(feature = "encryption"), allow(unused_mut))]
+		let mut frame = encode_frame(packet, self.compression_threshold)?;
 
-		trace!("Sending to {self} : {output:?}");
-
-		let mut prefix_deserializer = McDeserializer::new(output);
-		VarInt::mc_deserialize(&mut prefix_deserializer)?;
-		let prefix_len = prefix_deserializer.index;
-		let body = &output[prefix_len..];
-
-		let mut frame = McSerializer::new();
-		if let Some(threshold) = self.compression_threshold {
-			if body.len() >= threshold as usize {
-				let mut enc = ZlibEncoder::new(Vec::new(), Compression::default());
-				enc.write_all(body)?;
-				let compressed = enc.finish()?;
-
-				let mut inner = McSerializer::new();
-				VarInt(body.len() as i32).mc_serialize(&mut inner)?;
-				inner.output.extend_from_slice(&compressed);
-
-				VarInt(inner.output.len() as i32).mc_serialize(&mut frame)?;
-				frame.merge(inner);
-			} else {
-				let mut inner = McSerializer::new();
-				VarInt(0).mc_serialize(&mut inner)?;
-				inner.output.extend_from_slice(body);
-
-				VarInt(inner.output.len() as i32).mc_serialize(&mut frame)?;
-				frame.merge(inner);
-			}
-			trace!("Compressed packet for {self} : {} bytes compressed to {} bytes", body.len(), frame.output.len());
-		} else {
-			frame.output.extend_from_slice(output);
-		}
+		trace!("Sending to {self} : {frame:?}");
 
 		// Encrypt the fully-framed packet after compression, if encryption is enabled.
 		#[cfg(feature = "encryption")]
 		if let Some(cipher) = &mut self.craft_cipher {
-			cipher.encrypt(&mut frame.output);
+			cipher.encrypt(&mut frame);
 		}
 
-		self.tcp_stream.write_all(&frame.output).await?;
+		self.tcp_stream.write_all(&frame).await?;
 
 		Ok(())
 	}
 
-	/// Given the body of a received packet frame (everything after the outer length VarInt),
-	/// produce a length-prefixed buffer (`VarInt(len) + Packet ID + Data`) ready for
-	/// `Packet::deserialize_state`.
+	/// Receive a minecraft packet from the client. This waits until a full packet is received.
 	///
-	/// When compression is enabled the frame body begins with a Data Length VarInt followed by
-	/// either the raw Packet ID + Data (Data Length == 0, packet was below the threshold) or the
-	/// zlib-compressed Packet ID + Data (Data Length == uncompressed length).
-	///
-	/// See <https://minecraft.wiki/w/Java_Edition_protocol/Packets#With_compression>
-	fn build_deserializer_buffer(&self, frame_body: &[u8]) -> Result<Vec<u8>, NetworkError> {
-		let body: Vec<u8> = if self.compression_threshold.is_some() {
-			let mut sub = McDeserializer::new(frame_body);
-			let data_length = VarInt::mc_deserialize(&mut sub)?;
-			let remaining = &frame_body[sub.index..];
-
-			if data_length.0 == 0 {
-				// Packet was below the threshold and sent uncompressed
-				remaining.to_vec()
-			} else {
-				if data_length.0 as usize > PACKET_MAX_SIZE {
-					return Err(NetworkError::PacketTooLarge);
-				}
-
-				let mut decoder = ZlibDecoder::new(remaining);
-				let mut decompressed = Vec::with_capacity(data_length.0 as usize);
-				decoder.read_to_end(&mut decompressed)?;
-				decompressed
-			}
-		} else {
-			frame_body.to_vec()
-		};
-
-		let mut serializer = McSerializer::new();
-		VarInt(body.len() as i32).mc_serialize(&mut serializer)?;
-		serializer.output.extend_from_slice(&body);
-		Ok(serializer.output)
-	}
-
-	/// Receive a minecraft packet from the client. This will block until a packet is received. This removes data from the TCP buffer
+	/// This is cancel safe: if the future is dropped before it completes (for example in a
+	/// `tokio::select!` branch that does not win), the bytes received so far are kept, and the next
+	/// call to this function or to [CraftConnection::try_receive_packet] continues the same frame.
 	pub async fn receive_packet(&mut self) -> Result<Packet, NetworkError> {
-		// Finish a frame that try_receive_packet started, or its bytes are lost and the stream goes out of sync.
-		while !self.pending_frame.is_empty() {
+		loop {
 			match self.try_receive_packet() {
+				// `readable` is cancel safe, and the bytes received so far are in `pending_frame`.
 				Err(NetworkError::IOError(e)) if e.kind() == std::io::ErrorKind::WouldBlock => self.tcp_stream.readable().await?,
 				Err(NetworkError::NoDataReceived) => {
 					self.close().await;
 					return Err(NetworkError::NoDataReceived);
 				}
-				result => return result,
-			}
-		}
-
-		// Read VarInt length prefix using a stack array (no heap allocation)
-		let mut varint_buf = [0u8; 3];
-		let mut varint_len = 0usize;
-
-		loop {
-			#[cfg_attr(not(feature = "encryption"), allow(unused_mut))]
-			let mut b = self.tcp_stream.read_u8().await?;
-
-			#[cfg(feature = "encryption")]
-			if let Some(cipher) = &mut self.craft_cipher {
-				let mut one = [b];
-				cipher.decrypt(&mut one);
-				b = one[0];
-			}
-
-			varint_buf[varint_len] = b;
-			varint_len += 1;
-
-			if b & CONTINUE_BIT == 0 {
-				break;
-			} else if varint_len >= 3 {
-				return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
-			}
-		}
-
-		let packet_len = VarInt::from_slice(&varint_buf[..varint_len])?.0 as usize;
-
-		if packet_len > PACKET_MAX_SIZE {
-			return Err(NetworkError::PacketTooLarge);
-		}
-
-		// Reuse the connection's read buffer, resizing only when needed
-		let total_len = varint_len + packet_len;
-		self.read_buffer.resize(total_len, 0);
-		self.read_buffer[..varint_len].copy_from_slice(&varint_buf[..varint_len]);
-
-		// Read the full packet body in one call
-		match self.tcp_stream.read_exact(&mut self.read_buffer[varint_len..total_len]).await {
-			Ok(_) => {}
-			Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-				self.close().await;
-				return Err(NetworkError::NoDataReceived);
-			}
-			Err(e) => {
-				if e.to_string().contains("An established connection was aborted by the software in your host machine") {
+				Err(NetworkError::IOError(e)) if e.to_string().contains("An established connection was aborted by the software in your host machine") => {
 					debug!("OS Error detected in packet receive, closing the connection: {e}");
 					self.close().await;
 					return Err(NetworkError::ConnectionAbortedLocally);
 				}
-				return Err(NetworkError::IOError(e));
+				result => return result,
 			}
 		}
-
-		trace!("Received from {} : {:?}", self, &self.read_buffer[..total_len]);
-
-		#[cfg(feature = "encryption")]
-		if let Some(cipher) = &mut self.craft_cipher {
-			cipher.decrypt(&mut self.read_buffer[varint_len..]);
-		}
-
-		let buffer = self.build_deserializer_buffer(&self.read_buffer[varint_len..total_len])?;
-		let mut deserializer = McDeserializer::new(&buffer);
-		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, self.client_type)?;
-
-		Ok(packet)
 	}
 
 	/// Try to receive a packet from the buffer without blocking.
@@ -319,63 +193,60 @@ impl CraftConnection {
 	///
 	/// [CraftConnection::receive_packet] also continues a frame that this function started.
 	pub fn try_receive_packet(&mut self) -> Result<Packet, NetworkError> {
-		// Read the length prefix one byte at a time, so no byte of the next frame is consumed.
-		let (var_len, total_len) = loop {
-			if let Some(end) = self.pending_frame.iter().position(|b| b & CONTINUE_BIT == 0) {
-				let packet_len = VarInt::from_slice(&self.pending_frame[..=end])?.0 as usize;
-				if packet_len > PACKET_MAX_SIZE {
-					self.pending_frame.clear();
-					return Err(NetworkError::PacketTooLarge);
+		let stream = &self.tcp_stream;
+		#[cfg(feature = "encryption")]
+		let cipher = &mut self.craft_cipher;
+		try_receive_frame(
+			&mut self.pending_frame,
+			|buf| stream.try_read(buf),
+			|_bytes| {
+				#[cfg(feature = "encryption")]
+				if let Some(cipher) = cipher.as_mut() {
+					cipher.decrypt(_bytes);
 				}
-				break (end + 1, end + 1 + packet_len);
-			} else if self.pending_frame.len() >= 3 {
-				self.pending_frame.clear();
-				return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
-			}
-
-			self.try_read_pending(1)?;
-		};
-
-		while self.pending_frame.len() < total_len {
-			self.try_read_pending(total_len - self.pending_frame.len())?;
-		}
-
-		let frame = std::mem::take(&mut self.pending_frame);
-
-		trace!("Received from {} : {:?}", self, frame);
-
-		let deser_buf = self.build_deserializer_buffer(&frame[var_len..])?;
-		let mut deserializer = McDeserializer::new(&deser_buf);
-		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, self.client_type)?;
-
-		Ok(packet)
+			},
+			self.compression_threshold,
+			self.packet_state,
+			self.client_type,
+		)
 	}
 
-	/// Read up to `n` more bytes of the current frame into `pending_frame` without blocking, and
-	/// decrypt them if encryption is enabled.
-	fn try_read_pending(&mut self, n: usize) -> Result<(), NetworkError> {
-		let start = self.pending_frame.len();
-		self.pending_frame.resize(start + n, 0);
-
-		let read = match self.tcp_stream.try_read(&mut self.pending_frame[start..]) {
-			Ok(read) => read,
-			Err(e) => {
-				self.pending_frame.truncate(start);
-				return Err(e.into());
-			}
-		};
-		self.pending_frame.truncate(start + read);
-
-		if read == 0 {
-			return Err(NetworkError::NoDataReceived);
-		}
-
+	/// Split the connection into a read half and a write half, for example to read and write in
+	/// separate tasks. The halves keep the state, the compression and the encryption of the
+	/// connection, and a frame that was partly received.
+	///
+	/// After the split, each half has its own copy of the settings. When the state or the
+	/// compression changes (for example at the start of the configuration state), change it on both
+	/// halves.
+	pub fn into_split(self) -> (CraftReader, CraftWriter) {
+		let (read_half, write_half) = self.tcp_stream.into_split();
 		#[cfg(feature = "encryption")]
-		if let Some(cipher) = &mut self.craft_cipher {
-			cipher.decrypt(&mut self.pending_frame[start..]);
-		}
+		let (encryptor, decryptor) = match self.craft_cipher {
+			Some(cipher) => {
+				let (encryptor, decryptor) = cipher.split();
+				(Some(encryptor), Some(decryptor))
+			}
+			None => (None, None),
+		};
 
-		Ok(())
+		let reader = CraftReader {
+			read_half,
+			socket_addr: self.socket_addr,
+			packet_state: self.packet_state,
+			compression_threshold: self.compression_threshold,
+			client_type: self.client_type,
+			#[cfg(feature = "encryption")]
+			decryptor,
+			pending_frame: self.pending_frame,
+		};
+		let writer = CraftWriter {
+			write_half,
+			socket_addr: self.socket_addr,
+			compression_threshold: self.compression_threshold,
+			#[cfg(feature = "encryption")]
+			encryptor,
+		};
+		(reader, writer)
 	}
 
 	pub async fn receive_direct<T: McSerialize + McDeserialize>(&mut self) -> Result<T, NetworkError> {
@@ -454,7 +325,7 @@ impl CraftConnection {
 			return Err(NetworkError::PacketTooLarge);
 		}
 
-		let deser_buf = self.build_deserializer_buffer(&buffer[varint_len..])?;
+		let deser_buf = build_deserializer_buffer(self.compression_threshold, &buffer[varint_len..])?;
 		let mut deserializer = McDeserializer::new(&deser_buf);
 		let packet = Packet::deserialize_state(&mut deserializer, self.packet_state, self.client_type)?;
 
@@ -535,6 +406,144 @@ impl CraftConnection {
 	pub fn get_client_version(&self) -> Option<ProtocolVerison> {
 		ProtocolVerison::try_from(self.protocol_version?.0 as i16).ok()
 	}
+}
+
+/// Serialize `packet` into one frame: the length prefix, and the compression header if
+/// `compression_threshold` is set. The frame is not encrypted.
+///
+/// See <https://minecraft.wiki/w/Java_Edition_protocol/Packets#Packet_format>
+fn encode_frame(packet: Packet, compression_threshold: Option<u32>) -> Result<Vec<u8>, NetworkError> {
+	let mut serializer = McSerializer::new();
+	packet.mc_serialize(&mut serializer)?;
+	let output = serializer.output;
+
+	let Some(threshold) = compression_threshold else {
+		return Ok(output);
+	};
+
+	let mut prefix_deserializer = McDeserializer::new(&output);
+	VarInt::mc_deserialize(&mut prefix_deserializer)?;
+	let body = &output[prefix_deserializer.index..];
+
+	let mut inner = McSerializer::new();
+	if body.len() >= threshold as usize {
+		let mut enc = ZlibEncoder::new(Vec::new(), Compression::default());
+		enc.write_all(body)?;
+		VarInt(body.len() as i32).mc_serialize(&mut inner)?;
+		inner.output.extend_from_slice(&enc.finish()?);
+	} else {
+		VarInt(0).mc_serialize(&mut inner)?;
+		inner.output.extend_from_slice(body);
+	}
+
+	let mut frame = McSerializer::new();
+	VarInt(inner.output.len() as i32).mc_serialize(&mut frame)?;
+	frame.merge(inner);
+	trace!("Compressed packet: {} bytes compressed to {} bytes", body.len(), frame.output.len());
+	Ok(frame.output)
+}
+
+/// Continue the frame in `pending` without blocking, and decode it when it is complete.
+///
+/// `try_read` reads from the socket without blocking. `decrypt` decrypts the new bytes in place.
+/// When the frame is not complete, this returns `NetworkError::IOError` with kind `WouldBlock`, and
+/// `pending` keeps the bytes received so far. Returns `NoDataReceived` if the peer closed the
+/// connection.
+fn try_receive_frame(
+	pending: &mut Vec<u8>,
+	mut try_read: impl FnMut(&mut [u8]) -> std::io::Result<usize>,
+	mut decrypt: impl FnMut(&mut [u8]),
+	compression_threshold: Option<u32>,
+	state: PacketState,
+	client_type: ConnectionRole,
+) -> Result<Packet, NetworkError> {
+	// Read up to `n` more bytes of the frame into `pending`.
+	let mut read_more = |pending: &mut Vec<u8>, n: usize| -> Result<(), NetworkError> {
+		let start = pending.len();
+		pending.resize(start + n, 0);
+		let read = match try_read(&mut pending[start..]) {
+			Ok(read) => read,
+			Err(e) => {
+				pending.truncate(start);
+				return Err(e.into());
+			}
+		};
+		pending.truncate(start + read);
+		if read == 0 {
+			return Err(NetworkError::NoDataReceived);
+		}
+		decrypt(&mut pending[start..]);
+		Ok(())
+	};
+
+	// Read the length prefix one byte at a time, so no byte of the next frame is consumed.
+	let (var_len, total_len) = loop {
+		if let Some(end) = pending.iter().position(|b| b & CONTINUE_BIT == 0) {
+			let packet_len = VarInt::from_slice(&pending[..=end])?.0 as usize;
+			if packet_len > PACKET_MAX_SIZE {
+				pending.clear();
+				return Err(NetworkError::PacketTooLarge);
+			}
+			break (end + 1, end + 1 + packet_len);
+		} else if pending.len() >= 3 {
+			pending.clear();
+			return Err(SerializingErr::VarTypeTooLong("Packet length VarInt max bytes is 3".to_string()).into());
+		}
+
+		read_more(pending, 1)?;
+	};
+
+	while pending.len() < total_len {
+		read_more(pending, total_len - pending.len())?;
+	}
+
+	trace!("Received frame : {pending:?}");
+
+	// The frame is used up, also when it does not decode. Clear it but keep the capacity.
+	let packet = build_deserializer_buffer(compression_threshold, &pending[var_len..]).and_then(|buffer| {
+		let mut deserializer = McDeserializer::new(&buffer);
+		Ok(Packet::deserialize_state(&mut deserializer, state, client_type)?)
+	});
+	pending.clear();
+	packet
+}
+
+/// Given the body of a received packet frame (everything after the outer length VarInt),
+/// produce a length-prefixed buffer (`VarInt(len) + Packet ID + Data`) ready for
+/// `Packet::deserialize_state`.
+///
+/// When compression is enabled the frame body begins with a Data Length VarInt followed by
+/// either the raw Packet ID + Data (Data Length == 0, packet was below the threshold) or the
+/// zlib-compressed Packet ID + Data (Data Length == uncompressed length).
+///
+/// See <https://minecraft.wiki/w/Java_Edition_protocol/Packets#With_compression>
+fn build_deserializer_buffer(compression_threshold: Option<u32>, frame_body: &[u8]) -> Result<Vec<u8>, NetworkError> {
+	let body: Vec<u8> = if compression_threshold.is_some() {
+		let mut sub = McDeserializer::new(frame_body);
+		let data_length = VarInt::mc_deserialize(&mut sub)?;
+		let remaining = &frame_body[sub.index..];
+
+		if data_length.0 == 0 {
+			// Packet was below the threshold and sent uncompressed
+			remaining.to_vec()
+		} else {
+			if data_length.0 as usize > PACKET_MAX_SIZE {
+				return Err(NetworkError::PacketTooLarge);
+			}
+
+			let mut decoder = ZlibDecoder::new(remaining);
+			let mut decompressed = Vec::with_capacity(data_length.0 as usize);
+			decoder.read_to_end(&mut decompressed)?;
+			decompressed
+		}
+	} else {
+		frame_body.to_vec()
+	};
+
+	let mut serializer = McSerializer::new();
+	VarInt(body.len() as i32).mc_serialize(&mut serializer)?;
+	serializer.output.extend_from_slice(&body);
+	Ok(serializer.output)
 }
 
 impl Display for CraftConnection {

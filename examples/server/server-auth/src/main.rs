@@ -60,7 +60,7 @@ async fn main() {
 		client.enable_compression(Some(400));
 		debug!("Sent set compression to {client} and enabled compression");
 
-		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(profile.uuid, profile.username, PrefixedArray::new(profile.properties)));
+		let login_success = Packet::LoginSuccess(LoginSuccessPacket::new(profile.uuid, profile.username, PrefixedArray::new(profile.properties), profile.uuid));
 		client.send_packet(login_success).await.unwrap();
 
 		let login_ack = client.receive_packet().await.unwrap();

@@ -2,6 +2,7 @@
 //! send them.
 
 use crate::protocol::game::world::anvil::{AnvilError, AnvilResult};
+use crate::protocol::game::world::block_physics::block_by_id;
 use crate::protocol::game::world::block_state_table::{BLOCKS, BlockInfo};
 use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
@@ -84,21 +85,13 @@ impl BlockState {
 	}
 }
 
-fn block_by_id(id: i32) -> Option<&'static BlockInfo> {
-	// BLOCKS is sorted by first_id and the ID ranges have no gaps.
-	let next = BLOCKS.partition_point(|block| block.first_id <= id);
-	let block = BLOCKS.get(next.checked_sub(1)?)?;
-	let count: usize = block.properties.iter().map(|(_, values)| values.len()).product();
-	(id < block.first_id + count as i32).then_some(block)
-}
-
 #[cfg(test)]
 mod test {
-	use super::*;
-	use crate::protocol::game::world::block_state_table::BLOCK_STATE_COUNT;
-	use crate::protocol::game::world::block_states::{AIR, GRASS_BLOCK, STONE};
+    use super::*;
+    use crate::protocol::game::world::block_state_table::BLOCK_STATE_COUNT;
+    use crate::protocol::game::world::block_states::{AIR, GRASS_BLOCK, STONE};
 
-	fn state(name: &str, properties: &[(&str, &str)]) -> BlockState {
+    fn state(name: &str, properties: &[(&str, &str)]) -> BlockState {
 		BlockState {
 			name: name.to_string(),
 			properties: properties.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),

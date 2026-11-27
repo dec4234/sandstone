@@ -7,17 +7,17 @@
 
 #[cfg(test)]
 mod test {
-	use sandstone::network::network_error::NetworkError;
-	use sandstone::network::{ConnectionRole, CraftConnection};
-	use sandstone::protocol::packets::packet_definer::PacketState;
-	use sandstone::protocol::packets::{HandshakingPacket, Packet, PingRequestPacket, PingResponsePacket};
-	use sandstone::protocol_types::datatypes::var_types::VarInt;
-	use std::io::ErrorKind;
-	use std::time::Duration;
-	use tokio::io::{AsyncReadExt, AsyncWriteExt};
-	use tokio::net::{TcpListener, TcpStream};
+    use sandstone::network::network_error::NetworkError;
+    use sandstone::network::{ConnectionRole, CraftConnection};
+    use sandstone::protocol::packets::packet_definer::PacketState;
+    use sandstone::protocol::packets::{HandshakingPacket, Packet, PingRequestPacket, PingResponsePacket};
+    use sandstone::protocol_types::datatypes::var_types::VarInt;
+    use std::io::ErrorKind;
+    use std::time::Duration;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::{TcpListener, TcpStream};
 
-	/// Make a connected (client, server) pair on loopback.
+    /// Make a connected (client, server) pair on loopback.
 	/// The client is dialed through the public `connect` API, as a real user would do.
 	async fn pair() -> (CraftConnection, CraftConnection) {
 		let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -519,5 +519,92 @@ mod test {
 			Err(NetworkError::IOError(e)) => assert_eq!(e.kind(), ErrorKind::UnexpectedEof),
 			other => panic!("expected UnexpectedEof, got {other:?}"),
 		}
+	}
+
+	/// The bytes of one handshake frame, as `send_packet` writes them.
+	async fn handshake_frame() -> Vec<u8> {
+		let (mut client, mut server) = pair().await;
+		client.send_packet(handshake(1)).await.unwrap();
+		wait_for_data(&server).await;
+		let mut buf = vec![0u8; 256];
+		let n = server.tcp_stream.read(&mut buf).await.unwrap();
+		buf.truncate(n);
+		buf
+	}
+
+	#[tokio::test]
+	async fn receive_packet_is_cancel_safe() {
+		// A server loop often uses `tokio::select!` with a timer. When the timer wins, the receive
+		// future is dropped. If that drops the bytes it has read, the next packet is decoded from the
+		// middle of a frame and the connection is lost.
+		let frame = handshake_frame().await;
+		let (mut raw, mut server) = server_with_raw_peer().await;
+
+		// Send the length prefix and part of the body, then let the receive time out.
+		raw.write_all(&frame[..3]).await.unwrap();
+		let timed_out = tokio::time::timeout(Duration::from_millis(100), server.receive_packet()).await;
+		assert!(timed_out.is_err(), "the frame is not complete, so no packet can come");
+
+		raw.write_all(&frame[3..]).await.unwrap();
+		raw.write_all(&frame).await.unwrap();
+		for _ in 0..2 {
+			let packet = tokio::time::timeout(Duration::from_secs(5), server.receive_packet()).await.expect("timed out");
+			assert_eq!(packet.unwrap(), handshake(1));
+		}
+	}
+
+	#[cfg(feature = "encryption")]
+	#[tokio::test]
+	async fn split_halves_work_in_separate_tasks() {
+		// After the split, reads and writes go to separate tasks. The halves must keep the state,
+		// compression and cipher of the connection, or the peer cannot decode the stream.
+		let secret = [9u8; 16];
+		let (mut client, mut server) = pair().await;
+		for conn in [&mut client, &mut server] {
+			conn.set_shared_secret(&secret).unwrap();
+			conn.enable_compression(Some(0));
+			conn.change_state(PacketState::STATUS);
+		}
+		// Send one packet before the split, so the cipher state has moved.
+		client.send_packet(ping(-1)).await.unwrap();
+		assert_eq!(server.receive_packet().await.unwrap(), ping(-1));
+
+		let (mut reader, mut writer) = server.into_split();
+		// The server echoes each ping back as a pong: one task reads, one task writes.
+		let (sender, mut receiver) = tokio::sync::mpsc::channel(8);
+		let read_task = tokio::spawn(async move {
+			for _ in 0..3 {
+				let Packet::PingRequest(ping) = reader.receive_packet().await.unwrap() else { panic!("not a ping") };
+				sender.send(ping.payload).await.unwrap();
+			}
+		});
+		let write_task = tokio::spawn(async move {
+			while let Some(payload) = receiver.recv().await {
+				writer.send_packet(Packet::PingResponse(PingResponsePacket { payload: payload as u64 })).await.unwrap();
+			}
+		});
+
+		for i in 0..3 {
+			client.send_packet(ping(i)).await.unwrap();
+			let pong = tokio::time::timeout(Duration::from_secs(5), client.receive_packet()).await.expect("timed out");
+			assert_eq!(pong.unwrap(), Packet::PingResponse(PingResponsePacket { payload: i as u64 }));
+		}
+		read_task.await.unwrap();
+		write_task.await.unwrap();
+	}
+
+	#[tokio::test]
+	async fn split_keeps_a_partly_received_frame() {
+		// A frame that try_receive_packet started before the split must finish in the read half.
+		let frame = handshake_frame().await;
+		let (mut raw, mut server) = server_with_raw_peer().await;
+		raw.write_all(&frame[..3]).await.unwrap();
+		wait_for_data(&server).await;
+		assert_would_block(server.try_receive_packet());
+
+		let (mut reader, _writer) = server.into_split();
+		raw.write_all(&frame[3..]).await.unwrap();
+		let packet = tokio::time::timeout(Duration::from_secs(5), reader.receive_packet()).await.expect("timed out");
+		assert_eq!(packet.unwrap(), handshake(1));
 	}
 }
